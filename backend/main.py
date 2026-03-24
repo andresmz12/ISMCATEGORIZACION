@@ -58,6 +58,10 @@ def ensure_admin():
         users[ADMIN_EMAIL] = {
             "password": hash_password(ADMIN_PASSWORD),
             "role": "admin",
+            "created_at": datetime.utcnow().isoformat(),
+            "last_login": None,
+            "active": True,
+            "report_count": 0,
         }
         save_users(users)
 
@@ -65,7 +69,7 @@ def ensure_admin():
 def on_startup():
     ensure_admin()
 
-# ── Auth helpers ────────────────────────────────────────────────────────────
+# ── Auth helpers ─────────────────────────────────────────────────────────────
 def create_token(email: str, role: str) -> str:
     expire = datetime.utcnow() + timedelta(hours=TOKEN_HOURS)
     return jwt.encode({"sub": email, "role": role, "exp": expire}, SECRET_KEY, ALGORITHM)
@@ -84,7 +88,7 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
         raise HTTPException(403, "Admin access required")
     return user
 
-# ── Auth endpoints ──────────────────────────────────────────────────────────
+# ── Auth endpoints ───────────────────────────────────────────────────────────
 @app.get("/")
 def root():
     return {"status": "ISM Taxes API running"}
@@ -94,16 +98,32 @@ async def login(body: dict):
     email    = body.get("email", "")
     password = body.get("password", "")
     users    = load_users()
-    if email not in users or not verify_password(password, users[email]["password"]):
+    user_data = users.get(email)
+    if not user_data or not verify_password(password, user_data["password"]):
         raise HTTPException(401, "Invalid credentials")
-    role  = users[email]["role"]
+    if not user_data.get("active", True):
+        raise HTTPException(403, "Account is disabled")
+    user_data["last_login"] = datetime.utcnow().isoformat()
+    users[email] = user_data
+    save_users(users)
+    role  = user_data["role"]
     token = create_token(email, role)
     return {"access_token": token, "email": email, "role": role}
 
 @app.get("/auth/users")
 async def list_users(admin: dict = Depends(require_admin)):
     users = load_users()
-    return [{"email": e, "role": d["role"]} for e, d in users.items()]
+    return [
+        {
+            "email": e,
+            "role": d["role"],
+            "created_at": d.get("created_at"),
+            "last_login": d.get("last_login"),
+            "active": d.get("active", True),
+            "report_count": d.get("report_count", 0),
+        }
+        for e, d in users.items()
+    ]
 
 @app.post("/auth/users")
 async def create_user(body: dict, admin: dict = Depends(require_admin)):
@@ -114,11 +134,51 @@ async def create_user(body: dict, admin: dict = Depends(require_admin)):
     users = load_users()
     if email in users:
         raise HTTPException(400, "User already exists")
-    users[email] = {"password": hash_password(password), "role": "user"}
+    users[email] = {
+        "password": hash_password(password),
+        "role": "user",
+        "created_at": datetime.utcnow().isoformat(),
+        "last_login": None,
+        "active": True,
+        "report_count": 0,
+    }
     save_users(users)
     return {"email": email, "role": "user"}
 
-# ── Classify endpoint ───────────────────────────────────────────────────────
+@app.put("/auth/users/{email}")
+async def update_user(email: str, body: dict, admin: dict = Depends(require_admin)):
+    users = load_users()
+    if email not in users:
+        raise HTTPException(404, "User not found")
+    user_data = users[email]
+    if body.get("password"):
+        user_data["password"] = hash_password(body["password"])
+    if "active" in body:
+        user_data["active"] = bool(body["active"])
+    new_email = body.get("new_email", "").strip()
+    if new_email and new_email != email:
+        if new_email in users:
+            raise HTTPException(400, "Email already in use")
+        users[new_email] = user_data
+        del users[email]
+        save_users(users)
+        return {"email": new_email}
+    users[email] = user_data
+    save_users(users)
+    return {"email": email}
+
+@app.delete("/auth/users/{email}")
+async def delete_user(email: str, admin: dict = Depends(require_admin)):
+    users = load_users()
+    if email not in users:
+        raise HTTPException(404, "User not found")
+    if email == admin["sub"]:
+        raise HTTPException(400, "Cannot delete your own account")
+    del users[email]
+    save_users(users)
+    return {"deleted": email}
+
+# ── Classify endpoint ────────────────────────────────────────────────────────
 @app.post("/classify")
 async def classify(
     file: UploadFile = File(...),
@@ -126,6 +186,7 @@ async def classify(
     year: str = Form("2025"),
     industry: str = Form("Other"),
     entity: str = Form("Sole Proprietor (Schedule C)"),
+    notes: str = Form(""),
     user: dict = Depends(get_current_user),
 ):
     ext = file.filename.split(".")[-1].lower()
@@ -145,6 +206,12 @@ async def classify(
             industry=industry,
             entity=entity,
         )
+        # Track report count
+        users = load_users()
+        email = user["sub"]
+        if email in users:
+            users[email]["report_count"] = users[email].get("report_count", 0) + 1
+            save_users(users)
         with open(out_path, "rb") as f:
             file_b64 = base64.b64encode(f.read()).decode()
         os.unlink(out_path)
