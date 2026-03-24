@@ -784,3 +784,59 @@ def process_file(
         )
 
     return build_excel(transactions, company_name, year, industry, entity)
+
+
+def process_file_full(
+    file_path: str,
+    file_ext: str,
+    company_name: str,
+    year: str,
+    industry: str,
+    entity: str,
+) -> tuple:
+    """
+    Like process_file but also returns a summary dict.
+    Returns (excel_path, summary_dict).
+    """
+    ext = file_ext.lower()
+
+    if ext == "csv":
+        transactions = read_csv(file_path)
+    elif ext in ("xlsx", "xls"):
+        transactions = read_excel(file_path)
+    elif ext == "pdf":
+        transactions = read_pdf(file_path)
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")
+
+    if not transactions:
+        raise ValueError(
+            "No transactions found in the file. "
+            "Please verify the file format and that it contains data rows."
+        )
+
+    total_income   = sum(tx["amount"] for tx in transactions if tx["amount"] > 0)
+    total_expenses = sum(abs(tx["amount"]) for tx in transactions if tx["amount"] < 0)
+    net            = total_income - total_expenses
+
+    cat_totals: dict = {}
+    for tx in transactions:
+        result = classify(tx["description"], tx.get("chase_category", ""), "")
+        cat = result["category"]
+        cat_totals[cat] = cat_totals.get(cat, 0.0) + abs(tx["amount"])
+
+    categories = sorted(
+        [{"category": c, "total": round(t, 2)} for c, t in cat_totals.items()],
+        key=lambda x: -x["total"],
+    )
+
+    summary = {
+        "total_income":      round(total_income, 2),
+        "total_expenses":    round(total_expenses, 2),
+        "net":               round(net, 2),
+        "categories":        categories,
+        "transaction_count": len(transactions),
+    }
+
+    excel_path = build_excel(transactions, company_name, year, industry, entity)
+    return excel_path, summary
