@@ -180,9 +180,9 @@ function LoginScreen({ onLogin }) {
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ ...card, padding: "48px 40px", width: "100%", maxWidth: 420 }}>
           <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <img src={logoBase64} alt="ISM Consulting" style={{ height: 60, objectFit: "contain", marginBottom: 16 }} />
+            <img src={logoBase64} alt="ISM Consulting" style={{ height: 90, objectFit: "contain", marginBottom: 16 }} />
             <p style={{ margin: 0, color: C.textMuted, fontSize: 15 }}>
-              Tax Categorization Platform
+              Expense Categorization Platform
             </p>
           </div>
           <form onSubmit={handleSubmit}>
@@ -684,7 +684,7 @@ export default function ISMTaxes() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "center" }}>
-          <img src={logoBase64} alt="ISM Consulting" style={{ height: 40, objectFit: "contain" }} />
+          <img src={logoBase64} alt="ISM Consulting" style={{ height: 90, objectFit: "contain" }} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {user.role === "admin" && (
@@ -713,7 +713,7 @@ export default function ISMTaxes() {
           <>
             <div style={{ marginBottom: 36 }}>
               <h1 style={{ margin: 0, fontSize: 36, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
-                IRS Tax <span style={{ color: C.primary }}>Categorization</span>
+                IRS <span style={{ color: C.primary }}>Expense Categorization</span>
               </h1>
               <p style={{ margin: "12px 0 0", color: C.textMuted, fontSize: 17, lineHeight: 1.6 }}>
                 Upload your bank statement and get a fully categorized expense report in seconds.
