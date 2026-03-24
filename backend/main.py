@@ -2,6 +2,7 @@ import os
 import re
 import json
 import base64
+import hashlib
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -11,7 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 
 from classifier import process_file_full
 
@@ -23,8 +23,13 @@ USERS_FILE     = Path(__file__).parent / "users.json"
 ADMIN_EMAIL    = os.environ.get("ADMIN_EMAIL", "admin@ismtaxes.com")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "ISMAdmin2024")
 
-pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-bearer  = HTTPBearer()
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password: str, hashed: str) -> bool:
+    return hash_password(password) == hashed
+
+bearer = HTTPBearer()
 
 app = FastAPI(title="ISM Taxes API")
 app.add_middleware(
@@ -51,7 +56,7 @@ def ensure_admin():
     users = load_users()
     if ADMIN_EMAIL not in users:
         users[ADMIN_EMAIL] = {
-            "password": pwd_ctx.hash(ADMIN_PASSWORD),
+            "password": hash_password(ADMIN_PASSWORD),
             "role": "admin",
         }
         save_users(users)
@@ -89,7 +94,7 @@ async def login(body: dict):
     email    = body.get("email", "")
     password = body.get("password", "")
     users    = load_users()
-    if email not in users or not pwd_ctx.verify(password, users[email]["password"]):
+    if email not in users or not verify_password(password, users[email]["password"]):
         raise HTTPException(401, "Invalid credentials")
     role  = users[email]["role"]
     token = create_token(email, role)
@@ -109,7 +114,7 @@ async def create_user(body: dict, admin: dict = Depends(require_admin)):
     users = load_users()
     if email in users:
         raise HTTPException(400, "User already exists")
-    users[email] = {"password": pwd_ctx.hash(password), "role": "user"}
+    users[email] = {"password": hash_password(password), "role": "user"}
     save_users(users)
     return {"email": email, "role": "user"}
 
