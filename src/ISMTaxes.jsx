@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import logoBase64 from "./assets/logoBase64";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://ismcategorizacion-production.up.railway.app";
 
@@ -98,7 +99,7 @@ function Footer() {
       borderTop: `1px solid ${C.border}`,
       marginTop: 48,
     }}>
-      Creado por ISM Consulting
+      © 2026 ISM Consulting Services. All rights reserved.
     </footer>
   );
 }
@@ -179,11 +180,8 @@ function LoginScreen({ onLogin }) {
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ ...card, padding: "48px 40px", width: "100%", maxWidth: 420 }}>
           <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <div style={{ fontSize: 44, marginBottom: 10 }}>⚖️</div>
-            <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, color: C.text }}>
-              ISM <span style={{ color: C.primary }}>Taxes</span>
-            </h1>
-            <p style={{ margin: "8px 0 0", color: C.textMuted, fontSize: 15 }}>
+            <img src={logoBase64} alt="ISM Consulting" style={{ height: 60, objectFit: "contain", marginBottom: 16 }} />
+            <p style={{ margin: 0, color: C.textMuted, fontSize: 15 }}>
               Tax Categorization Platform
             </p>
           </div>
@@ -685,11 +683,8 @@ export default function ISMTaxes() {
         padding: "0 32px", height: 64,
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 22 }}>⚖️</span>
-          <span style={{ fontWeight: 800, fontSize: 20 }}>
-            ISM <span style={{ color: C.primary }}>Taxes</span>
-          </span>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <img src={logoBase64} alt="ISM Consulting" style={{ height: 40, objectFit: "contain" }} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {user.role === "admin" && (
