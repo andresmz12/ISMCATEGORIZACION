@@ -668,7 +668,7 @@ IRS_NOTES = [
 ]
 
 
-def _build_irs_notes(wb, company_name, year, industry, entity):
+def _build_irs_notes(wb, company_name, year, industry, entity, notes=""):
     ws = wb.create_sheet("IRS Notes")
 
     # Title block
@@ -692,8 +692,27 @@ def _build_irs_notes(wb, company_name, year, industry, entity):
         ws.cell(row=i, column=1, value=k).font = _normal_font(bold=True)
         ws.cell(row=i, column=2, value=v).font = _normal_font()
 
-    # Column headers
-    header_row = len(meta) + 3
+    # Client notes block (if provided)
+    if notes and notes.strip():
+        notes_row = len(meta) + 2
+        ws.merge_cells(f"A{notes_row}:E{notes_row}")
+        notes_label = ws.cell(row=notes_row, column=1, value="Client Notes / Important Expenses")
+        notes_label.fill = _header_fill("#B45309")
+        notes_label.font = Font(name="Calibri", bold=True, color=WHITE, size=11)
+        notes_label.alignment = Alignment(horizontal="left", vertical="center")
+        ws.row_dimensions[notes_row].height = 22
+
+        notes_val_row = notes_row + 1
+        ws.merge_cells(f"A{notes_val_row}:E{notes_val_row}")
+        notes_cell = ws.cell(row=notes_val_row, column=1, value=notes.strip())
+        notes_cell.font = _normal_font()
+        notes_cell.alignment = Alignment(wrap_text=True, vertical="top")
+        notes_cell.fill = _cell_fill("#FFFBEB")
+        ws.row_dimensions[notes_val_row].height = max(60, len(notes.strip()) // 3)
+
+    # Column headers — shift down if notes block was added
+    extra_rows = 2 if (notes and notes.strip()) else 0
+    header_row = len(meta) + 3 + extra_rows
     headers = ["Category", "Schedule C Line", "IRS Notes / Rules"]
     col_widths = [30, 35, 70]
     for col, (h, w) in enumerate(zip(headers, col_widths), start=1):
@@ -726,6 +745,7 @@ def build_excel(
     year: str,
     industry: str,
     entity: str,
+    notes: str = "",
 ) -> str:
     """
     Build a formatted Excel workbook with 3 sheets:
@@ -741,7 +761,7 @@ def build_excel(
 
     _build_all_transactions(wb, transactions)
     _build_summary(wb, transactions)
-    _build_irs_notes(wb, company_name, year, industry, entity)
+    _build_irs_notes(wb, company_name, year, industry, entity, notes)
 
     out_dir = tempfile.gettempdir()
     safe_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", company_name)
@@ -793,6 +813,7 @@ def process_file_full(
     year: str,
     industry: str,
     entity: str,
+    notes: str = "",
 ) -> tuple:
     """
     Like process_file but also returns a summary dict.
@@ -838,5 +859,5 @@ def process_file_full(
         "transaction_count": len(transactions),
     }
 
-    excel_path = build_excel(transactions, company_name, year, industry, entity)
+    excel_path = build_excel(transactions, company_name, year, industry, entity, notes)
     return excel_path, summary

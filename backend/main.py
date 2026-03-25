@@ -223,6 +223,7 @@ async def classify(
             year=year,
             industry=industry,
             entity=entity,
+            notes=notes,
         )
         db_user = db.query(User).filter(User.email == user["sub"]).first()
         if db_user:
