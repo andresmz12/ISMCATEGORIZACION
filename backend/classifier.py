@@ -129,9 +129,18 @@ Clasifica los {len(transactions)} gastos."""
     )
 
     raw = response.content[0].text.strip()
-    raw = re.sub(r"^```[a-z]*\n?", "", raw)
-    raw = re.sub(r"\n?```$", "", raw)
-    return json.loads(raw)
+    # Strip markdown code blocks (handles ```json, ```JSON, ```\r\n, etc.)
+    raw = re.sub(r"^```[a-zA-Z]*\s*", "", raw)
+    raw = re.sub(r"\s*```\s*$", "", raw)
+    raw = raw.strip()
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Try to extract JSON array if there's extra text
+        match = re.search(r"\[.*\]", raw, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+        raise
 
 
 def classify_fallback(desc: str) -> dict:
@@ -720,7 +729,7 @@ def process_file_full(file_path: str, file_ext: str, company_name: str,
     summary = {
         "total_income": 0.0,
         "total_expenses": total_expenses,
-        "net": 0.0,
+        "net": round(-total_expenses, 2),
         "categories": categories,
         "transaction_count": len(classified),
     }
