@@ -76,12 +76,14 @@ def filter_transactions(transactions: list) -> list:
 # PARTE 2 — CLASIFICACIÓN CON IA
 # ---------------------------------------------------------------------------
 
-def classify_batch_with_ai(transactions: list, industry: str) -> list:
-    if not transactions:
-        return []
+CHUNK_SIZE = 50  # Max transactions per AI call to stay within token limits
 
+
+def _call_ai_chunk(transactions: list, industry: str, id_offset: int = 0) -> list:
+    """Call Claude API for a chunk of transactions. id_offset adjusts the displayed IDs."""
     tx_list = "\n".join(
-        [f"{i+1}. {t['description']} | ${t['amount']:.2f}" for i, t in enumerate(transactions)]
+        [f"{id_offset + i + 1}. {t['description']} | ${t['amount']:.2f}"
+         for i, t in enumerate(transactions)]
     )
 
     prompt = f"""Eres un experto en impuestos de negocios en USA.
@@ -90,106 +92,177 @@ Clasifica cada gasto según el IRS Schedule C para un negocio de industria: {ind
 TRANSACCIONES:
 {tx_list}
 
-REGLAS:
-- Airlines (Southwest, Delta, United, American, Spirit, Frontier, JetBlue) = Travel | Schedule C - Line 24a
-- Hotels (Marriott, Hilton, Hyatt, Airbnb, Holiday Inn, Best Western) = Travel | Schedule C - Line 24a
-- Uber/Lyft (transporte) = Travel | Schedule C - Line 24a
-- Gas stations (Shell, BP, Chevron, Exxon, Mobil, Kwik Trip, Pilot, Loves, Flying J, Circle K, Speedway) = Fuel | Schedule C - Line 9
-- Restaurants/food (McDonald's, Starbucks, Subway, Chipotle, Taco Bell, Domino's, any restaurant, cafe) = Meals (50% Deductible) | Schedule C - Line 24b
-- Food delivery (Uber Eats, DoorDash, GrubHub) = Meals (50% Deductible) | Schedule C - Line 24b
-- Phone/Internet (AT&T, Verizon, T-Mobile, Comcast, Xfinity, Spectrum) = Utilities | Schedule C - Line 25
-- Software (Microsoft, Adobe, Google, AWS, Zoom, Slack, QuickBooks, Dropbox, Shopify) = Software & Subscriptions | Schedule C - Line 27a
-- Payroll (Gusto, ADP, Paychex, Rippling) = Wages & Salaries | Schedule C - Line 26
-- Insurance (Geico, Progressive, State Farm, Allstate, Nationwide) = Insurance | Schedule C - Line 15
-- Rent/Lease/Storage = Rent & Lease | Schedule C - Line 20b
+REGLAS IMPORTANTES — Los bancos truncan nombres, busca el patrón:
+- Airlines (Southwest/WN, Delta/DL, United/UA, American/AA, Spirit, Frontier, JetBlue, ALLEGIANT) = Travel | Schedule C - Line 24a
+- Hotels (Marriott, Hilton, Hyatt, Airbnb, Holiday Inn, Best Western, Comfort Inn, Hampton Inn, VRBO) = Travel | Schedule C - Line 24a
+- Uber, Lyft, LYFT *RIDE, UBER *TRIP = Travel | Schedule C - Line 24a
+- Gas stations (Shell, BP, Chevron, Exxon, Mobil, Kwik Trip, Pilot, Loves, Flying J, Circle K, Speedway, Racetrac, Wawa, QT, Valero, Sunoco, Murphy, GetGo) = Fuel | Schedule C - Line 9
+- Restaurants/food (McDonald's, MCD, Starbucks, SBUX, Subway, Chipotle, Taco Bell, Domino's, Pizza, KFC, Popeyes, Chick-fil-A, Sonic, Arby's, Wendy's, Panera, Dunkin, IHOP, Denny's, Waffle House, Applebee's, any TST* or SQ * at food place) = Meals (50% Deductible) | Schedule C - Line 24b
+- Food delivery (Uber Eats, UBER* EATS, DoorDash, DD *, GrubHub, Postmates, Instacart food) = Meals (50% Deductible) | Schedule C - Line 24b
+- Phone/Internet (AT&T, Verizon, T-Mobile, Comcast, Xfinity, Spectrum, Cox, CenturyLink, Cricket) = Utilities | Schedule C - Line 25
+- Software (Microsoft, MSFT, Adobe, Google, AWS, Amazon Web, Zoom, Slack, QuickBooks, Intuit, Dropbox, Shopify, Squarespace, Wix, HubSpot, Mailchimp, Canva) = Software & Subscriptions | Schedule C - Line 27a
+- Payroll (Gusto, ADP, Paychex, Rippling, Zenefits) = Wages & Salaries | Schedule C - Line 26
+- Insurance (Geico, Progressive, State Farm, Allstate, Nationwide, Liberty Mutual, Travelers, Farmers, USAA, any *INSURANCE*) = Insurance | Schedule C - Line 15
+- Rent/Lease/Storage (Public Storage, Extra Space, U-Haul storage, any RENT or LEASE) = Rent & Lease | Schedule C - Line 20b
 - Legal/CPA/Accounting/Consulting = Legal & Professional | Schedule C - Line 17
-- Advertising (Facebook Ads, Google Ads, marketing) = Advertising | Schedule C - Line 8
-- Auto repair (AutoZone, O'Reilly, Jiffy Lube, Firestone, Midas) = Car & Truck Expenses | Schedule C - Line 9
-- Tolls/Parking/iPass/EZPass = Tolls & Parking | Schedule C - Line 9
-- Bank fees, interest charges, Stripe fees, PayPal fees = Bank & Processing Fees | Schedule C - Line 27a
-- Amazon/Office Depot/Staples/Home Depot/Lowe's (business supplies) = Supplies | Schedule C - Line 22
-- Walmart/Target/Costco (personal shopping), Netflix, Hulu, Spotify = Personal Non-Deductible | N/A
-- Casinos, bars, entertainment personal = Entertainment Non-Deductible | N/A
+- Advertising (Facebook, META *, Google Ads, Instagram, LinkedIn, Yelp, any *ADS*) = Advertising | Schedule C - Line 8
+- Auto repair (AutoZone, O'Reilly, OREILLY, Advance Auto, Napa Auto, Jiffy Lube, Firestone, Midas, Pep Boys, Valvoline, Meineke, Maaco, any *AUTO REPAIR*) = Car & Truck Expenses | Schedule C - Line 9
+- Tolls/Parking (IPASS, EZPass, BESTPASS, ParkWhiz, SpotHero, any PARKING, any TOLL) = Tolls & Parking | Schedule C - Line 9
+- Bank fees, interest, Stripe, PayPal, Square (SQ *), Clover, Toast (TST*) fees = Bank & Processing Fees | Schedule C - Line 27a
+- Amazon (AMZN MKTP, AMAZON.COM), Office Depot, Staples, Home Depot, Lowe's, Costco Business = Supplies | Schedule C - Line 22
+- Walmart (WM SUPERCENTER, WALMART), Target, Costco personal, Sam's Club personal = Personal (Non-Deductible) | N/A
+- Netflix, Hulu, Spotify, Disney+, HBO, Apple TV = Personal (Non-Deductible) | N/A
+- Si no encaja en ninguna categoría de negocio, clasifica como la más cercana (NO dejes sin categorizar)
 
 Responde SOLO con un JSON array, sin texto extra ni markdown:
 [
-  {{"id": 1, "category": "Travel", "irs_line": "Schedule C - Line 24a", "deductible": "YES", "confidence": "HIGH"}},
-  {{"id": 2, "category": "Meals (50% Deductible)", "irs_line": "Schedule C - Line 24b", "deductible": "50%", "confidence": "HIGH"}}
+  {{"id": {id_offset + 1}, "category": "Travel", "irs_line": "Schedule C - Line 24a", "deductible": "YES", "confidence": "HIGH"}},
+  {{"id": {id_offset + 2}, "category": "Meals (50% Deductible)", "irs_line": "Schedule C - Line 24b", "deductible": "50%", "confidence": "HIGH"}}
 ]
 
 Valores para deductible: "YES", "NO", "50%"
 Valores para confidence: "HIGH", "MEDIUM", "LOW"
 
-Clasifica los {len(transactions)} gastos."""
+Clasifica los {len(transactions)} gastos. TODOS deben tener una categoría asignada."""
 
     response = client.messages.create(
         model="claude-opus-4-6",
-        max_tokens=4096,
+        max_tokens=8096,
         messages=[{"role": "user", "content": prompt}]
     )
 
     raw = response.content[0].text.strip()
-    # Strip markdown code blocks (handles ```json, ```JSON, ```\r\n, etc.)
     raw = re.sub(r"^```[a-zA-Z]*\s*", "", raw)
     raw = re.sub(r"\s*```\s*$", "", raw)
     raw = raw.strip()
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        # Try to extract JSON array if there's extra text
         match = re.search(r"\[.*\]", raw, re.DOTALL)
         if match:
             return json.loads(match.group())
         raise
 
 
+def classify_batch_with_ai(transactions: list, industry: str) -> list:
+    if not transactions:
+        return []
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise ValueError(
+            "ANTHROPIC_API_KEY no está configurada. "
+            "Configura la variable de entorno para habilitar la clasificación con IA."
+        )
+
+    all_results = []
+    for i in range(0, len(transactions), CHUNK_SIZE):
+        chunk = transactions[i:i + CHUNK_SIZE]
+        chunk_results = _call_ai_chunk(chunk, industry, id_offset=i)
+        all_results.extend(chunk_results)
+
+    return all_results
+
+
 def classify_fallback(desc: str) -> dict:
+    # Real bank description patterns: truncated names, codes, prefixes like SQ*, TST*, AMZN
     RULES = [
         ("Fuel", "Schedule C - Line 9", "YES",
          ["shell", "bp ", "chevron", "exxon", "mobil", "fuel", "gasoline", "gas station",
-          "circle k", "pilot travel", "loves travel", "flying j", "speedway", "kwik trip",
-          "marathon", "sunoco", "valero", "quiktrip", "racetrac", "wawa"]),
+          "circle k", "pilot trav", "loves trav", "flying j", "speedway", "kwik trip",
+          "marathon", "sunoco", "valero", "quiktrip", "racetrac", "wawa", "murphy",
+          "getgo", "casey", "kum & go", "holiday station", "thorntons", "sheetz",
+          "bucees", "buc-ee", "pump", "76 oil", "76gas"]),
         ("Car & Truck Expenses", "Schedule C - Line 9", "YES",
-         ["autozone", "o'reilly", "advance auto", "napa auto", "jiffy lube", "firestone",
-          "midas", "pep boys", "oil change", "tire", "brake", "auto repair", "car wash",
-          "truck repair", "mechanic"]),
+         ["autozone", "oreilly", "o'reilly", "advance auto", "napa auto", "jiffy lube",
+          "firestone", "midas", "pep boys", "oil change", "tire", "brake", "auto repair",
+          "car wash", "truck repair", "mechanic", "valvoline", "meineke", "maaco",
+          "monro", "christian brothers", "take 5 oil", "jiffy", "tires plus",
+          "discount tire", "ntb ", "sears auto", "goodyear", "bridgestone"]),
         ("Meals (50% Deductible)", "Schedule C - Line 24b", "50%",
-         ["mcdonald", "burger king", "wendy", "subway", "taco bell", "chipotle", "panera",
-          "domino", "pizza", "kfc", "popeyes", "chick-fil-a", "starbucks", "dunkin",
-          "denny's", "ihop", "waffle house", "applebee", "chili's", "olive garden",
-          "outback", "grubhub", "doordash", "ubereats", "restaurant", "cafe", "diner"]),
+         ["mcdonald", "mcd ", "burger king", "bk ", "wendy", "subway", "taco bell",
+          "chipotle", "panera", "domino", "pizza hut", "little caesar", "papa john",
+          "kfc ", "popeyes", "chick-fil-a", "cfa ", "sonic ", "arby", "dairy queen",
+          "dq ", "dunkin", "starbucks", "sbux", "tim horton", "ihop", "denny",
+          "waffle house", "cracker barrel", "applebee", "chili", "olive garden",
+          "red lobster", "outback", "texas roadhouse", "grubhub", "doordash", "dd ",
+          "ubereats", "uber* eat", "postmates", "instacart", "restaurant", "cafe",
+          "diner", "bakery", "sushi", "tst*", "sq *coffee", "sq *cafe", "sq *bakery",
+          "sq *restaurant", "sq *bar", "sq *grill", "sq *kitchen", "sq *food",
+          "jersey mike", "jimmy john", "five guys", "shake shack", "in-n-out",
+          "whataburger", "culver", "raising cane", "wingstop", "zaxby", "cook out",
+          "bojangles", "hardee", "carl's jr", "jack in the box"]),
         ("Travel", "Schedule C - Line 24a", "YES",
-         ["hotel", "motel", "marriott", "hilton", "hyatt", "airbnb", "holiday inn",
-          "best western", "delta air", "united air", "southwest air", "american airlines",
-          "spirit air", "frontier air", "jetblue", "flight", "airfare", "rental car",
-          "enterprise rent", "hertz", "avis", "alamo"]),
+         ["hotel", "motel", "inn ", "lodging", "marriott", "hilton", "hyatt", "airbnb",
+          "holiday inn", "best western", "comfort inn", "hampton inn", "courtyard",
+          "residence inn", "fairfield", "springhill", "towneplace", "embassy suites",
+          "doubletree", "aloft ", "element ", "westin", "sheraton", "wyndham",
+          "la quinta", "days inn", "super 8", "extended stay", "vrbo",
+          "southwest air", "delta air", "united air", "american air", "spirit air",
+          "frontier air", "jetblue", "allegiant", "alaska air", "hawaiian air",
+          "sun country", "flight", "airfare", "airline", "air ticket",
+          "enterprise rent", "hertz", "avis ", "budget car", "national car", "alamo",
+          "thrifty car", "dollar rent", "fox rent", "silvercar", "turo ",
+          "lyft *ride", "uber *trip", "uber trip", "lyft ride",
+          "amtrak", "greyhound", "megabus"]),
         ("Tolls & Parking", "Schedule C - Line 9", "YES",
-         ["parking", "toll", "ezpass", "ipass", "turnpike"]),
+         ["parking", "toll ", "ezpass", "ez pass", "ipass", "i-pass", "bestpass",
+          "parkwhiz", "spothero", "turnpike", "expressway", "tollway", "laparking",
+          "park mobile", "parkmobile", "paybyphone", "meterfeeder"]),
         ("Insurance", "Schedule C - Line 15", "YES",
-         ["insurance", "geico", "progressive", "state farm", "allstate", "nationwide",
-          "liberty mutual", "workers comp"]),
+         ["insurance", "insur", "geico", "progressive", "state farm", "allstate",
+          "nationwide", "liberty mutual", "travelers", "farmers ins", "usaa",
+          "hartford", "chubb", "aig ", "workers comp", "general liability"]),
         ("Wages & Salaries", "Schedule C - Line 26", "YES",
-         ["payroll", "gusto", "adp", "paychex", "rippling", "wages"]),
+         ["payroll", "gusto", "adp ", "paychex", "rippling", "zenefits", "wages",
+          "salary", "direct deposit payroll", "bamboohr"]),
         ("Utilities", "Schedule C - Line 25", "YES",
-         ["verizon", "at&t", "t-mobile", "comcast", "xfinity", "spectrum",
-          "electric", "electricity", "water bill", "utility", "internet bill"]),
+         ["verizon", "at&t", "att ", "t-mobile", "tmobile", "comcast", "xfinity",
+          "spectrum", "cox comm", "centurylink", "lumen", "windstream", "frontier comm",
+          "cricket wireless", "boost mobile", "metro pcs", "metropcs",
+          "electric", "electricity", "water bill", "utility", "internet bill",
+          "duke energy", "con edison", "pge ", "pg&e", "dte energy", "dominion",
+          "xcel energy", "westar", "evergy", "national grid"]),
         ("Rent & Lease", "Schedule C - Line 20b", "YES",
-         ["rent", "lease", "storage unit", "office space"]),
+         ["rent ", "lease ", "storage unit", "office space", "public storage",
+          "extra space", "life storage", "cubesmart", "u-haul storage", "uhaul storage",
+          "simply storage", "warehouse", "coworking", "wework", "regus", "spaces "]),
         ("Legal & Professional", "Schedule C - Line 17", "YES",
-         ["attorney", "lawyer", "legal", "accountant", "cpa", "bookkeeping", "consulting"]),
+         ["attorney", "lawyer", "legal ", "accountant", "cpa ", "bookkeeping",
+          "consulting", "notary", "paralegal", "enrolled agent", "tax prep",
+          "h&r block", "jackson hewitt", "legalzoom"]),
         ("Software & Subscriptions", "Schedule C - Line 27a", "YES",
-         ["quickbooks", "microsoft", "google workspace", "adobe", "dropbox", "slack",
-          "zoom", "shopify", "aws", "subscription", "software"]),
+         ["quickbooks", "intuit", "microsoft", "msft", "google workspace", "gsuite",
+          "adobe ", "dropbox", "slack ", "zoom ", "shopify", "squarespace", "wix ",
+          "aws ", "amazon web", "digitalocean", "linode", "heroku", "github",
+          "hubspot", "mailchimp", "klaviyo", "constantcontact", "hootsuite",
+          "buffer ", "canva ", "figma ", "notion ", "asana ", "monday.com",
+          "trello", "basecamp", "freshbooks", "xero ", "wave acc", "sage ",
+          "subscription", "saas", "software lic", "app store", "google play",
+          "apple.com/bill", "icloud", "spotify business", "pandora business"]),
         ("Advertising", "Schedule C - Line 8", "YES",
-         ["facebook ads", "google ads", "advertising", "marketing", "promotion"]),
+         ["facebook", "meta ", "google ads", "instagram", "linkedin ads", "twitter ads",
+          "snapchat ads", "tiktok ads", "yelp ", "nextdoor ads", "pinterest ads",
+          "advertising", "marketing", "promotion", "signage", "print ad",
+          "radio ad", "tv ad", "billboard", "seo ", "sem ", "ppc "]),
         ("Supplies", "Schedule C - Line 22", "YES",
-         ["office depot", "staples", "home depot", "lowe's", "amazon", "supplies"]),
+         ["office depot", "officemax", "staples", "home depot", "homedepot",
+          "lowe's", "lowes", "menards", "ace hardware", "true value",
+          "amzn mktp", "amazon.com", "amazon mktpl", "uline", "grainger",
+          "fastenal", "harbor freight", "northern tool", "supplies", "tools "]),
         ("Bank & Processing Fees", "Schedule C - Line 27a", "YES",
-         ["bank fee", "stripe", "paypal fee", "square fee", "processing fee",
-          "service charge", "overdraft", "finance charge", "interest"]),
+         ["bank fee", "monthly fee", "stripe", "paypal", "sq *", "square inc",
+          "clover ", "toast ", "tst*", "processing fee", "merchant fee",
+          "service charge", "overdraft", "nsf fee", "wire fee", "finance charge",
+          "interest charge", "late fee"]),
         ("Personal (Non-Deductible)", "N/A - Not Deductible", "NO",
-         ["walmart", "target", "costco", "netflix", "hulu", "spotify", "disney+",
-          "gym", "fitness", "salon", "spa", "casino"]),
+         ["wm supercenter", "walmart", "wal-mart", "target ", "costco", "sam's club",
+          "samsclub", "kroger", "publix", "whole foods", "wholefds", "trader joe",
+          "safeway", "aldi ", "heb ", "meijer", "giant ", "stop & shop",
+          "netflix", "hulu ", "spotify", "disney+", "hbo ", "amazon prime video",
+          "apple tv", "peacock", "paramount+", "gym", "fitness", "planet fitness",
+          "anytime fitness", "la fitness", "ymca", "salon", "spa ", "nail ",
+          "hair cut", "barber", "casino", "gambling", "lottery"]),
     ]
 
     text = desc.lower()
@@ -210,10 +283,11 @@ def classify_fallback(desc: str) -> dict:
             "confidence": "MEDIUM" if best_score >= 2 else "LOW",
         }
 
+    # Last resort: tag as supplies if it looks like a business purchase
     return {
-        "category": "Uncategorized",
-        "irs_line": "Review Required",
-        "deductible": "NO",
+        "category": "Other Business Expense",
+        "irs_line": "Schedule C - Line 27a",
+        "deductible": "YES",
         "confidence": "LOW",
     }
 
@@ -241,8 +315,12 @@ def classify_all(transactions: list, industry: str) -> list:
             classified.append(tx)
         return classified
 
+    except ValueError as e:
+        # Missing API key or config error — surface to user
+        raise
     except Exception as e:
-        print(f"[AI classification failed, using fallback]: {e}")
+        # Transient error (network, timeout, etc.) — use fallback silently
+        print(f"[AI classification failed, using keyword fallback]: {e}")
         classified = []
         for tx in transactions:
             tx = dict(tx)
