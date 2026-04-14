@@ -436,33 +436,152 @@ def read_excel(file_path: str) -> list:
     return normalize_rows(all_rows[header_idx + 1:], headers)
 
 
+def _parse_amount(raw: str) -> float | None:
+    """Strip currency symbols/commas and return float, or None if unparseable."""
+    cleaned = re.sub(r"[^\d.\-]", "", raw.replace(",", ""))
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def _infer_year(month: int) -> int:
+    """For date strings without year (e.g. Chase MM/DD), infer year."""
+    now = datetime.now()
+    if month > now.month:
+        return now.year - 1
+    return now.year
+
+
+# Date patterns tried in order (most → least specific)
+_PAT_FULL  = re.compile(r"(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})")           # 01/15/2024
+_PAT_ISO   = re.compile(r"(\d{4}-\d{2}-\d{2})")                          # 2024-01-15
+_PAT_NAMED = re.compile(                                                   # Jan 15 / Jan. 15, 2024
+    r"((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s*\d{0,4})",
+    re.IGNORECASE,
+)
+_PAT_SHORT = re.compile(r"(\d{1,2}/\d{1,2})(?!\s*/\s*\d)")               # MM/DD (no year)
+_AMT_PAT   = re.compile(r"[-−]?\$?[\d,]+\.\d{2}")
+
+
+def _row_to_tx(date_str: str, desc: str, amt_str: str) -> dict | None:
+    amount = _parse_amount(amt_str)
+    if amount is None:
+        return None
+    return {"date": date_str.strip(), "description": desc.strip(), "amount": amount, "chase_category": ""}
+
+
+def _try_tables(pdf) -> list:
+    """Extract transactions from PDF tables (works for most bank statements)."""
+    transactions = []
+    for page in pdf.pages:
+        tables = page.extract_tables() or []
+        for table in tables:
+            for row in table:
+                if not row or len(row) < 3:
+                    continue
+                cells = [str(c or "").strip() for c in row]
+                # Find date in first 2 cells
+                date_str = ""
+                for c in cells[:2]:
+                    if _PAT_FULL.match(c) or _PAT_ISO.match(c) or _PAT_NAMED.match(c) or _PAT_SHORT.match(c):
+                        date_str = c
+                        break
+                if not date_str:
+                    continue
+                # Description: first non-date, non-amount cell after date
+                desc = ""
+                for c in cells[1:]:
+                    if c == date_str:
+                        continue
+                    if _AMT_PAT.fullmatch(c.replace(",", "").replace("$", "").replace("−", "-")):
+                        continue
+                    if c:
+                        desc = c
+                        break
+                # Amount: last cell that looks like a number
+                amt_str = ""
+                for c in reversed(cells):
+                    if _AMT_PAT.search(c):
+                        m = _AMT_PAT.search(c)
+                        amt_str = m.group(0) if m else c
+                        break
+                if not amt_str or not desc:
+                    continue
+                tx = _row_to_tx(date_str, desc, amt_str)
+                if tx:
+                    transactions.append(tx)
+    return transactions
+
+
+def _try_text(pdf) -> list:
+    """Extract transactions from raw text using multiple date patterns."""
+    PATTERNS = [
+        (_PAT_FULL,  False),
+        (_PAT_ISO,   False),
+        (_PAT_NAMED, False),
+        (_PAT_SHORT, True),   # needs year inference
+    ]
+    transactions = []
+    for page in pdf.pages:
+        text = page.extract_text() or ""
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # Find all dollar amounts in the line
+            amounts = _AMT_PAT.findall(line)
+            if not amounts:
+                continue
+            for pat, needs_year in PATTERNS:
+                dm = pat.search(line)
+                if not dm:
+                    continue
+                date_str = dm.group(1)
+                if needs_year:
+                    try:
+                        parts = date_str.split("/")
+                        month = int(parts[0])
+                        year = _infer_year(month)
+                        date_str = f"{date_str}/{year}"
+                    except Exception:
+                        pass
+                # Description: text between date and first amount
+                after_date = line[dm.end():].strip()
+                first_amt = amounts[0]
+                amt_pos = after_date.find(first_amt)
+                if amt_pos > 0:
+                    desc = after_date[:amt_pos].strip()
+                else:
+                    desc = after_date.split()[0] if after_date else ""
+                # Use the last amount on the line as transaction amount
+                # (avoids picking up running balance — first amount is usually the tx)
+                amt_str = amounts[0]
+                tx = _row_to_tx(date_str, desc, amt_str)
+                if tx and tx["description"]:
+                    transactions.append(tx)
+                break  # matched a pattern, move to next line
+    return transactions
+
+
 def read_pdf(file_path: str) -> list:
     if not PDF_SUPPORT:
         raise RuntimeError("pdfplumber not installed.")
 
-    TX_PATTERN = re.compile(
-        r"(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\s+(.+?)\s+([\-]?\$?[\d,]+\.\d{2})"
-    )
-    transactions = []
     with pdfplumber.open(file_path) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text() or ""
-            for line in text.splitlines():
-                m = TX_PATTERN.search(line)
-                if m:
-                    date, desc, raw_amt = m.group(1), m.group(2).strip(), m.group(3)
-                    raw_amt = re.sub(r"[^\d.\-]", "", raw_amt)
-                    try:
-                        amount = float(raw_amt)
-                    except ValueError:
-                        amount = 0.0
-                    transactions.append({
-                        "date": date,
-                        "description": desc,
-                        "amount": amount,
-                        "chase_category": "",
-                    })
-    return transactions
+        transactions = _try_tables(pdf)
+        if not transactions:
+            transactions = _try_text(pdf)
+
+    # Deduplicate by (date, description, amount)
+    seen = set()
+    unique = []
+    for tx in transactions:
+        key = (tx["date"], tx["description"], tx["amount"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(tx)
+    return unique
 
 
 # ---------------------------------------------------------------------------
