@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
@@ -12,6 +12,8 @@ export default function TransactionsPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const searchParams = useSearchParams()
+  const selectAllRef = useRef<HTMLInputElement>(null)
+
   const [businesses, setBusinesses] = useState<any[]>([])
   const [activeBiz, setActiveBiz] = useState<string>('')
   const [transactions, setTransactions] = useState<any[]>([])
@@ -30,6 +32,9 @@ export default function TransactionsPage() {
   const [splitRows, setSplitRows] = useState([{ categoryId: '', amount: '', deductibility: '' }])
   const [aiLoading, setAiLoading] = useState(false)
   const [aiResult, setAiResult] = useState<any>(null)
+  const [bulkCategoryId, setBulkCategoryId] = useState('')
+  const [bulkLoading, setBulkLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   useEffect(() => {
     fetch('/api/businesses').then(r => r.json()).then(data => {
@@ -62,6 +67,16 @@ export default function TransactionsPage() {
 
   useEffect(() => { loadTransactions() }, [loadTransactions])
 
+  // Sync select-all checkbox indeterminate state
+  useEffect(() => {
+    const el = selectAllRef.current
+    if (!el) return
+    const allSelected = transactions.length > 0 && selected.size === transactions.length
+    const someSelected = selected.size > 0 && selected.size < transactions.length
+    el.checked = allSelected
+    el.indeterminate = someSelected
+  }, [selected, transactions])
+
   async function updateTx(id: string, patch: any) {
     await fetch(`/api/transactions/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
     loadTransactions()
@@ -70,6 +85,36 @@ export default function TransactionsPage() {
   async function deleteTx(id: string) {
     if (!confirm(t('tx.delConfirm'))) return
     await fetch(`/api/transactions/${id}`, { method: 'DELETE' })
+    loadTransactions()
+  }
+
+  async function bulkDelete() {
+    if (!selected.size) return
+    if (!confirm(`¿Eliminar ${selected.size} transacciones?`)) return
+    setDeleteLoading(true)
+    await Promise.all(Array.from(selected).map(id => fetch(`/api/transactions/${id}`, { method: 'DELETE' })))
+    setSelected(new Set())
+    setDeleteLoading(false)
+    toast(`${selected.size === 0 ? '' : ''}Transacciones eliminadas`, 'success')
+    loadTransactions()
+  }
+
+  async function bulkClassify() {
+    if (!selected.size || !bulkCategoryId) return
+    setBulkLoading(true)
+    await Promise.all(
+      Array.from(selected).map(id =>
+        fetch(`/api/transactions/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ categoryId: bulkCategoryId, status: 'CLASSIFIED', method: 'MANUAL' }),
+        })
+      )
+    )
+    toast(`${selected.size} transacciones clasificadas`, 'success')
+    setSelected(new Set())
+    setBulkCategoryId('')
+    setBulkLoading(false)
     loadTransactions()
   }
 
@@ -105,8 +150,12 @@ export default function TransactionsPage() {
     setSelected(next)
   }
 
+  function toggleAll(checked: boolean) {
+    setSelected(checked ? new Set(transactions.map((t: any) => t.id)) : new Set())
+  }
+
   function selectPending() {
-    const pendingIds = transactions.filter(t => t.status === 'PENDING').map((t: any) => t.id)
+    const pendingIds = transactions.filter(tx => tx.status === 'PENDING').map((tx: any) => tx.id)
     setSelected(new Set(pendingIds))
   }
 
@@ -127,14 +176,10 @@ export default function TransactionsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-4">
+      {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-gray-900">{t('nav.transactions')}</h1>
-        <div className="flex gap-2 flex-wrap">
-          {selected.size > 0 && (
-            <button onClick={classifyWithAI} disabled={aiLoading} className="btn-primary text-sm disabled:opacity-50">
-              {aiLoading ? t('tx.classifying') : t('tx.aiClassifyCount').replace('{n}', String(selected.size))}
-            </button>
-          )}
+        <div className="flex gap-2 flex-wrap items-center">
           <button onClick={selectPending} className="btn-secondary text-sm">{t('tx.selectPending')}</button>
           {businesses.length > 1 && (
             <select className="input w-auto text-sm" value={activeBiz} onChange={e => { setActiveBiz(e.target.value); setPage(1) }}>
@@ -143,6 +188,57 @@ export default function TransactionsPage() {
           )}
         </div>
       </div>
+
+      {/* Bulk action bar — shown when items are selected */}
+      {selected.size > 0 && (
+        <div className="card p-3 bg-[#1B4965]/5 border-[#1B4965]/20 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-[#1B4965]">{selected.size} seleccionadas</span>
+          <div className="h-4 w-px bg-gray-300" />
+
+          {/* Bulk classify */}
+          <div className="flex items-center gap-2">
+            <select
+              className="input w-auto text-sm py-1"
+              value={bulkCategoryId}
+              onChange={e => setBulkCategoryId(e.target.value)}
+            >
+              <option value="">Clasificar como...</option>
+              {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <button
+              onClick={bulkClassify}
+              disabled={!bulkCategoryId || bulkLoading}
+              className="btn-primary text-sm py-1 px-3 disabled:opacity-40"
+            >
+              {bulkLoading ? t('common.loading') : 'Aplicar'}
+            </button>
+          </div>
+
+          <div className="h-4 w-px bg-gray-300" />
+
+          {/* AI classify */}
+          <button
+            onClick={classifyWithAI}
+            disabled={aiLoading}
+            className="btn-primary text-sm py-1 disabled:opacity-50"
+          >
+            {aiLoading ? t('tx.classifying') : `${t('tx.aiClassify')} (${selected.size})`}
+          </button>
+
+          <div className="h-4 w-px bg-gray-300" />
+
+          {/* Bulk delete */}
+          <button
+            onClick={bulkDelete}
+            disabled={deleteLoading}
+            className="text-sm text-red-600 font-medium hover:text-red-800 disabled:opacity-50"
+          >
+            {deleteLoading ? t('common.loading') : `Eliminar (${selected.size})`}
+          </button>
+
+          <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+      )}
 
       {aiResult && (
         <div className="card p-4 bg-emerald-50 border-emerald-200">
@@ -175,8 +271,13 @@ export default function TransactionsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-3 py-3 text-left">
-                  <input type="checkbox" onChange={e => setSelected(e.target.checked ? new Set(transactions.map((t: any) => t.id)) : new Set())} />
+                <th className="px-3 py-3 text-left w-10">
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    onChange={e => toggleAll(e.target.checked)}
+                    className="cursor-pointer"
+                  />
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('tx.date')}</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('tx.description')}</th>
@@ -195,17 +296,17 @@ export default function TransactionsPage() {
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t('tx.noData')}</td></tr>
               )}
               {transactions.map((tx: any) => (
-                <tr key={tx.id} className={`hover:bg-gray-50 ${selected.has(tx.id) ? 'bg-blue-50' : ''}`}>
-                  <td className="px-3 py-3">
-                    <input type="checkbox" checked={selected.has(tx.id)} onChange={() => toggleSelect(tx.id)} />
+                <tr key={tx.id} className={`hover:bg-gray-50 transition-colors ${selected.has(tx.id) ? 'bg-blue-50/70' : ''}`}>
+                  <td className="px-3 py-2.5">
+                    <input type="checkbox" checked={selected.has(tx.id)} onChange={() => toggleSelect(tx.id)} className="cursor-pointer" />
                   </td>
-                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
+                  <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap text-xs">
                     {new Date(tx.date).toLocaleDateString()}
                   </td>
-                  <td className="px-3 py-3 max-w-[240px]">
-                    <p className="truncate text-gray-800">{tx.description}</p>
+                  <td className="px-3 py-2.5 max-w-[220px]">
+                    <p className="truncate text-gray-800 text-sm">{tx.description}</p>
                     {tx.aiSuggestion && tx.status === 'NEEDS_REVIEW' && (
-                      <p className="text-xs text-blue-500">
+                      <p className="text-xs text-blue-500 truncate">
                         {t('tx.aiSuggestion').replace('{cat}', tx.aiSuggestion).replace('{conf}', tx.aiConfidence || '')}
                       </p>
                     )}
@@ -215,10 +316,10 @@ export default function TransactionsPage() {
                       </p>
                     )}
                   </td>
-                  <td className={`px-3 py-3 text-right font-medium whitespace-nowrap ${tx.type === 'CREDIT' ? 'text-emerald-700' : 'text-gray-800'}`}>
+                  <td className={`px-3 py-2.5 text-right font-semibold whitespace-nowrap text-sm ${tx.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-600'}`}>
                     {tx.type === 'CREDIT' ? '+' : '−'}{fmt(tx.amount)}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2.5">
                     <select
                       className="text-xs border border-gray-200 rounded px-2 py-1 bg-white max-w-[160px]"
                       value={tx.categoryId || ''}
@@ -228,10 +329,10 @@ export default function TransactionsPage() {
                       {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2.5">
                     <span className={statusColors[tx.status] || 'badge-pending'}>{statusLabel[tx.status] || tx.status}</span>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2.5">
                     <select
                       className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
                       value={tx.deductibility || ''}
@@ -243,8 +344,8 @@ export default function TransactionsPage() {
                       <option value="FIFTY">{t('common.fifty')}</option>
                     </select>
                   </td>
-                  <td className="px-3 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                  <td className="px-3 py-2.5 text-right">
+                    <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => {
                           setSplitTx(tx)
@@ -253,11 +354,11 @@ export default function TransactionsPage() {
                             { categoryId: '', amount: String((tx.amount / 2).toFixed(2)), deductibility: '' },
                           ])
                         }}
-                        className="text-xs text-purple-600 hover:underline px-1"
+                        className="text-xs text-purple-600 hover:text-purple-800 font-medium"
                       >
                         {t('tx.split')}
                       </button>
-                      <button onClick={() => deleteTx(tx.id)} className="text-xs text-red-500 hover:underline px-1">{t('common.del')}</button>
+                      <button onClick={() => deleteTx(tx.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">{t('common.del')}</button>
                     </div>
                   </td>
                 </tr>
@@ -266,21 +367,22 @@ export default function TransactionsPage() {
           </table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-xs text-gray-500">{t('tx.total').replace('{total}', String(total))}</p>
+        {/* Pagination */}
+        <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
+          <p className="text-xs text-gray-500">{t('tx.total').replace('{total}', String(total))}</p>
+          {totalPages > 1 && (
             <div className="flex gap-2">
               <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="btn-secondary text-xs py-1 px-3 disabled:opacity-40">{t('tx.prev')}</button>
               <span className="text-xs text-gray-500 py-1">{page}/{totalPages}</span>
               <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn-secondary text-xs py-1 px-3 disabled:opacity-40">{t('tx.next')}</button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Split Modal */}
       {splitTx && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-1">{t('tx.splitTitle')}</h3>
             <p className="text-sm text-gray-500 mb-4">{splitTx.description} — {fmt(splitTx.amount)}</p>
