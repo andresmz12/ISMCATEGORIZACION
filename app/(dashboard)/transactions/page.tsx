@@ -263,16 +263,15 @@ export default function TransactionsPage() {
                 <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase">{t('tx.amount')}</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('tx.category')}</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('tx.status')}</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('tx.deductible')}</th>
                 <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t('common.loading')}</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t('common.loading')}</td></tr>
               )}
               {!loading && transactions.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t('tx.noData')}</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t('tx.noData')}</td></tr>
               )}
               {transactions.map((tx: any) => (
                 <tr key={tx.id} className={`hover:bg-gray-50 transition-colors ${selected.has(tx.id) ? 'bg-blue-50/70' : ''}`}>
@@ -310,18 +309,6 @@ export default function TransactionsPage() {
                   </td>
                   <td className="px-3 py-2.5">
                     <span className={statusColors[tx.status] || 'badge-pending'}>{statusLabel[tx.status] || tx.status}</span>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <select
-                      className="text-xs border border-gray-200 rounded px-2 py-1 bg-white"
-                      value={tx.deductibility || ''}
-                      onChange={e => updateTx(tx.id, { deductibility: e.target.value || null })}
-                    >
-                      <option value="">—</option>
-                      <option value="YES">{t('common.yes100')}</option>
-                      <option value="NO">{t('common.no')}</option>
-                      <option value="FIFTY">{t('common.fifty')}</option>
-                    </select>
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-2">
