@@ -214,6 +214,83 @@ const en = {
   'settings.addBusiness': 'Add Business',
   'settings.profile': 'Profile',
   'settings.plan': 'My Plan',
+
+  // Common extras
+  'common.actions': 'Actions',
+  'common.allStatus': 'All statuses',
+  'common.allCategories': 'All categories',
+  'common.del': 'Delete',
+  'common.yes100': 'Yes (100%)',
+  'common.fifty': '50%',
+  'common.notSet': '— not set —',
+  'common.select': '— select —',
+  'common.transactions': 'transactions',
+
+  // Transactions extras
+  'tx.aiClassifyCount': 'AI Classify ({n})',
+  'tx.allStatus': 'All statuses',
+  'tx.allCategories': 'All categories',
+  'tx.classifying': 'Classifying...',
+  'tx.delConfirm': 'Delete this transaction?',
+  'tx.splitParts': 'Split ({n} parts)',
+  'tx.aiSuggestion': 'AI: {cat} ({conf})',
+  'tx.total': '{total} transactions',
+
+  // Import extras
+  'import.uploadTitle': 'Upload Bank Statement',
+  'import.formatsError': 'Only CSV and XLSX files supported',
+  'import.mapRequired': 'Please map: date, description, and amount (or debit+credit)',
+  'import.importFailed': 'Import failed',
+  'import.required_fields': '* Required. Map "amount" OR both "debit" and "credit".',
+  'import.fieldDate': 'date',
+  'import.fieldDesc': 'description',
+  'import.fieldAmount': 'amount',
+  'import.fieldDebit': 'debit',
+  'import.fieldCredit': 'credit',
+
+  // Reports extras
+  'reports.expenseReport': 'Expense Report',
+  'reports.period': 'Period',
+  'reports.summary': 'Summary',
+  'reports.totalIncome': 'Total Income',
+  'reports.totalExpenses': 'Total Expenses',
+  'reports.netProfit': 'Net Profit',
+  'reports.totalDeductible': 'Total Deductible',
+  'reports.expensesByCategory': 'Expenses by Category',
+  'reports.monthlyBreakdown': 'Monthly Breakdown',
+  'reports.month': 'Month',
+  'reports.total': 'Total',
+  'reports.count': 'Transactions',
+  'reports.irsCode': 'IRS Code',
+  'reports.deductible': 'Deductible',
+  'reports.generating': 'Generating...',
+  'reports.noData': 'No data for this period',
+
+  // Business extras
+  'business.created': 'Business created!',
+  'business.failed': 'Creation failed',
+  'business.taxYearLabel': 'Tax Year',
+
+  // Rules extras
+  'rules.learned': 'AI-Learned Rules',
+  'rules.learnedDesc': 'Patterns detected from your manual classifications',
+  'rules.noLearned': 'No learned patterns yet',
+  'rules.learnedHint': 'Classify transactions manually and AI will learn the patterns',
+  'rules.disable': 'Disable',
+  'rules.enable': 'Enable',
+  'rules.appliedTo': 'Applied to {n} transactions',
+  'rules.confirmRule': 'Confirm as rule',
+  'rules.manualTitle': 'Manual Rules',
+  'rules.manualDesc': 'Auto-classify future transactions by keyword',
+  'rules.basicPlan': 'Basic Plan — Manual keyword rules',
+  'rules.plusPlan': 'Plus/Enterprise Plan — AI learns from your corrections',
+  'rules.adding': 'Adding...',
+  'rules.added': 'Rule added!',
+  'rules.delete': 'Delete',
+  'rules.activeRules': 'Active Rules',
+  'rules.noActiveRules': 'No active rules',
+  'rules.patternLabel': 'If description contains',
+  'rules.upgrade': 'Upgrade to Plus for automatic AI classification',
 } as const
 
 export type TranslationKey = keyof typeof en

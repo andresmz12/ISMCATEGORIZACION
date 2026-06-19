@@ -21,22 +21,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const navItems = [
     { href: '/dashboard', label: t('nav.dashboard'), icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
     ) },
     { href: '/transactions', label: t('nav.transactions'), icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
     ) },
     { href: '/import', label: t('nav.import'), icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
     ) },
     { href: '/reports', label: t('nav.reports'), icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
     ) },
     { href: '/rules', label: t('nav.rules'), icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
     ) },
     { href: '/settings', label: t('nav.settings'), icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
     ) },
   ]
 
@@ -49,13 +49,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       fetch('/api/businesses')
         .then(r => r.json())
         .then(data => {
-          if (Array.isArray(data) && data.length > 0) {
-            setActiveBusiness(data[0])
-          }
+          if (Array.isArray(data) && data.length > 0) setActiveBusiness(data[0])
         })
         .catch(() => {})
     }
   }, [status])
+
+  // Close sidebar when navigating
+  useEffect(() => { setSidebarOpen(false) }, [pathname])
 
   if (status === 'loading') {
     return (
@@ -70,109 +71,140 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ? session.user.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
     : session.user?.email?.[0]?.toUpperCase() ?? 'U'
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#1B4965] flex flex-col transform transition-transform duration-200 lg:translate-x-0 lg:static lg:block ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        {/* Logo */}
-        <div className="p-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#2EC4B6] rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-sm font-bold text-white">MP</span>
-            </div>
-            <div>
-              <p className="text-white font-bold text-sm leading-none">{t('app.short')}</p>
-              <p className="text-white/50 text-xs mt-0.5">{t('app.name')}</p>
-            </div>
+  const roleLabel = accountType === 'SUPERADMIN' ? t('role.superadmin') : accountType === 'ACCOUNTANT' ? t('role.accountant') : t('role.individual')
+
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div className="p-5 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-[#2EC4B6] rounded-xl flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-bold text-white">MP</span>
+          </div>
+          <div>
+            <p className="text-white font-bold text-sm leading-none">{t('app.short')}</p>
+            <p className="text-white/50 text-xs mt-0.5">{t('app.name')}</p>
           </div>
         </div>
+      </div>
 
-        {/* Business switcher — ACCOUNTANT only */}
-        {accountType === 'ACCOUNTANT' && (
-          <div className="px-3 py-3 border-b border-white/10">
-            <BusinessSwitcher
-              activeBusiness={activeBusiness}
-              onSwitch={biz => setActiveBusiness(biz)}
-            />
-          </div>
-        )}
+      {/* Business switcher — ACCOUNTANT only */}
+      {accountType === 'ACCOUNTANT' && (
+        <div className="px-3 py-3 border-b border-white/10">
+          <BusinessSwitcher
+            activeBusiness={activeBusiness}
+            onSwitch={biz => setActiveBusiness(biz)}
+          />
+        </div>
+      )}
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {navItems.map(item => {
-            const active = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  active
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/65 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            )
-          })}
-
-          {accountType === 'SUPERADMIN' && (
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {navItems.map(item => {
+          const active = pathname === item.href
+          return (
             <Link
-              href="/admin"
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mt-4 ${
-                pathname.startsWith('/admin')
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/65 hover:bg-white/10 hover:text-white'
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                active ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-              {t('nav.admin')}
+              {item.icon}
+              {item.label}
             </Link>
-          )}
-        </nav>
+          )
+        })}
 
-        {/* Footer */}
-        <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-2 mb-3">
-            <LanguageToggle />
-          </div>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full bg-[#2EC4B6] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-              {initials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate">{session.user?.name || session.user?.email}</p>
-              <p className="text-xs text-white/50 truncate capitalize">
-                {accountType === 'SUPERADMIN' ? t('role.superadmin') : accountType === 'ACCOUNTANT' ? t('role.accountant') : t('role.individual')}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => signOut({ callbackUrl: '/signin' })}
-            className="w-full text-xs text-white/60 hover:text-white py-1.5 rounded-lg hover:bg-white/10 transition-colors text-left px-2"
+        {accountType === 'SUPERADMIN' && (
+          <Link
+            href="/admin"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mt-2 ${
+              pathname.startsWith('/admin') ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
+            }`}
           >
-            {t('auth.signout')}
-          </button>
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+            {t('nav.admin')}
+          </Link>
+        )}
+      </nav>
+
+      {/* Footer — user info + signout (in mobile drawer too) */}
+      <div className="p-4 border-t border-white/10">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-8 h-8 rounded-full bg-[#2EC4B6] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-white truncate">{session.user?.name || session.user?.email}</p>
+            <p className="text-xs text-white/50 truncate">{roleLabel}</p>
+          </div>
         </div>
+        <button
+          onClick={() => signOut({ callbackUrl: '/signin' })}
+          className="w-full text-xs text-white/60 hover:text-white py-1.5 rounded-lg hover:bg-white/10 transition-colors text-left px-2"
+        >
+          {t('auth.signout')}
+        </button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Desktop sidebar — always visible */}
+      <aside className="hidden lg:flex w-64 bg-[#1B4965] flex-col flex-shrink-0">
+        <SidebarContent />
       </aside>
 
-      {/* Mobile overlay */}
+      {/* Mobile sidebar — drawer overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1B4965] flex flex-col lg:hidden transform transition-transform duration-200 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <SidebarContent />
+      </aside>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="lg:hidden bg-[#1B4965] px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-white/10">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* Top header — always visible, contains hamburger (mobile) + language toggle */}
+        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+          {/* Hamburger — mobile only */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0"
+            aria-label="Open menu"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="text-sm font-bold text-white">{t('app.short')}</span>
+
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-2">
+            <div className="w-7 h-7 bg-[#1B4965] rounded-lg flex items-center justify-center">
+              <span className="text-xs font-bold text-white">MP</span>
+            </div>
+            <span className="text-sm font-bold text-[#1B4965]">{t('app.short')}</span>
+          </div>
+
+          {/* Business name — desktop */}
+          {activeBusiness && (
+            <span className="hidden lg:block text-sm text-gray-500 font-medium truncate">
+              {activeBusiness.name}
+            </span>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Language toggle — always in header */}
+          <div className="flex items-center">
+            <LanguageToggleDark />
+          </div>
         </header>
 
         <main className="flex-1 p-4 lg:p-6 overflow-auto">
@@ -180,5 +212,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
     </div>
+  )
+}
+
+function LanguageToggleDark() {
+  const { locale, setLocale } = useTranslation()
+  return (
+    <button
+      onClick={() => setLocale(locale === 'es' ? 'en' : 'es')}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200"
+      title="Toggle language"
+    >
+      <span className="text-base leading-none">{locale === 'es' ? '🇺🇸' : '🇲🇽'}</span>
+      <span>{locale === 'es' ? 'EN' : 'ES'}</span>
+    </button>
   )
 }

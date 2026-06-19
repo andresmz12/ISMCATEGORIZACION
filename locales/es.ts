@@ -214,6 +214,83 @@ const es = {
   'settings.addBusiness': 'Agregar Negocio',
   'settings.profile': 'Perfil',
   'settings.plan': 'Mi Plan',
+
+  // Common extras
+  'common.actions': 'Acciones',
+  'common.allStatus': 'Todos los estados',
+  'common.allCategories': 'Todas las categorías',
+  'common.del': 'Eliminar',
+  'common.yes100': 'Sí (100%)',
+  'common.fifty': '50%',
+  'common.notSet': '— sin definir —',
+  'common.select': '— seleccionar —',
+  'common.transactions': 'transacciones',
+
+  // Transactions extras
+  'tx.aiClassifyCount': 'Clasificar IA ({n})',
+  'tx.allStatus': 'Todos los estados',
+  'tx.allCategories': 'Todas las categorías',
+  'tx.classifying': 'Clasificando...',
+  'tx.delConfirm': '¿Eliminar esta transacción?',
+  'tx.splitParts': 'Split ({n} partes)',
+  'tx.aiSuggestion': 'IA: {cat} ({conf})',
+  'tx.total': '{total} transacciones',
+
+  // Import extras
+  'import.uploadTitle': 'Subir Estado Bancario',
+  'import.formatsError': 'Solo se soportan archivos CSV y XLSX',
+  'import.mapRequired': 'Mapea: fecha, descripción, y monto (o débito+crédito)',
+  'import.importFailed': 'Error en importación',
+  'import.required_fields': '* Requerido. Mapea "monto" O ambos "débito" y "crédito".',
+  'import.fieldDate': 'fecha',
+  'import.fieldDesc': 'descripción',
+  'import.fieldAmount': 'monto',
+  'import.fieldDebit': 'débito',
+  'import.fieldCredit': 'crédito',
+
+  // Reports extras
+  'reports.expenseReport': 'Reporte de Gastos',
+  'reports.period': 'Período',
+  'reports.summary': 'Resumen',
+  'reports.totalIncome': 'Total Ingresos',
+  'reports.totalExpenses': 'Total Gastos',
+  'reports.netProfit': 'Ganancia Neta',
+  'reports.totalDeductible': 'Total Deducible',
+  'reports.expensesByCategory': 'Gastos por Categoría',
+  'reports.monthlyBreakdown': 'Desglose Mensual',
+  'reports.month': 'Mes',
+  'reports.total': 'Total',
+  'reports.count': 'Transacciones',
+  'reports.irsCode': 'Código IRS',
+  'reports.deductible': 'Deducible',
+  'reports.generating': 'Generando...',
+  'reports.noData': 'Sin datos para este período',
+
+  // Business extras
+  'business.created': '¡Negocio creado!',
+  'business.failed': 'Error al crear',
+  'business.taxYearLabel': 'Año Fiscal',
+
+  // Rules extras
+  'rules.learned': 'Reglas Aprendidas por IA',
+  'rules.learnedDesc': 'Patrones detectados de tus clasificaciones manuales',
+  'rules.noLearned': 'Sin patrones aprendidos aún',
+  'rules.learnedHint': 'Clasifica transacciones manualmente y la IA aprenderá los patrones',
+  'rules.disable': 'Desactivar',
+  'rules.enable': 'Activar',
+  'rules.appliedTo': 'Aplicado a {n} transacciones',
+  'rules.confirmRule': 'Confirmar como regla',
+  'rules.manualTitle': 'Reglas Manuales',
+  'rules.manualDesc': 'Clasifica automáticamente futuras transacciones por palabra clave',
+  'rules.basicPlan': 'Plan Básico — Reglas manuales por palabra clave',
+  'rules.plusPlan': 'Plan Plus/Enterprise — La IA aprende de tus correcciones',
+  'rules.adding': 'Agregando...',
+  'rules.added': '¡Regla agregada!',
+  'rules.delete': 'Eliminar',
+  'rules.activeRules': 'Reglas Activas',
+  'rules.noActiveRules': 'Sin reglas activas',
+  'rules.patternLabel': 'Si descripción contiene',
+  'rules.upgrade': 'Actualiza a Plus para clasificación IA automática',
 } as const
 
 export type TranslationKey = keyof typeof es
