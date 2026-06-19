@@ -6,7 +6,15 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
+
+  if (accountType === 'SUPERADMIN') {
+    const businesses = await prisma.business.findMany({ orderBy: { name: 'asc' } })
+    return NextResponse.json(businesses)
+  }
+
   const businessUsers = await prisma.businessUser.findMany({
     where: { userId },
     include: { business: true },

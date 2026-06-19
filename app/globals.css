@@ -3,8 +3,12 @@
 @tailwind utilities;
 
 :root {
-  --primary: #F5C518;
-  --primary-hover: #E6B800;
+  --navy: #1B4965;
+  --navy-dark: #143A52;
+  --navy-light: #2A6080;
+  --accent: #2EC4B6;
+  --income: #10b981;
+  --expense: #ef4444;
 }
 
 body {
@@ -12,7 +16,7 @@ body {
 }
 
 .btn-primary {
-  @apply bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-semibold px-4 py-2 rounded-lg transition-colors;
+  @apply bg-[#1B4965] hover:bg-[#143A52] text-white font-semibold px-4 py-2 rounded-lg transition-colors;
 }
 
 .btn-secondary {
@@ -23,12 +27,16 @@ body {
   @apply bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors;
 }
 
+.btn-accent {
+  @apply bg-[#2EC4B6] hover:bg-[#26a89b] text-white font-semibold px-4 py-2 rounded-lg transition-colors;
+}
+
 .card {
   @apply bg-white rounded-xl border border-gray-200 shadow-sm;
 }
 
 .input {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent;
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4965] focus:border-transparent;
 }
 
 .label {
@@ -36,13 +44,22 @@ body {
 }
 
 .badge-pending {
-  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800;
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800;
 }
 
 .badge-classified {
-  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800;
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800;
 }
 
 .badge-needs-review {
   @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
 }

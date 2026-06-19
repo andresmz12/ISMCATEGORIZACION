@@ -7,22 +7,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AccountType {
+  SUPERADMIN
+  ACCOUNTANT
+  INDIVIDUAL
+}
+
+enum Plan {
+  BASIC
+  PLUS
+  ENTERPRISE
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  VIEWER
+}
+
+enum TxType {
+  DEBIT
+  CREDIT
+}
+
+enum TxStatus {
+  PENDING
+  CLASSIFIED
+  NEEDS_REVIEW
+}
+
+enum Deductibility {
+  YES
+  NO
+  FIFTY
+}
+
+enum ClassMethod {
+  MANUAL
+  AI
+  RULE
+}
+
 model User {
   id            String         @id @default(cuid())
   email         String         @unique
   passwordHash  String
   name          String?
-  role          Role           @default(ACCOUNTANT)
+  firmName      String?
+  accountType   AccountType    @default(INDIVIDUAL)
+  plan          Plan           @default(BASIC)
+  isActive      Boolean        @default(true)
+  lastLogin     DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   businessUsers BusinessUser[]
   accounts      Account[]
   sessions      Session[]
-}
-
-enum Role {
-  OWNER
-  ACCOUNTANT
 }
 
 model Account {
@@ -78,7 +118,7 @@ model BusinessUser {
   id         String   @id @default(cuid())
   userId     String
   businessId String
-  role       String   @default("VIEWER")
+  role       Role     @default(VIEWER)
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -110,29 +150,6 @@ model Transaction {
   receipts      Receipt[]
 }
 
-enum TxType {
-  DEBIT
-  CREDIT
-}
-
-enum TxStatus {
-  PENDING
-  CLASSIFIED
-  NEEDS_REVIEW
-}
-
-enum Deductibility {
-  YES
-  NO
-  FIFTY
-}
-
-enum ClassMethod {
-  MANUAL
-  AI
-  RULE
-}
-
 model TransactionSplit {
   id            String         @id @default(cuid())
   transactionId String
@@ -159,16 +176,16 @@ model Category {
 }
 
 model ClassificationRule {
-  id            String   @id @default(cuid())
+  id            String        @id @default(cuid())
   businessId    String
   pattern       String
   categoryId    String
-  priority      Int      @default(0)
-  field         String   @default("description")
+  priority      Int           @default(0)
+  field         String        @default("description")
   deductibility Deductibility?
-  createdAt     DateTime @default(now())
-  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category      Category @relation(fields: [categoryId], references: [id])
+  createdAt     DateTime      @default(now())
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category      Category      @relation(fields: [categoryId], references: [id])
 }
 
 model BankFormatMapping {
