@@ -149,8 +149,9 @@ async function main() {
   })
   console.log('✓ 1 business created for individual user')
 
-  // Sample transactions for biz1 (restaurant)
-  const biz1Txs = [
+  // Sample transactions for biz1 (restaurant) — only if empty
+  const biz1TxCount = await prisma.transaction.count({ where: { businessId: biz1.id } })
+  const biz1Txs = biz1TxCount > 0 ? [] : [
     { date: new Date('2025-01-05'), description: 'Google Ads - January', amount: 450, type: TxType.DEBIT, status: TxStatus.CLASSIFIED, categoryId: catMap['Advertising'], deductibility: Deductibility.YES, method: ClassMethod.AI },
     { date: new Date('2025-01-10'), description: 'Restaurant Supply Co - Kitchen Equipment', amount: 1250, type: TxType.DEBIT, status: TxStatus.CLASSIFIED, categoryId: catMap['Supplies'], deductibility: Deductibility.YES, method: ClassMethod.MANUAL },
     { date: new Date('2025-01-15'), description: 'ConEd Electric Bill', amount: 380.50, type: TxType.DEBIT, status: TxStatus.CLASSIFIED, categoryId: catMap['Utilities'], deductibility: Deductibility.YES, method: ClassMethod.AI },
@@ -162,12 +163,13 @@ async function main() {
     { date: new Date('2025-03-05'), description: 'Uber Eats Commission Fee', amount: 234, type: TxType.DEBIT, status: TxStatus.PENDING },
     { date: new Date('2025-03-10'), description: 'Chase Business Checking - Transfer', amount: 500, type: TxType.DEBIT, status: TxStatus.NEEDS_REVIEW },
   ]
-  for (const tx of biz1Txs) {
+  for (const tx of biz1Txs as any[]) {
     await prisma.transaction.create({ data: { ...tx, businessId: biz1.id, sourceFile: 'seed' } })
   }
 
-  // Sample transactions for biz2 (tech retail)
-  const biz2Txs = [
+  // Sample transactions for biz2 (tech retail) — only if empty
+  const biz2TxCount = await prisma.transaction.count({ where: { businessId: biz2.id } })
+  const biz2Txs = biz2TxCount > 0 ? [] : [
     { date: new Date('2025-01-08'), description: 'Facebook Ads Campaign', amount: 600, type: TxType.DEBIT, status: TxStatus.CLASSIFIED, categoryId: catMap['Advertising'], deductibility: Deductibility.YES, method: ClassMethod.AI },
     { date: new Date('2025-01-12'), description: 'Office Depot - Office Supplies', amount: 234, type: TxType.DEBIT, status: TxStatus.CLASSIFIED, categoryId: catMap['Office Expenses'], deductibility: Deductibility.YES, method: ClassMethod.AI },
     { date: new Date('2025-01-18'), description: 'Product Sales - January', amount: 15400, type: TxType.CREDIT, status: TxStatus.CLASSIFIED, categoryId: catMap['Business Income'], deductibility: Deductibility.NO, method: ClassMethod.MANUAL },
@@ -176,12 +178,13 @@ async function main() {
     { date: new Date('2025-03-01'), description: 'Warehouse Rent', amount: 2800, type: TxType.DEBIT, status: TxStatus.PENDING },
     { date: new Date('2025-03-08'), description: 'Inventory Purchase - Q1', amount: 8500, type: TxType.DEBIT, status: TxStatus.PENDING },
   ]
-  for (const tx of biz2Txs) {
+  for (const tx of biz2Txs as any[]) {
     await prisma.transaction.create({ data: { ...tx, businessId: biz2.id, sourceFile: 'seed' } })
   }
 
-  // Sample transactions for biz3 (boutique)
-  const biz3Txs = [
+  // Sample transactions for biz3 (boutique) — only if empty
+  const biz3TxCount = await prisma.transaction.count({ where: { businessId: biz3.id } })
+  const biz3Txs = biz3TxCount > 0 ? [] : [
     { date: new Date('2025-01-06'), description: 'Instagram Ads', amount: 200, type: TxType.DEBIT, status: TxStatus.CLASSIFIED, categoryId: catMap['Advertising'], deductibility: Deductibility.YES, method: ClassMethod.AI },
     { date: new Date('2025-01-14'), description: 'Clothing Inventory', amount: 3200, type: TxType.DEBIT, status: TxStatus.CLASSIFIED, categoryId: catMap['Cost of Goods Sold'], deductibility: Deductibility.YES, method: ClassMethod.MANUAL },
     { date: new Date('2025-01-22'), description: 'Sales Revenue - January', amount: 5800, type: TxType.CREDIT, status: TxStatus.CLASSIFIED, categoryId: catMap['Business Income'], deductibility: Deductibility.NO, method: ClassMethod.MANUAL },
@@ -190,7 +193,7 @@ async function main() {
     { date: new Date('2025-03-02'), description: 'UPS Shipping Supplies', amount: 145, type: TxType.DEBIT, status: TxStatus.PENDING },
     { date: new Date('2025-03-09'), description: 'Square Payment Processing Fee', amount: 87, type: TxType.DEBIT, status: TxStatus.PENDING },
   ]
-  for (const tx of biz3Txs) {
+  for (const tx of biz3Txs as any[]) {
     await prisma.transaction.create({ data: { ...tx, businessId: biz3.id, sourceFile: 'seed' } })
   }
 

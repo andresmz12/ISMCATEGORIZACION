@@ -14,18 +14,64 @@ function greeting(name: string, t: (k: any) => string) {
   return `${t(key as any)}, ${name.split(' ')[0]}`
 }
 
-function SimpleBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0
+// Simple SVG donut chart
+function DonutChart({ data }: { data: { name: string; value: number; color: string }[] }) {
+  const total = data.reduce((s, d) => s + d.value, 0)
+  if (total === 0) return null
+
+  const radius = 60
+  const stroke = 22
+  const cx = 80
+  const cy = 80
+  const circumference = 2 * Math.PI * radius
+
+  let offset = 0
+  const segments = data.map(d => {
+    const pct = d.value / total
+    const dashArray = pct * circumference
+    const seg = { ...d, pct, dashArray, dashOffset: circumference - offset }
+    offset += dashArray
+    return seg
+  })
+
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-gray-500 w-24 truncate">{label}</span>
-      <div className="flex-1 bg-gray-100 rounded-full h-2">
-        <div className={`h-2 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+    <div className="flex items-center gap-4">
+      <svg width="160" height="160" className="flex-shrink-0">
+        <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#f3f4f6" strokeWidth={stroke} />
+        {segments.map((seg, i) => (
+          <circle
+            key={i}
+            cx={cx}
+            cy={cy}
+            r={radius}
+            fill="none"
+            stroke={seg.color}
+            strokeWidth={stroke}
+            strokeDasharray={`${seg.dashArray} ${circumference - seg.dashArray}`}
+            strokeDashoffset={seg.dashOffset}
+            transform={`rotate(-90 ${cx} ${cy})`}
+            style={{ transition: 'stroke-dasharray 0.3s' }}
+          />
+        ))}
+        <text x={cx} y={cy - 6} textAnchor="middle" className="fill-gray-800 font-bold" fontSize="13">
+          {fmt(total).replace(/\.\d+/, '')}
+        </text>
+        <text x={cx} y={cy + 12} textAnchor="middle" className="fill-gray-400" fontSize="10">total</text>
+      </svg>
+      <div className="flex-1 space-y-1.5 min-w-0">
+        {data.slice(0, 6).map(d => (
+          <div key={d.name} className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} />
+            <span className="text-xs text-gray-600 truncate flex-1">{d.name}</span>
+            <span className="text-xs font-medium text-gray-700 flex-shrink-0">{Math.round(d.value / total * 100)}%</span>
+          </div>
+        ))}
       </div>
-      <span className="text-xs font-medium text-gray-700 w-20 text-right">{fmt(value)}</span>
     </div>
   )
 }
+
+const CHART_COLORS = ['#1B4965', '#2EC4B6', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981', '#6366f1']
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -41,7 +87,9 @@ export default function DashboardPage() {
       .then(d => {
         if (Array.isArray(d) && d.length > 0) {
           setBusinesses(d)
-          setActiveBiz(d[0])
+          const saved = localStorage.getItem('activeBusiness')
+          const biz = (saved && d.find((b: any) => b.id === saved)) || d[0]
+          setActiveBiz(biz)
         }
         setLoading(false)
       })
@@ -62,38 +110,40 @@ export default function DashboardPage() {
   const expenses = ytdTxs.filter(tx => tx.type === 'DEBIT').reduce((s, tx) => s + tx.amount, 0)
   const profit = income - expenses
   const deductible = ytdTxs.filter(tx => tx.deductibility === 'YES').reduce((s, tx) => s + tx.amount, 0)
-  const pending = txs.filter(tx => tx.status === 'PENDING').length
-  const classified = txs.filter(tx => tx.status === 'CLASSIFIED').length
 
   // Monthly expenses (last 6 months)
-  const monthlyData: Record<string, number> = {}
+  const months: { key: string; label: string; val: number }[] = []
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const key = d.toLocaleString('default', { month: 'short' })
-    monthlyData[key] = 0
+    months.push({
+      key: `${d.getFullYear()}-${d.getMonth()}`,
+      label: d.toLocaleString('default', { month: 'short' }),
+      val: 0,
+    })
   }
   ytdTxs.filter(tx => tx.type === 'DEBIT').forEach(tx => {
     const d = new Date(tx.date)
-    const monthsAgo = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth())
-    if (monthsAgo >= 0 && monthsAgo <= 5) {
-      const key = d.toLocaleString('default', { month: 'short' })
-      monthlyData[key] = (monthlyData[key] || 0) + tx.amount
-    }
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    const m = months.find(x => x.key === key)
+    if (m) m.val += tx.amount
   })
+  const maxMonthly = Math.max(...months.map(m => m.val), 1)
 
-  // By category
-  const byCat: Record<string, number> = {}
+  // By category for donut
+  const byCat: Record<string, { name: string; value: number }> = {}
   ytdTxs.filter(tx => tx.type === 'DEBIT' && tx.category?.name).forEach(tx => {
-    byCat[tx.category.name] = (byCat[tx.category.name] || 0) + tx.amount
+    if (!byCat[tx.categoryId]) byCat[tx.categoryId] = { name: tx.category.name, value: 0 }
+    byCat[tx.categoryId].value += tx.amount
   })
-  const topCats = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const donutData = Object.values(byCat)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8)
+    .map((d, i) => ({ ...d, color: CHART_COLORS[i] || '#94a3b8' }))
 
-  const maxMonthly = Math.max(...Object.values(monthlyData), 1)
-  const maxCat = topCats[0]?.[1] || 1
-
-  const recentTxs = [...txs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 6)
-
-  const catColors = ['bg-[#1B4965]', 'bg-[#2EC4B6]', 'bg-blue-400', 'bg-indigo-400', 'bg-purple-400']
+  // Recent transactions
+  const recentTxs = [...txs]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 8)
 
   if (loading) {
     return (
@@ -109,26 +159,30 @@ export default function DashboardPage() {
         <div className="text-4xl mb-4">🏢</div>
         <h2 className="text-lg font-semibold text-gray-800">{t('dashboard.noBusinesses')}</h2>
         <p className="text-sm text-gray-500 mt-1">{t('dashboard.addFirst')}</p>
-        <Link href="/settings" className="btn-primary mt-6 px-6 py-2">{t('settings.addBusiness')}</Link>
+        <Link href="/negocios" className="btn-primary mt-6 px-6 py-2">{t('settings.addBusiness')}</Link>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
             {session?.user?.name ? greeting(session.user.name, t) : t('nav.dashboard')}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">{activeBiz?.name} · {t('dashboard.ytd')}</p>
+          <p className="text-sm text-gray-500 mt-0.5">{activeBiz?.name} · {t('dashboard.ytd')} {now.getFullYear()}</p>
         </div>
         {businesses.length > 1 && (
           <select
-            className="input w-auto text-sm"
+            className="input w-auto text-sm flex-shrink-0"
             value={activeBiz?.id}
-            onChange={e => setActiveBiz(businesses.find(b => b.id === e.target.value))}
+            onChange={e => {
+              const biz = businesses.find(b => b.id === e.target.value)
+              setActiveBiz(biz)
+              if (biz) localStorage.setItem('activeBusiness', biz.id)
+            }}
           >
             {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -136,20 +190,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: t('dashboard.income'), value: income, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: '↑' },
-          { label: t('dashboard.expenses'), value: expenses, color: 'text-red-600', bg: 'bg-red-50', icon: '↓' },
-          { label: t('dashboard.profit'), value: profit, color: profit >= 0 ? 'text-emerald-600' : 'text-red-600', bg: profit >= 0 ? 'bg-emerald-50' : 'bg-red-50', icon: '=' },
-          { label: t('dashboard.deductible'), value: deductible, color: 'text-[#1B4965]', bg: 'bg-blue-50', icon: '✓' },
+          { label: t('dashboard.income'), value: income, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+          { label: t('dashboard.expenses'), value: expenses, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100' },
+          { label: t('dashboard.profit'), value: profit, color: profit >= 0 ? 'text-emerald-600' : 'text-red-600', bg: profit >= 0 ? 'bg-emerald-50' : 'bg-red-50', border: profit >= 0 ? 'border-emerald-100' : 'border-red-100' },
+          { label: t('dashboard.deductible'), value: deductible, color: 'text-[#1B4965]', bg: 'bg-blue-50', border: 'border-blue-100' },
         ].map(card => (
-          <div key={card.label} className="card p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-gray-500 font-medium">{card.label}</span>
-              <div className={`${card.bg} w-7 h-7 rounded-lg flex items-center justify-center`}>
-                <span className={`text-sm font-bold ${card.color}`}>{card.icon}</span>
-              </div>
-            </div>
+          <div key={card.label} className={`rounded-xl border p-4 ${card.bg} ${card.border}`}>
+            <p className="text-xs text-gray-500 font-medium mb-1">{card.label}</p>
             <p className={`text-xl font-bold ${card.color}`}>{fmt(card.value)}</p>
           </div>
         ))}
@@ -160,110 +209,71 @@ export default function DashboardPage() {
         {/* Monthly bar chart */}
         <div className="card p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('dashboard.monthlyExpenses')}</h3>
-          <div className="flex items-end gap-2 h-32">
-            {Object.entries(monthlyData).map(([month, val]) => {
+          <div className="flex items-end gap-2 h-36">
+            {months.map(({ label, val }) => {
               const pct = maxMonthly > 0 ? (val / maxMonthly) * 100 : 0
               return (
-                <div key={month} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full flex items-end justify-center" style={{ height: '96px' }}>
+                <div key={label} className="flex-1 flex flex-col items-center gap-1">
+                  <div className="w-full flex items-end justify-center" style={{ height: '112px' }}>
                     <div
-                      className="w-full bg-[#1B4965] rounded-t-sm hover:bg-[#2A6080] transition-colors"
+                      className="w-full bg-[#1B4965] hover:bg-[#2A6080] transition-colors rounded-t"
                       style={{ height: `${Math.max(pct, 2)}%` }}
                       title={fmt(val)}
                     />
                   </div>
-                  <span className="text-xs text-gray-400">{month}</span>
+                  <span className="text-xs text-gray-400">{label}</span>
                 </div>
               )
             })}
           </div>
         </div>
 
-        {/* By category */}
+        {/* Donut chart — by category */}
         <div className="card p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('dashboard.byCategory')}</h3>
-          {topCats.length === 0 ? (
+          {donutData.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">{t('common.noData')}</p>
           ) : (
-            <div className="space-y-3">
-              {topCats.map(([name, val], i) => (
-                <SimpleBar key={name} label={name} value={val} max={maxCat} color={catColors[i] || 'bg-gray-400'} />
-              ))}
-            </div>
+            <DonutChart data={donutData} />
           )}
         </div>
       </div>
 
-      {/* Bottom row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Quick actions */}
-        <div className="card p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t('dashboard.quickActions')}</h3>
-          <div className="space-y-2">
-            {pending > 0 ? (
-              <Link href="/transactions" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 text-amber-800 text-sm font-medium hover:bg-amber-100 transition-colors">
-                <span>⚡</span>
-                {t('dashboard.reviewPending').replace('{n}', String(pending))}
-              </Link>
-            ) : (
-              <p className="text-sm text-gray-400 py-2">{t('dashboard.noPending')}</p>
-            )}
-            <Link href="/import" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 text-[#1B4965] text-sm font-medium hover:bg-blue-100 transition-colors">
-              <span>📥</span> {t('tx.import')}
-            </Link>
-            <Link href="/reports" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-800 text-sm font-medium hover:bg-emerald-100 transition-colors">
-              <span>📊</span> {t('reports.exportPDF')}
-            </Link>
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3 text-center">
-            <div>
-              <p className="text-xl font-bold text-amber-600">{pending}</p>
-              <p className="text-xs text-gray-500">{t('dashboard.pending')}</p>
-            </div>
-            <div>
-              <p className="text-xl font-bold text-emerald-600">{classified}</p>
-              <p className="text-xs text-gray-500">{t('dashboard.classified')}</p>
-            </div>
-          </div>
+      {/* Recent transactions */}
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-700">{t('dashboard.recentTx')}</h3>
+          <Link href="/transacciones" className="text-xs text-[#1B4965] font-medium hover:underline">{t('dashboard.viewAll')}</Link>
         </div>
-
-        {/* Recent transactions */}
-        <div className="card p-5 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-700">{t('dashboard.recentTx')}</h3>
-            <Link href="/transactions" className="text-xs text-[#1B4965] font-medium hover:underline">{t('dashboard.viewAll')}</Link>
-          </div>
-          {recentTxs.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">{t('tx.noData')}</p>
-          ) : (
-            <div className="space-y-0 divide-y divide-gray-50">
-              {recentTxs.map(tx => (
-                <div key={tx.id} className="flex items-center gap-3 py-2.5">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${tx.type === 'CREDIT' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                    {tx.type === 'CREDIT' ? '+' : '−'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-800 truncate">{tx.description}</p>
-                    <p className="text-xs text-gray-400">{new Date(tx.date).toLocaleDateString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-semibold ${tx.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {tx.type === 'CREDIT' ? '+' : '−'}{fmt(tx.amount)}
-                    </p>
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                      tx.status === 'CLASSIFIED' ? 'bg-emerald-100 text-emerald-700' :
-                      tx.status === 'NEEDS_REVIEW' ? 'bg-red-100 text-red-700' :
-                      'bg-amber-100 text-amber-700'
-                    }`}>
-                      {tx.status === 'CLASSIFIED' ? t('tx.classified') : tx.status === 'NEEDS_REVIEW' ? t('tx.needsReview') : t('tx.pending')}
-                    </span>
-                  </div>
+        {recentTxs.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">{t('tx.noData')}</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {recentTxs.map(tx => (
+              <div key={tx.id} className="flex items-center gap-3 px-5 py-2.5">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${tx.type === 'CREDIT' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                  {tx.type === 'CREDIT' ? '+' : '−'}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-800 truncate">{tx.description}</p>
+                  <p className="text-xs text-gray-400">{new Date(tx.date).toLocaleDateString()} · {tx.category?.name || t('tx.unassigned')}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className={`text-sm font-semibold ${tx.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {tx.type === 'CREDIT' ? '+' : '−'}{fmt(tx.amount)}
+                  </p>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    tx.status === 'CLASSIFIED' ? 'bg-emerald-100 text-emerald-700' :
+                    tx.status === 'NEEDS_REVIEW' ? 'bg-red-100 text-red-700' :
+                    'bg-amber-100 text-amber-700'
+                  }`}>
+                    {tx.status === 'CLASSIFIED' ? t('tx.classified') : tx.status === 'NEEDS_REVIEW' ? t('tx.needsReview') : t('tx.pending')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

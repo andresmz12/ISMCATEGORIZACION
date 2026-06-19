@@ -271,6 +271,54 @@ const es = {
   'business.failed': 'Error al crear',
   'business.taxYearLabel': 'Año Fiscal',
 
+  // Nav extras
+  'nav.banks': 'Bancos',
+  'nav.businesses': 'Negocios',
+  'nav.categories': 'Categorías',
+
+  // Banks
+  'banks.title': 'Bancos',
+  'banks.savedMappings': 'Mapeos guardados',
+  'banks.noMappings': 'Sin bancos configurados',
+  'banks.addBank': 'Agregar banco',
+  'banks.importHistory': 'Historial de importaciones',
+  'banks.noHistory': 'Sin importaciones registradas',
+  'banks.columns': 'Columnas mapeadas',
+
+  // Businesses management
+  'biz.title': 'Negocios',
+  'biz.allBusinesses': 'Todos los negocios',
+  'biz.noBusinesses': 'Sin negocios registrados',
+  'biz.owner': 'Propietario',
+  'biz.edit': 'Editar',
+  'biz.transactions': 'transacciones',
+
+  // Categories
+  'cat.title': 'Categorías',
+  'cat.add': 'Agregar Categoría',
+  'cat.name': 'Nombre',
+  'cat.irsCode': 'Código IRS',
+  'cat.description': 'Descripción',
+  'cat.system': 'Sistema',
+  'cat.custom': 'Personalizada',
+  'cat.noCategories': 'Sin categorías',
+  'cat.added': '¡Categoría agregada!',
+  'cat.deleted': 'Categoría eliminada',
+  'cat.deleteConfirm': '¿Eliminar esta categoría?',
+
+  // Settings extras
+  'settings.password': 'Contraseña',
+  'settings.invitedUsers': 'Usuarios invitados',
+  'settings.inviteUser': 'Invitar usuario',
+  'settings.currentPassword': 'Contraseña actual',
+  'settings.newPassword': 'Nueva contraseña',
+  'settings.changePassword': 'Cambiar contraseña',
+  'settings.profileSaved': '¡Perfil guardado!',
+  'settings.passwordChanged': '¡Contraseña actualizada!',
+  'settings.planInfo': 'Tu plan actual',
+  'settings.noInvited': 'Sin usuarios invitados',
+  'settings.accessLevel': 'Nivel de acceso',
+
   // Rules extras
   'rules.learned': 'Reglas Aprendidas por IA',
   'rules.learnedDesc': 'Patrones detectados de tus clasificaciones manuales',

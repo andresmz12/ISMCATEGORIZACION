@@ -271,6 +271,54 @@ const en = {
   'business.failed': 'Creation failed',
   'business.taxYearLabel': 'Tax Year',
 
+  // Nav extras
+  'nav.banks': 'Banks',
+  'nav.businesses': 'Businesses',
+  'nav.categories': 'Categories',
+
+  // Banks
+  'banks.title': 'Banks',
+  'banks.savedMappings': 'Saved mappings',
+  'banks.noMappings': 'No banks configured',
+  'banks.addBank': 'Add bank',
+  'banks.importHistory': 'Import history',
+  'banks.noHistory': 'No imports recorded',
+  'banks.columns': 'Mapped columns',
+
+  // Businesses management
+  'biz.title': 'Businesses',
+  'biz.allBusinesses': 'All businesses',
+  'biz.noBusinesses': 'No businesses registered',
+  'biz.owner': 'Owner',
+  'biz.edit': 'Edit',
+  'biz.transactions': 'transactions',
+
+  // Categories
+  'cat.title': 'Categories',
+  'cat.add': 'Add Category',
+  'cat.name': 'Name',
+  'cat.irsCode': 'IRS Code',
+  'cat.description': 'Description',
+  'cat.system': 'System',
+  'cat.custom': 'Custom',
+  'cat.noCategories': 'No categories',
+  'cat.added': 'Category added!',
+  'cat.deleted': 'Category deleted',
+  'cat.deleteConfirm': 'Delete this category?',
+
+  // Settings extras
+  'settings.password': 'Password',
+  'settings.invitedUsers': 'Invited users',
+  'settings.inviteUser': 'Invite user',
+  'settings.currentPassword': 'Current password',
+  'settings.newPassword': 'New password',
+  'settings.changePassword': 'Change password',
+  'settings.profileSaved': 'Profile saved!',
+  'settings.passwordChanged': 'Password updated!',
+  'settings.planInfo': 'Your current plan',
+  'settings.noInvited': 'No invited users',
+  'settings.accessLevel': 'Access level',
+
   // Rules extras
   'rules.learned': 'AI-Learned Rules',
   'rules.learnedDesc': 'Patterns detected from your manual classifications',
