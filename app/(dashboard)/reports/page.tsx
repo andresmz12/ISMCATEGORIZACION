@@ -60,9 +60,9 @@ export default function ReportsPage() {
     doc.text(t('reports.expensesByCategory'), 14, y1)
     autoTable(doc, {
       startY: y1 + 4,
-      head: [[t('tx.category'), t('reports.irsCode'), t('reports.total'), t('reports.deductible'), t('reports.count')]],
+      head: [[t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')]],
       body: report.expensesByCategory.map((c: any) => [
-        c.name, c.irsCode || '', fmt(c.total), fmt(c.deductible), c.count,
+        c.name, fmt(c.total), fmt(c.deductible), c.count,
       ]),
     })
     doc.save(`report_${activeBiz}_${from}_${to}.pdf`)
@@ -90,8 +90,8 @@ export default function ReportsPage() {
     ])
 
     const ws2 = wb.addWorksheet(t('reports.byCategory'))
-    ws2.addRow([t('tx.category'), t('reports.irsCode'), t('reports.total'), t('reports.deductible'), t('reports.count')])
-    report.expensesByCategory.forEach((c: any) => ws2.addRow([c.name, c.irsCode || '', c.total, c.deductible, c.count]))
+    ws2.addRow([t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')])
+    report.expensesByCategory.forEach((c: any) => ws2.addRow([c.name, c.total, c.deductible, c.count]))
 
     const ws3 = wb.addWorksheet(t('reports.monthly'))
     ws3.addRow([t('reports.month'), t('dashboard.income'), t('dashboard.expenses'), 'Net'])
@@ -214,7 +214,6 @@ export default function ReportsPage() {
                       <div className="flex items-center justify-between text-sm mb-1">
                         <div>
                           <span className="font-medium text-gray-800">{c.name}</span>
-                          {c.irsCode && <span className="ml-2 text-xs text-gray-400">{c.irsCode}</span>}
                         </div>
                         <div className="text-right">
                           <span className="font-semibold text-gray-800">{fmt(c.total)}</span>

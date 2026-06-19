@@ -189,57 +189,6 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Bulk action bar — shown when items are selected */}
-      {selected.size > 0 && (
-        <div className="card p-3 bg-[#1B4965]/5 border-[#1B4965]/20 flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-[#1B4965]">{selected.size} seleccionadas</span>
-          <div className="h-4 w-px bg-gray-300" />
-
-          {/* Bulk classify */}
-          <div className="flex items-center gap-2">
-            <select
-              className="input w-auto text-sm py-1"
-              value={bulkCategoryId}
-              onChange={e => setBulkCategoryId(e.target.value)}
-            >
-              <option value="">Clasificar como...</option>
-              {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <button
-              onClick={bulkClassify}
-              disabled={!bulkCategoryId || bulkLoading}
-              className="btn-primary text-sm py-1 px-3 disabled:opacity-40"
-            >
-              {bulkLoading ? t('common.loading') : 'Aplicar'}
-            </button>
-          </div>
-
-          <div className="h-4 w-px bg-gray-300" />
-
-          {/* AI classify */}
-          <button
-            onClick={classifyWithAI}
-            disabled={aiLoading}
-            className="btn-primary text-sm py-1 disabled:opacity-50"
-          >
-            {aiLoading ? t('tx.classifying') : `${t('tx.aiClassify')} (${selected.size})`}
-          </button>
-
-          <div className="h-4 w-px bg-gray-300" />
-
-          {/* Bulk delete */}
-          <button
-            onClick={bulkDelete}
-            disabled={deleteLoading}
-            className="text-sm text-red-600 font-medium hover:text-red-800 disabled:opacity-50"
-          >
-            {deleteLoading ? t('common.loading') : `Eliminar (${selected.size})`}
-          </button>
-
-          <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-gray-400 hover:text-gray-600">✕</button>
-        </div>
-      )}
-
       {aiResult && (
         <div className="card p-4 bg-emerald-50 border-emerald-200">
           <p className="text-sm text-emerald-800">
@@ -264,6 +213,36 @@ export default function TransactionsPage() {
         <input type="date" className="input w-auto text-sm" value={filters.to} onChange={e => { setFilters(f => ({ ...f, to: e.target.value })); setPage(1) }} />
         <button onClick={() => { setFilters({ status: '', categoryId: '', from: '', to: '' }); setPage(1) }} className="btn-secondary text-sm">{t('common.clear')}</button>
       </div>
+
+      {/* Bulk action bar — appears above table when items are selected */}
+      {selected.size > 0 && (
+        <div className="card p-3 bg-[#1B4965]/5 border-[#1B4965]/20 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-[#1B4965]">{selected.size} seleccionadas</span>
+          <div className="h-4 w-px bg-gray-300" />
+          <div className="flex items-center gap-2">
+            <select
+              className="input w-auto text-sm py-1"
+              value={bulkCategoryId}
+              onChange={e => setBulkCategoryId(e.target.value)}
+            >
+              <option value="">Clasificar como...</option>
+              {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <button onClick={bulkClassify} disabled={!bulkCategoryId || bulkLoading} className="btn-primary text-sm py-1 px-3 disabled:opacity-40">
+              {bulkLoading ? t('common.loading') : 'Aplicar'}
+            </button>
+          </div>
+          <div className="h-4 w-px bg-gray-300" />
+          <button onClick={classifyWithAI} disabled={aiLoading} className="btn-primary text-sm py-1 disabled:opacity-50">
+            {aiLoading ? t('tx.classifying') : `${t('tx.aiClassify')} (${selected.size})`}
+          </button>
+          <div className="h-4 w-px bg-gray-300" />
+          <button onClick={bulkDelete} disabled={deleteLoading} className="text-sm text-red-600 font-medium hover:text-red-800 disabled:opacity-50">
+            {deleteLoading ? t('common.loading') : `Eliminar (${selected.size})`}
+          </button>
+          <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="card overflow-hidden">

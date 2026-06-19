@@ -11,6 +11,7 @@ export default function ImportPage() {
   const [activeBiz, setActiveBiz] = useState<string>('')
   const [file, setFile] = useState<File | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
+  const [previewRows, setPreviewRows] = useState<string[][]>([])
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [bankName, setBankName] = useState('')
   const [savedMappings, setSavedMappings] = useState<any[]>([])
@@ -43,11 +44,16 @@ export default function ImportPage() {
     setFile(f)
     setError('')
     const ext = f.name.split('.').pop()?.toLowerCase()
+
     if (ext === 'csv') {
       const text = await f.text()
-      const firstLine = text.split('\n')[0]
-      const cols = firstLine.split(',').map(c => c.trim().replace(/"/g, ''))
+      const lines = text.split('\n').filter(l => l.trim())
+      const cols = lines[0].split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+      const rows = lines.slice(1, 6).map(line =>
+        line.split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+      )
       setHeaders(cols)
+      setPreviewRows(rows)
       autoDetectMapping(cols)
       setStep('map')
     } else if (ext === 'xlsx' || ext === 'xls') {
@@ -58,7 +64,18 @@ export default function ImportPage() {
       const ws = wb.worksheets[0]
       const cols: string[] = []
       ws.getRow(1).eachCell((cell) => cols.push(String(cell.value ?? '')))
+      const rows: string[][] = []
+      ws.eachRow((row, rowNum) => {
+        if (rowNum > 1 && rowNum <= 6) {
+          const cells: string[] = []
+          row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+            if (colNum <= cols.length) cells.push(String(cell.value ?? ''))
+          })
+          rows.push(cells)
+        }
+      })
       setHeaders(cols)
+      setPreviewRows(rows)
       autoDetectMapping(cols)
       setStep('map')
     } else {
@@ -117,8 +134,11 @@ export default function ImportPage() {
   const stepKeys = ['upload', 'map', 'result']
   const stepLabels = [t('import.upload'), t('import.map'), t('import.result')]
 
+  // Columns highlighted by current mapping
+  const mappedCols = new Set(Object.values(mapping).filter(Boolean))
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       <h1 className="text-xl font-bold text-gray-900">{t('import.title')}</h1>
 
       {businesses.length > 1 && (
@@ -177,45 +197,86 @@ export default function ImportPage() {
         </div>
       )}
 
-      {/* Step 2: Map columns */}
+      {/* Step 2: Map columns + Preview */}
       {step === 'map' && (
-        <div className="card p-6 space-y-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-800">{t('import.map')}</h2>
-            <span className="text-sm text-gray-500">{file?.name}</span>
-          </div>
-
-          <div>
-            <label className="label">{t('import.bankName')}</label>
-            <input className="input" placeholder="Chase, Bank of America..." value={bankName} onChange={e => setBankName(e.target.value)} />
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-gray-700">{t('import.mapColumns')}</p>
-            {FIELD_KEYS.map(field => (
-              <div key={field} className="flex items-center gap-4">
-                <label className="text-sm font-medium text-gray-600 w-28">
-                  {fieldLabels[field]} {['date', 'description'].includes(field) ? '*' : ''}
-                </label>
-                <select
-                  className="input flex-1 text-sm"
-                  value={mapping[field] || ''}
-                  onChange={e => setMapping(m => ({ ...m, [field]: e.target.value }))}
-                >
-                  <option value="">{t('import.notMapped')}</option>
-                  {headers.map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
+        <div className="space-y-4">
+          {/* Data preview */}
+          {previewRows.length > 0 && (
+            <div className="card overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-700">Vista previa — {file?.name}</h2>
+                <span className="text-xs text-gray-400">{previewRows.length} filas (muestra)</span>
               </div>
-            ))}
-          </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {headers.map(h => (
+                        <th key={h} className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${mappedCols.has(h) ? 'text-[#1B4965] bg-[#1B4965]/5' : 'text-gray-400'}`}>
+                          {h}
+                          {mappedCols.has(h) && (
+                            <span className="ml-1 text-[10px] text-[#2EC4B6] font-normal">
+                              ({Object.entries(mapping).find(([, v]) => v === h)?.[0]})
+                            </span>
+                          )}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {previewRows.map((row, i) => (
+                      <tr key={i} className="hover:bg-gray-50">
+                        {headers.map((h, j) => (
+                          <td key={j} className={`px-3 py-2 whitespace-nowrap ${mappedCols.has(h) ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
+                            {row[j] ?? '—'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
-          <p className="text-xs text-gray-400">{t('import.required_fields')}</p>
+          {/* Mapping form */}
+          <div className="card p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-800">{t('import.map')}</h2>
+            </div>
 
-          <div className="flex gap-3">
-            <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]) }} className="btn-secondary">{t('import.back')}</button>
-            <button onClick={handleImport} disabled={loading} className="btn-primary disabled:opacity-50">
-              {loading ? t('import.importing') : t('import.importBtn')}
-            </button>
+            <div>
+              <label className="label">{t('import.bankName')}</label>
+              <input className="input" placeholder="Chase, Bank of America..." value={bankName} onChange={e => setBankName(e.target.value)} />
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-gray-700">{t('import.mapColumns')}</p>
+              {FIELD_KEYS.map(field => (
+                <div key={field} className="flex items-center gap-4">
+                  <label className="text-sm font-medium text-gray-600 w-28">
+                    {fieldLabels[field]} {['date', 'description'].includes(field) ? '*' : ''}
+                  </label>
+                  <select
+                    className="input flex-1 text-sm"
+                    value={mapping[field] || ''}
+                    onChange={e => setMapping(m => ({ ...m, [field]: e.target.value }))}
+                  >
+                    <option value="">{t('import.notMapped')}</option>
+                    {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-gray-400">{t('import.required_fields')}</p>
+
+            <div className="flex gap-3">
+              <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]) }} className="btn-secondary">{t('import.back')}</button>
+              <button onClick={handleImport} disabled={loading} className="btn-primary disabled:opacity-50">
+                {loading ? t('import.importing') : t('import.importBtn')}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -250,7 +311,7 @@ export default function ImportPage() {
             </div>
           )}
           <div className="flex gap-3 justify-center">
-            <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setResult(null) }} className="btn-secondary">{t('import.importAnother')}</button>
+            <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setResult(null) }} className="btn-secondary">{t('import.importAnother')}</button>
             <button onClick={() => router.push('/transactions?status=PENDING')} className="btn-primary">{t('import.reviewTx')}</button>
           </div>
         </div>
