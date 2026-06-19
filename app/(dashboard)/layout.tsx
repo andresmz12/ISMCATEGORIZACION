@@ -160,9 +160,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Desktop sidebar — always visible */}
-      <aside className="hidden lg:flex w-64 bg-[#1B4965] flex-col flex-shrink-0">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
+      {/* Desktop sidebar — fixed height, scrolls internally */}
+      <aside className="hidden lg:flex w-64 bg-[#1B4965] flex-col flex-shrink-0 overflow-y-auto">
         <SidebarContent />
       </aside>
 
@@ -173,13 +173,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1B4965] flex flex-col lg:hidden transform transition-transform duration-200 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1B4965] flex flex-col lg:hidden transform transition-transform duration-200 ease-in-out overflow-y-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <SidebarContent />
       </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top header — always visible, contains hamburger (mobile) + language toggle */}
+      {/* Main content — fills remaining width, scrolls independently */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top header — pinned at top */}
         <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 flex-shrink-0">
           {/* Hamburger — mobile only */}
           <button
@@ -207,16 +207,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </span>
           )}
 
-          {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Language toggle — always in header */}
           <div className="flex items-center">
             <LanguageToggleDark />
           </div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           {children}
         </main>
       </div>
