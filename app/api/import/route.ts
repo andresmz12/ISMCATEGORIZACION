@@ -63,10 +63,20 @@ export async function POST(req: Request) {
       const parsed = parse(buffer.toString(), { columns: true, skip_empty_lines: true, trim: true })
       rows = parsed
     } else if (ext === 'xlsx' || ext === 'xls') {
-      const XLSX = await import('xlsx')
-      const wb = XLSX.read(buffer, { type: 'buffer' })
-      const ws = wb.Sheets[wb.SheetNames[0]]
-      rows = XLSX.utils.sheet_to_json(ws, { defval: '' }) as Record<string, string>[]
+      const ExcelJS = await import('exceljs')
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(buffer as any)
+      const ws = wb.worksheets[0]
+      const headers: string[] = []
+      ws.getRow(1).eachCell((cell) => headers.push(String(cell.value ?? '')))
+      ws.eachRow((row, rowNum) => {
+        if (rowNum === 1) return
+        const rowObj: Record<string, string> = {}
+        row.eachCell((cell, colNum) => {
+          rowObj[headers[colNum - 1]] = String(cell.value ?? '')
+        })
+        rows.push(rowObj)
+      })
     } else {
       return NextResponse.json({ error: 'Only CSV and XLSX supported for import' }, { status: 400 })
     }

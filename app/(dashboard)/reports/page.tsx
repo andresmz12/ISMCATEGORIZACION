@@ -69,12 +69,13 @@ export default function ReportsPage() {
   async function exportExcel() {
     if (!report) return
     setExporting(true)
-    const XLSX = await import('xlsx')
-    const wb = XLSX.utils.book_new()
+    const ExcelJS = await import('exceljs')
+    const wb = new ExcelJS.Workbook()
     const biz = businesses.find((b: any) => b.id === activeBiz)
 
     // Summary sheet
-    const summaryData = [
+    const ws1 = wb.addWorksheet('Summary')
+    ws1.addRows([
       ['ISM Taxes — Expense Report'],
       ['Business:', biz?.name || activeBiz],
       ['Period:', `${from} to ${to}`],
@@ -86,24 +87,23 @@ export default function ReportsPage() {
       ['Total Deductible', report.summary.totalDeductible],
       ['Pending Transactions', report.summary.pending],
       ['Classified Transactions', report.summary.classified],
-    ]
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'Summary')
+    ])
 
-    // By category
-    const catData = [
-      ['Category', 'IRS Code', 'Total ($)', 'Deductible ($)', 'Transactions'],
-      ...report.expensesByCategory.map((c: any) => [c.name, c.irsCode || '', c.total, c.deductible, c.count]),
-    ]
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(catData), 'By Category')
+    // By category sheet
+    const ws2 = wb.addWorksheet('By Category')
+    ws2.addRow(['Category', 'IRS Code', 'Total ($)', 'Deductible ($)', 'Transactions'])
+    report.expensesByCategory.forEach((c: any) => ws2.addRow([c.name, c.irsCode || '', c.total, c.deductible, c.count]))
 
-    // By month
-    const monthData = [
-      ['Month', 'Income ($)', 'Expenses ($)', 'Net ($)'],
-      ...report.byMonth.map((m: any) => [m.month, m.income, m.expenses, m.income - m.expenses]),
-    ]
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(monthData), 'By Month')
+    // By month sheet
+    const ws3 = wb.addWorksheet('By Month')
+    ws3.addRow(['Month', 'Income ($)', 'Expenses ($)', 'Net ($)'])
+    report.byMonth.forEach((m: any) => ws3.addRow([m.month, m.income, m.expenses, m.income - m.expenses]))
 
-    XLSX.writeFile(wb, `report_${activeBiz}_${from}_${to}.xlsx`)
+    const buf = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = `report_${activeBiz}_${from}_${to}.xlsx`; a.click()
+    URL.revokeObjectURL(url)
     setExporting(false)
   }
 

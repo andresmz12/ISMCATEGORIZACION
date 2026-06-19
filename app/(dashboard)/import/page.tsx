@@ -48,12 +48,13 @@ export default function ImportPage() {
       autoDetectMapping(cols)
       setStep('map')
     } else if (ext === 'xlsx' || ext === 'xls') {
-      const XLSX = await import('xlsx')
+      const ExcelJS = await import('exceljs')
       const buffer = await f.arrayBuffer()
-      const wb = XLSX.read(buffer, { type: 'array' })
-      const ws = wb.Sheets[wb.SheetNames[0]]
-      const rows: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 })
-      const cols = (rows[0] || []).map(String)
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(buffer)
+      const ws = wb.worksheets[0]
+      const cols: string[] = []
+      ws.getRow(1).eachCell((cell) => cols.push(String(cell.value ?? '')))
       setHeaders(cols)
       autoDetectMapping(cols)
       setStep('map')
