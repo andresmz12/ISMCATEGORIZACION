@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String
+  name          String?
+  role          Role           @default(ACCOUNTANT)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  businessUsers BusinessUser[]
+  accounts      Account[]
+  sessions      Session[]
+}
+
+enum Role {
+  OWNER
+  ACCOUNTANT
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Business {
+  id           String               @id @default(cuid())
+  name         String
+  industry     String?
+  entityType   String?
+  taxYear      Int?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  users        BusinessUser[]
+  transactions Transaction[]
+  categories   Category[]
+  bankMappings BankFormatMapping[]
+  rules        ClassificationRule[]
+}
+
+model BusinessUser {
+  id         String   @id @default(cuid())
+  userId     String
+  businessId String
+  role       String   @default("VIEWER")
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, businessId])
+}
+
+model Transaction {
+  id            String            @id @default(cuid())
+  businessId    String
+  date          DateTime
+  description   String
+  amount        Float
+  type          TxType            @default(DEBIT)
+  status        TxStatus          @default(PENDING)
+  categoryId    String?
+  deductibility Deductibility?
+  method        ClassMethod?
+  aiConfidence  String?
+  aiSuggestion  String?
+  notes         String?
+  sourceFile    String?
+  checksum      String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  business      Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category      Category?         @relation(fields: [categoryId], references: [id])
+  splits        TransactionSplit[]
+  receipts      Receipt[]
+}
+
+enum TxType {
+  DEBIT
+  CREDIT
+}
+
+enum TxStatus {
+  PENDING
+  CLASSIFIED
+  NEEDS_REVIEW
+}
+
+enum Deductibility {
+  YES
+  NO
+  FIFTY
+}
+
+enum ClassMethod {
+  MANUAL
+  AI
+  RULE
+}
+
+model TransactionSplit {
+  id            String         @id @default(cuid())
+  transactionId String
+  categoryId    String
+  amount        Float
+  deductibility Deductibility?
+  notes         String?
+  transaction   Transaction    @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  category      Category       @relation(fields: [categoryId], references: [id])
+}
+
+model Category {
+  id           String               @id @default(cuid())
+  businessId   String?
+  name         String
+  irsCode      String?
+  description  String?
+  isSystem     Boolean              @default(false)
+  createdAt    DateTime             @default(now())
+  business     Business?            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  splits       TransactionSplit[]
+  rules        ClassificationRule[]
+}
+
+model ClassificationRule {
+  id            String   @id @default(cuid())
+  businessId    String
+  pattern       String
+  categoryId    String
+  priority      Int      @default(0)
+  field         String   @default("description")
+  deductibility Deductibility?
+  createdAt     DateTime @default(now())
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category      Category @relation(fields: [categoryId], references: [id])
+}
+
+model BankFormatMapping {
+  id         String   @id @default(cuid())
+  businessId String
+  bankName   String
+  mapping    Json
+  createdAt  DateTime @default(now())
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model Receipt {
+  id            String      @id @default(cuid())
+  transactionId String
+  filename      String
+  data          String
+  mimeType      String
+  createdAt     DateTime    @default(now())
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}

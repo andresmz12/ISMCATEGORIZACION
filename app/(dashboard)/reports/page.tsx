@@ -1,0 +1,232 @@
+'use client'
+import { useEffect, useState } from 'react'
+
+function fmt(n: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+}
+
+export default function ReportsPage() {
+  const [businesses, setBusinesses] = useState<any[]>([])
+  const [activeBiz, setActiveBiz] = useState<string>('')
+  const [report, setReport] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [from, setFrom] = useState(() => `${new Date().getFullYear()}-01-01`)
+  const [to, setTo] = useState(() => new Date().toISOString().split('T')[0])
+  const [exporting, setExporting] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/businesses').then(r => r.json()).then(data => {
+      setBusinesses(data)
+      const saved = localStorage.getItem('activeBusiness')
+      const biz = (saved && data.find((b: any) => b.id === saved)) || data[0]
+      if (biz) setActiveBiz(biz.id)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!activeBiz) return
+    setLoading(true)
+    fetch(`/api/reports?businessId=${activeBiz}&from=${from}&to=${to}`)
+      .then(r => r.json()).then(d => { setReport(d); setLoading(false) })
+  }, [activeBiz, from, to])
+
+  async function exportPDF() {
+    if (!report) return
+    setExporting(true)
+    const { jsPDF } = await import('jspdf')
+    const autoTable = (await import('jspdf-autotable')).default
+    const doc = new jsPDF()
+    const biz = businesses.find((b: any) => b.id === activeBiz)
+    doc.setFontSize(18)
+    doc.text('Expense Report — ' + (biz?.name || ''), 14, 20)
+    doc.setFontSize(11)
+    doc.text(`Period: ${from} to ${to}`, 14, 30)
+    doc.setFontSize(12)
+    doc.text('Summary', 14, 44)
+    autoTable(doc, {
+      startY: 48,
+      head: [['Metric', 'Amount']],
+      body: [
+        ['Total Income', fmt(report.summary.income)],
+        ['Total Expenses', fmt(report.summary.totalExpenses)],
+        ['Net Profit', fmt(report.summary.netProfit)],
+        ['Total Deductible', fmt(report.summary.totalDeductible)],
+      ],
+    })
+    const y1 = (doc as any).lastAutoTable.finalY + 10
+    doc.text('Expenses by Category', 14, y1)
+    autoTable(doc, {
+      startY: y1 + 4,
+      head: [['Category', 'IRS Code', 'Total', 'Deductible', 'Count']],
+      body: report.expensesByCategory.map((c: any) => [
+        c.name, c.irsCode || '', fmt(c.total), fmt(c.deductible), c.count,
+      ]),
+    })
+    doc.save(`report_${activeBiz}_${from}_${to}.pdf`)
+    setExporting(false)
+  }
+
+  async function exportExcel() {
+    if (!report) return
+    setExporting(true)
+    const XLSX = await import('xlsx')
+    const wb = XLSX.utils.book_new()
+    const biz = businesses.find((b: any) => b.id === activeBiz)
+
+    // Summary sheet
+    const summaryData = [
+      ['ISM Taxes — Expense Report'],
+      ['Business:', biz?.name || activeBiz],
+      ['Period:', `${from} to ${to}`],
+      [],
+      ['Metric', 'Amount'],
+      ['Total Income', report.summary.income],
+      ['Total Expenses', report.summary.totalExpenses],
+      ['Net Profit', report.summary.netProfit],
+      ['Total Deductible', report.summary.totalDeductible],
+      ['Pending Transactions', report.summary.pending],
+      ['Classified Transactions', report.summary.classified],
+    ]
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'Summary')
+
+    // By category
+    const catData = [
+      ['Category', 'IRS Code', 'Total ($)', 'Deductible ($)', 'Transactions'],
+      ...report.expensesByCategory.map((c: any) => [c.name, c.irsCode || '', c.total, c.deductible, c.count]),
+    ]
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(catData), 'By Category')
+
+    // By month
+    const monthData = [
+      ['Month', 'Income ($)', 'Expenses ($)', 'Net ($)'],
+      ...report.byMonth.map((m: any) => [m.month, m.income, m.expenses, m.income - m.expenses]),
+    ]
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(monthData), 'By Month')
+
+    XLSX.writeFile(wb, `report_${activeBiz}_${from}_${to}.xlsx`)
+    setExporting(false)
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-xl font-bold text-gray-900">Reports</h1>
+        <div className="flex gap-2 flex-wrap">
+          {businesses.length > 1 && (
+            <select className="input w-auto text-sm" value={activeBiz} onChange={e => setActiveBiz(e.target.value)}>
+              {businesses.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          )}
+          <button onClick={exportPDF} disabled={exporting || !report} className="btn-secondary text-sm disabled:opacity-50">Export PDF</button>
+          <button onClick={exportExcel} disabled={exporting || !report} className="btn-primary text-sm disabled:opacity-50">Export Excel</button>
+        </div>
+      </div>
+
+      {/* Date range */}
+      <div className="card p-4 flex flex-wrap gap-3 items-end">
+        <div>
+          <label className="label">From</label>
+          <input type="date" className="input w-auto text-sm" value={from} onChange={e => setFrom(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">To</label>
+          <input type="date" className="input w-auto text-sm" value={to} onChange={e => setTo(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          {[
+            { label: 'This Year', from: `${new Date().getFullYear()}-01-01`, to: new Date().toISOString().split('T')[0] },
+            { label: 'Q1', from: `${new Date().getFullYear()}-01-01`, to: `${new Date().getFullYear()}-03-31` },
+            { label: 'Q2', from: `${new Date().getFullYear()}-04-01`, to: `${new Date().getFullYear()}-06-30` },
+            { label: 'Q3', from: `${new Date().getFullYear()}-07-01`, to: `${new Date().getFullYear()}-09-30` },
+            { label: 'Q4', from: `${new Date().getFullYear()}-10-01`, to: `${new Date().getFullYear()}-12-31` },
+          ].map(p => (
+            <button key={p.label} onClick={() => { setFrom(p.from); setTo(p.to) }} className="btn-secondary text-xs py-1 px-2">{p.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {loading && <div className="text-center py-8 text-gray-400 text-sm">Loading report...</div>}
+
+      {report && !loading && (
+        <>
+          {/* P&L Summary */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Income', val: report.summary.income, color: 'text-green-700' },
+              { label: 'Total Expenses', val: report.summary.totalExpenses, color: 'text-red-600' },
+              { label: 'Net Profit', val: report.summary.netProfit, color: report.summary.netProfit >= 0 ? 'text-green-700' : 'text-red-600' },
+              { label: 'Total Deductible', val: report.summary.totalDeductible, color: 'text-blue-700' },
+            ].map(s => (
+              <div key={s.label} className="card p-4">
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{s.label}</p>
+                <p className={`text-2xl font-bold mt-1 ${s.color}`}>{fmt(s.val)}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Monthly trend */}
+          {report.byMonth.length > 0 && (
+            <div className="card p-5">
+              <h2 className="text-base font-semibold text-gray-800 mb-4">Monthly Trend</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="pb-2 text-left text-xs font-semibold text-gray-500 uppercase">Month</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Income</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Expenses</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Net</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {report.byMonth.map((m: any) => (
+                      <tr key={m.month}>
+                        <td className="py-2 text-gray-700">{m.month}</td>
+                        <td className="py-2 text-right text-green-700">{fmt(m.income)}</td>
+                        <td className="py-2 text-right text-red-600">{fmt(m.expenses)}</td>
+                        <td className={`py-2 text-right font-semibold ${m.income - m.expenses >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                          {fmt(m.income - m.expenses)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Expenses by category */}
+          <div className="card p-5">
+            <h2 className="text-base font-semibold text-gray-800 mb-4">Expenses by Category</h2>
+            {report.expensesByCategory.length === 0 ? (
+              <p className="text-sm text-gray-400">No classified expenses in this period</p>
+            ) : (
+              <div className="space-y-2">
+                {report.expensesByCategory.map((c: any) => {
+                  const pct = report.summary.totalExpenses > 0 ? (c.total / report.summary.totalExpenses * 100) : 0
+                  return (
+                    <div key={c.name}>
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <div>
+                          <span className="font-medium text-gray-800">{c.name}</span>
+                          {c.irsCode && <span className="ml-2 text-xs text-gray-400">{c.irsCode}</span>}
+                        </div>
+                        <div className="text-right">
+                          <span className="font-semibold text-gray-800">{fmt(c.total)}</span>
+                          <span className="ml-2 text-xs text-gray-400">{pct.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

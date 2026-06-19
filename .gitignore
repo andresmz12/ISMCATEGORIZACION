@@ -1,5 +1,11 @@
 __pycache__/
 *.pyc
 .env
+.env.local
+.env.production
 venv/
 .DS_Store
+node_modules/
+.next/
+*.db
+*.db-journal
