@@ -4,6 +4,15 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 
+const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  : undefined
+
+// NEXTAUTH_URL must be set; fall back to Railway's auto-provided domain
+if (!process.env.NEXTAUTH_URL && railwayUrl) {
+  process.env.NEXTAUTH_URL = railwayUrl
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
   session: { strategy: 'jwt' },
