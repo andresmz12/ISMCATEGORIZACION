@@ -1,0 +1,306 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// MULTI-TENANT ARCHITECTURE
+// ============================================================================
+
+// LEVEL 1: Accountant/Firm (Tenant)
+// The top-level organization. One Accountant can have multiple Businesses (clients).
+model Accountant {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users      User[]
+  businesses Business[]
+  plans      Plan[]
+
+  @@map("accountants")
+}
+
+// LEVEL 2: Business (Client)
+// Each business/client that belongs to an Accountant.
+model Business {
+  id           String   @id @default(cuid())
+  accountantId String
+  name         String
+  industry     String   @default("Other")
+  entityType   String   @default("Sole Proprietor (Schedule C)") // e.g., "S-Corp", "C-Corp", "LLC"
+  taxYear      Int      @default(2025)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  accountant       Accountant         @relation(fields: [accountantId], references: [id], onDelete: Cascade)
+  users            UserBusiness[]
+  bankImports      BankImport[]
+  transactions     Transaction[]
+  categories       Category[]
+  classificationRules ClassificationRule[]
+  plan             Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
+  planId           String?
+
+  @@unique([accountantId, name])
+  @@index([accountantId])
+  @@map("businesses")
+}
+
+// ============================================================================
+// USER MANAGEMENT WITH MULTI-ROLE SUPPORT
+// ============================================================================
+
+// User roles
+enum UserRole {
+  OWNER    // Can manage everything
+  MANAGER  // Can manage Business data, users within that Business
+  VIEWER   // Read-only access
+}
+
+// User (can belong to multiple Businesses)
+model User {
+  id           String   @id @default(cuid())
+  accountantId String
+  email        String
+  name         String?
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  accountant Accountant @relation(fields: [accountantId], references: [id], onDelete: Cascade)
+  businesses UserBusiness[]
+
+  @@unique([accountantId, email])
+  @@index([accountantId])
+  @@map("users")
+}
+
+// Junction table: User <-> Business with role
+model UserBusiness {
+  id         String   @id @default(cuid())
+  userId     String
+  businessId String
+  role       UserRole @default(VIEWER)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, businessId])
+  @@index([userId])
+  @@index([businessId])
+  @@map("users_businesses")
+}
+
+// ============================================================================
+// FILE IMPORT & TRANSACTION DATA
+// ============================================================================
+
+// BankImport: Record each file upload
+model BankImport {
+  id            String   @id @default(cuid())
+  businessId    String
+  filename      String
+  fileType      String   // "csv", "xlsx", "pdf"
+  bankName      String?  // "Chase", "BofA", etc.
+  importedDate  DateTime @default(now())
+  transactionCount Int
+  mappingUsed   String   // JSON serialized column mapping
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  business     Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([businessId])
+  @@index([importedDate])
+  @@map("bank_imports")
+}
+
+// Classification method enum
+enum ClassificationMethod {
+  MANUAL   // User manually assigned
+  RULE     // Applied via ClassificationRule
+  AI       // Applied via Claude API
+}
+
+// Classification status enum
+enum TransactionStatus {
+  PENDING      // Not yet classified
+  CLASSIFIED   // Classified by AI or rule
+  APPROVED     // Approved by user (final)
+  REJECTED     // Rejected/flagged for review
+}
+
+// Deductibility enum
+enum DeductibilityType {
+  YES   // 100% deductible
+  NO    // 0% deductible
+  FIFTY // 50% deductible
+}
+
+// Transaction
+model Transaction {
+  id                  String              @id @default(cuid())
+  businessId          String
+  bankImportId        String
+  date                DateTime
+  description         String
+  amount              Decimal             @db.Decimal(12, 2)
+  type                String              @default("DEBIT") // "DEBIT" or "CREDIT"
+
+  // Classification fields
+  categoryId          String?
+  status              TransactionStatus   @default(PENDING)
+  method              ClassificationMethod?
+  deductibility       DeductibilityType   @default(NO)
+  confidence          String?             // "HIGH", "MEDIUM", "LOW"
+  irsLine             String?             // e.g., "Schedule C - Line 24a"
+
+  // Audit fields
+  classifiedAt        DateTime?
+  classifiedBy        String?             // User ID who classified
+  approvedAt          DateTime?
+  approvedBy          String?             // User ID who approved
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // Relations
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bankImport  BankImport @relation(fields: [bankImportId], references: [id], onDelete: Cascade)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([bankImportId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([date])
+  @@map("transactions")
+}
+
+// ============================================================================
+// CHART OF ACCOUNTS & CATEGORIZATION
+// ============================================================================
+
+// Category: Chart of accounts per Business
+model Category {
+  id          String   @id @default(cuid())
+  businessId  String
+  code        String   // e.g., "4100" (Chart of Accounts code)
+  name        String   // e.g., "Travel Expenses"
+  irsLine     String?  // e.g., "Schedule C - Line 24a"
+  deductibility DeductibilityType @default(NO)
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  classificationRules ClassificationRule[]
+
+  @@unique([businessId, code])
+  @@index([businessId])
+  @@map("categories")
+}
+
+// ClassificationRule: Manual rule-based classification
+// If description contains keyword X, assign to category Y
+model ClassificationRule {
+  id         String   @id @default(cuid())
+  businessId String
+  categoryId String
+  keyword    String   // Substring to match (case-insensitive)
+  priority   Int      @default(0) // Higher = more priority
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([categoryId])
+  @@map("classification_rules")
+}
+
+// ============================================================================
+// SUBSCRIPTION/PLAN
+// ============================================================================
+
+// Plan tier
+enum PlanType {
+  BASIC   // Basic plan
+  PLUS    // Pro plan
+  ENTERPRISE
+}
+
+// Plan/Subscription
+model Plan {
+  id             String   @id @default(cuid())
+  accountantId   String
+  type           PlanType @default(BASIC)
+  maxBusinesses  Int      @default(1)
+  maxTransactions Int     @default(10000)
+  maxUsers       Int      @default(3)
+  maxFileSize    Int      @default(10) // MB
+  includeAI      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  accountant Accountant @relation(fields: [accountantId], references: [id], onDelete: Cascade)
+  businesses Business[]
+
+  @@index([accountantId])
+  @@map("plans")
+}
+
+// ============================================================================
+// AUDIT & LOGGING (Optional: for future audit trails)
+// ============================================================================
+
+enum AuditAction {
+  TRANSACTION_CLASSIFIED
+  TRANSACTION_APPROVED
+  RULE_CREATED
+  RULE_UPDATED
+  USER_ADDED
+  USER_REMOVED
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  businessId String
+  action    AuditAction
+  entityType String      // "Transaction", "ClassificationRule", "User"
+  entityId  String
+  userId    String?     // Who performed the action
+  details   String?     // JSON serialized details
+  createdAt DateTime    @default(now())
+
+  @@index([businessId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
