@@ -148,6 +148,10 @@ model Transaction {
   category      Category?         @relation(fields: [categoryId], references: [id])
   splits        TransactionSplit[]
   receipts      Receipt[]
+
+  @@index([businessId, status])
+  @@index([businessId, date])
+  @@index([checksum])
 }
 
 model TransactionSplit {
@@ -186,6 +190,8 @@ model ClassificationRule {
   createdAt     DateTime      @default(now())
   business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   category      Category      @relation(fields: [categoryId], references: [id])
+
+  @@index([businessId, priority])
 }
 
 model BankFormatMapping {

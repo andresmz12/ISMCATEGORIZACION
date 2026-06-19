@@ -307,6 +307,9 @@ const es = {
   'cat.deleteConfirm': '¿Eliminar esta categoría?',
 
   // Settings extras
+  'settings.saveProfile': 'Guardar Perfil',
+  'settings.emailReadOnly': 'El correo no se puede cambiar',
+  'settings.memberSince': 'Miembro desde',
   'settings.password': 'Contraseña',
   'settings.invitedUsers': 'Usuarios invitados',
   'settings.inviteUser': 'Invitar usuario',

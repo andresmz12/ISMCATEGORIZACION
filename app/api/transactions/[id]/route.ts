@@ -15,11 +15,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const body = await req.json()
   const { categoryId, deductibility, status, notes, method, splits } = body
 
-  // Handle splits if provided
-  if (splits && Array.isArray(splits)) {
-    await prisma.transactionSplit.deleteMany({ where: { transactionId: params.id } })
-    if (splits.length > 0) {
-      await prisma.transactionSplit.createMany({
+  if (notes && notes.length > 1000) return NextResponse.json({ error: 'Notes too long' }, { status: 400 })
+
+  if (splits && Array.isArray(splits) && splits.length > 0) {
+    const splitTotal = splits.reduce((s: number, sp: any) => s + Number(sp.amount), 0)
+    if (Math.abs(splitTotal - tx.amount) > 0.02) {
+      return NextResponse.json({ error: 'Split amounts must equal transaction total' }, { status: 400 })
+    }
+
+    // Atomic: delete old splits and create new ones in a single transaction
+    const updated = await prisma.$transaction(async (trx) => {
+      await trx.transactionSplit.deleteMany({ where: { transactionId: params.id } })
+      await trx.transactionSplit.createMany({
         data: splits.map((s: any) => ({
           transactionId: params.id,
           categoryId: s.categoryId,
@@ -28,7 +35,23 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
           notes: s.notes || null,
         })),
       })
-    }
+      return trx.transaction.update({
+        where: { id: params.id },
+        data: {
+          ...(categoryId !== undefined && { categoryId }),
+          ...(deductibility !== undefined && { deductibility }),
+          ...(status !== undefined && { status }),
+          ...(notes !== undefined && { notes }),
+          ...(method !== undefined && { method }),
+        },
+        include: { category: true, splits: { include: { category: true } } },
+      })
+    })
+    return NextResponse.json(updated)
+  }
+
+  if (splits && Array.isArray(splits) && splits.length === 0) {
+    await prisma.transactionSplit.deleteMany({ where: { transactionId: params.id } })
   }
 
   const updated = await prisma.transaction.update({

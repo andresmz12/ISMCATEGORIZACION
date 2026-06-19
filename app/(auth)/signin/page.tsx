@@ -117,11 +117,13 @@ export default function SignInPage() {
             <Link href="/register" className="text-[#1B4965] font-semibold hover:underline">{t('auth.register')}</Link>
           </p>
 
-          <div className="mt-8 p-3 bg-blue-50 rounded-lg text-xs text-blue-700 space-y-1">
-            <p className="font-semibold">Demo:</p>
-            <p>contador@demo.com / password123</p>
-            <p>usuario@demo.com / password123</p>
-          </div>
+          {process.env.NEXT_PUBLIC_SHOW_DEMO === 'true' && (
+            <div className="mt-8 p-3 bg-blue-50 rounded-lg text-xs text-blue-700 space-y-1">
+              <p className="font-semibold">Demo:</p>
+              <p>contador@demo.com / password123</p>
+              <p>usuario@demo.com / password123</p>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 lg:hidden">

@@ -98,7 +98,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!activeBiz) return
-    fetch(`/api/transactions?businessId=${activeBiz.id}&limit=200`)
+    const year = new Date().getFullYear()
+    fetch(`/api/transactions?businessId=${activeBiz.id}&from=${year}-01-01&limit=500`)
       .then(r => r.json())
       .then(d => setTxs(Array.isArray(d.transactions) ? d.transactions : []))
       .catch(() => {})

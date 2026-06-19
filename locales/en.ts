@@ -307,6 +307,9 @@ const en = {
   'cat.deleteConfirm': 'Delete this category?',
 
   // Settings extras
+  'settings.saveProfile': 'Save Profile',
+  'settings.emailReadOnly': 'Email cannot be changed',
+  'settings.memberSince': 'Member since',
   'settings.password': 'Password',
   'settings.invitedUsers': 'Invited users',
   'settings.inviteUser': 'Invite user',

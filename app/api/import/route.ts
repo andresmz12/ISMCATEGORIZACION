@@ -56,6 +56,11 @@ export async function POST(req: Request) {
     const ext = file.name.split('.').pop()?.toLowerCase()
     const buffer = Buffer.from(await file.arrayBuffer())
 
+    const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+    if (buffer.length > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'File too large. Max 10MB allowed.' }, { status: 400 })
+    }
+
     let rows: Record<string, string>[] = []
 
     if (ext === 'csv') {
@@ -148,9 +153,12 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = (session.user as any).id
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
   if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 })
+  const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
+  if (!bu) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const mappings = await prisma.bankFormatMapping.findMany({ where: { businessId } })
   return NextResponse.json(mappings)
 }
