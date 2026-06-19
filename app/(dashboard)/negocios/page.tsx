@@ -16,6 +16,7 @@ export default function NegociosPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const accountType = (session?.user as any)?.accountType
+  const isIndividual = accountType === 'INDIVIDUAL'
 
   const [businesses, setBusinesses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -93,6 +94,11 @@ export default function NegociosPage() {
         </div>
       )}
 
+      {isIndividual && businesses.length >= 1 ? (
+        <div className="card p-4 bg-amber-50 border-amber-100">
+          <p className="text-sm text-amber-700">El plan Independiente incluye un solo negocio. Para agregar más, actualiza a <span className="font-semibold">Plus o Enterprise</span>.</p>
+        </div>
+      ) : (
       <div className="card p-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('settings.addBusiness')}</h2>
         <form onSubmit={submit} className="space-y-4">
@@ -133,6 +139,7 @@ export default function NegociosPage() {
           </button>
         </form>
       </div>
+      )}
     </div>
   )
 }

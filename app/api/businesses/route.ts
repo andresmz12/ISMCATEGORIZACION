@@ -26,8 +26,15 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
   const { name, industry, entityType, taxYear } = await req.json()
   if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 })
+
+  if (accountType === 'INDIVIDUAL') {
+    const existing = await prisma.businessUser.count({ where: { userId } })
+    if (existing >= 1) return NextResponse.json({ error: 'El plan Independiente solo permite un negocio' }, { status: 403 })
+  }
+
   const business = await prisma.business.create({
     data: { name, industry, entityType, taxYear: taxYear ? Number(taxYear) : null },
   })
