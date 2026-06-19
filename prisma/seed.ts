@@ -49,12 +49,13 @@ async function main() {
   console.log('✓ System categories created')
 
   // SUPERADMIN
+  const superAdminHash = await bcrypt.hash('SuperAdmin123!', 12)
   await prisma.user.upsert({
     where: { email: 'superadmin@mypnl.com' },
-    update: {},
+    update: { passwordHash: superAdminHash, isActive: true, accountType: AccountType.SUPERADMIN },
     create: {
       email: 'superadmin@mypnl.com',
-      passwordHash: await bcrypt.hash('SuperAdmin123!', 12),
+      passwordHash: superAdminHash,
       name: 'Super Admin',
       accountType: AccountType.SUPERADMIN,
       plan: Plan.ENTERPRISE,
@@ -64,12 +65,13 @@ async function main() {
   console.log('✓ Superadmin: superadmin@mypnl.com / SuperAdmin123!')
 
   // CONTADOR demo (plan PLUS, 2 businesses)
+  const contadorHash = await bcrypt.hash('password123', 12)
   const contador = await prisma.user.upsert({
     where: { email: 'contador@demo.com' },
-    update: {},
+    update: { passwordHash: contadorHash, isActive: true },
     create: {
       email: 'contador@demo.com',
-      passwordHash: await bcrypt.hash('password123', 12),
+      passwordHash: contadorHash,
       name: 'Carlos Contable',
       firmName: 'Contable & Asociados LLC',
       accountType: AccountType.ACCOUNTANT,
@@ -117,12 +119,13 @@ async function main() {
   console.log('✓ 2 businesses created for contador')
 
   // USUARIO INDEPENDIENTE demo (plan BASIC, 1 business)
+  const individualHash = await bcrypt.hash('password123', 12)
   const individual = await prisma.user.upsert({
     where: { email: 'usuario@demo.com' },
-    update: {},
+    update: { passwordHash: individualHash, isActive: true },
     create: {
       email: 'usuario@demo.com',
-      passwordHash: await bcrypt.hash('password123', 12),
+      passwordHash: individualHash,
       name: 'Maria Emprendedora',
       accountType: AccountType.INDIVIDUAL,
       plan: Plan.BASIC,
