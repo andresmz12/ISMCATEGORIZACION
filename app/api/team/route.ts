@@ -24,12 +24,12 @@ export async function POST(req: Request) {
 
   const { name, email, password } = await req.json()
   if (!name || !email || !password) return NextResponse.json({ error: 'name, email y password son requeridos' }, { status: 400 })
-  if (password.length < 6) return NextResponse.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 })
+  if (password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 })
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) return NextResponse.json({ error: 'Ya existe un usuario con ese correo' }, { status: 409 })
 
-  const passwordHash = await bcrypt.hash(password, 10)
+  const passwordHash = await bcrypt.hash(password, 12)
 
   // Get owner's plan to assign to team member
   const owner = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true, accountType: true } })

@@ -17,8 +17,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (body.name) data.name = body.name
   if (typeof body.isActive === 'boolean') data.isActive = body.isActive
   if (body.password) {
-    if (body.password.length < 6) return NextResponse.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 })
-    data.passwordHash = await bcrypt.hash(body.password, 10)
+    if (body.password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 })
+    data.passwordHash = await bcrypt.hash(body.password, 12)
   }
 
   const updated = await prisma.user.update({

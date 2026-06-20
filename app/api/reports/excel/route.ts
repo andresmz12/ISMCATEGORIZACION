@@ -2,12 +2,19 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
+// Prevent CSV/formula injection: strip leading =, +, -, @ from string cells
+function safe(val: unknown): unknown {
+  if (typeof val !== 'string') return val
+  return /^[=+\-@]/.test(val) ? `'${val}` : val
+}
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { businessName, period, transactions } = await req.json()
   if (!transactions?.length) return NextResponse.json({ error: 'No transactions' }, { status: 400 })
+  if (transactions.length > 50000) return NextResponse.json({ error: 'Too many transactions' }, { status: 400 })
 
   const ExcelJS = await import('exceljs')
   const wb = new ExcelJS.Workbook()
@@ -36,13 +43,13 @@ export async function POST(req: Request) {
   for (const tx of transactions) {
     const row = ws.addRow({
       date: tx.date ? new Date(tx.date).toLocaleDateString('en-US') : '',
-      description: tx.description,
-      amount: tx.amount,
+      description: safe(tx.description),
+      amount: typeof tx.amount === 'number' ? tx.amount : 0,
       type: tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
-      category: tx.category?.name || tx.aiSuggestion || 'Sin categoría',
+      category: safe(tx.category?.name || tx.aiSuggestion || 'Sin categoría'),
       deductibility: tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : 'No',
       confidence: tx.aiConfidence || '',
-      irsCode: tx.category?.irsCode || '',
+      irsCode: safe(tx.category?.irsCode || ''),
     })
     const amtCell = row.getCell('amount')
     amtCell.numFmt = '"$"#,##0.00'

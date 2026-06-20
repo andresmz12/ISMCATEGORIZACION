@@ -57,6 +57,9 @@ export async function POST(req: Request) {
     if (!businessId || !transactionIds?.length) {
       return NextResponse.json({ error: 'businessId and transactionIds required' }, { status: 400 })
     }
+    if (!Array.isArray(transactionIds) || transactionIds.length > 500) {
+      return NextResponse.json({ error: 'transactionIds must be an array of at most 500 items' }, { status: 400 })
+    }
     const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
     if (!bu) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -132,6 +135,7 @@ export async function POST(req: Request) {
     const needsReview = results.filter(r => !r.autoClassified).length
     return NextResponse.json({ classified: results, autoClassified, needsReview })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('classify-ai error:', e)
+    return NextResponse.json({ error: 'Error al clasificar transacciones' }, { status: 500 })
   }
 }

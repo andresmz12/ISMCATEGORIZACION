@@ -51,7 +51,6 @@ export async function GET(req: Request) {
         filename: true,
         mimeType: true,
         createdAt: true,
-        data: true,
         transaction: {
           select: {
             id: true, description: true, amount: true, date: true,

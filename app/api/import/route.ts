@@ -148,7 +148,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ imported, duplicates, errors, total: rows.length, importedIds })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('import error:', e)
+    return NextResponse.json({ error: 'Error al procesar el archivo' }, { status: 500 })
   }
 }
 
