@@ -17,10 +17,36 @@ export async function GET(req: Request) {
 
   const results: string[] = []
 
-  // Step 1: Pre-migrate SQL — fix enum conflicts that block prisma db push
-  // The DB may have an old Role enum with ACCOUNTANT that needs to be cleared
+  // Step 1: Pre-migration SQL
+  // The DB has an old Role enum with ACCOUNTANT. Prisma can't migrate enums
+  // when rows contain values not in the new enum, so we:
+  //   a) Add new values to existing Role enum
+  //   b) Update any ACCOUNTANT rows to VIEWER
+  //   c) Convert column to text (so Prisma can freely recreate the enum)
+  //   d) Drop the old Role enum
   try {
-    // Drop column default so Prisma can recreate the enum freely
+    // Add new enum values if they don't exist yet
+    await prisma.$executeRawUnsafe(`ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'OWNER'`)
+    await prisma.$executeRawUnsafe(`ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'MANAGER'`)
+    await prisma.$executeRawUnsafe(`ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'VIEWER'`)
+    results.push('✓ Role enum values expanded')
+  } catch (e: any) {
+    // Role enum might not exist at all — that's fine
+    results.push(`⚠ Role enum expansion (non-fatal): ${String(e.message).slice(0, 100)}`)
+  }
+
+  try {
+    // Update any rows with ACCOUNTANT role to VIEWER
+    await prisma.$executeRawUnsafe(`
+      UPDATE "BusinessUser" SET "role" = 'VIEWER' WHERE "role"::text = 'ACCOUNTANT'
+    `)
+    results.push('✓ Migrated ACCOUNTANT roles to VIEWER')
+  } catch (e: any) {
+    results.push(`⚠ Role data migration (non-fatal): ${String(e.message).slice(0, 100)}`)
+  }
+
+  try {
+    // Drop column default and convert to text so Prisma can freely recreate the enum
     await prisma.$executeRawUnsafe(`
       DO $$ BEGIN
         IF EXISTS (
@@ -28,12 +54,21 @@ export async function GET(req: Request) {
           WHERE table_name = 'BusinessUser' AND column_name = 'role'
         ) THEN
           ALTER TABLE "BusinessUser" ALTER COLUMN "role" DROP DEFAULT;
+          ALTER TABLE "BusinessUser" ALTER COLUMN "role" TYPE text USING "role"::text;
         END IF;
       END $$;
     `)
-    results.push('✓ Pre-migration SQL applied')
+    results.push('✓ Converted role column to text for migration')
   } catch (e: any) {
-    results.push(`⚠ Pre-migration SQL (non-fatal): ${String(e.message).slice(0, 200)}`)
+    results.push(`⚠ Role column conversion (non-fatal): ${String(e.message).slice(0, 100)}`)
+  }
+
+  try {
+    // Drop old Role enum so Prisma can create a fresh one
+    await prisma.$executeRawUnsafe(`DROP TYPE IF EXISTS "Role" CASCADE`)
+    results.push('✓ Dropped old Role enum')
+  } catch (e: any) {
+    results.push(`⚠ Drop Role enum (non-fatal): ${String(e.message).slice(0, 100)}`)
   }
 
   // Step 2: Push schema using direct binary
