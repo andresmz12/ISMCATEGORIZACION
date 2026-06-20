@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
   try {
-    const { email, password, name, accountType, firmName, businessName, industry, entityType } = await req.json()
+    const { email, password, name, accountType, plan, firmName, businessName, industry, entityType } = await req.json()
 
     if (!email || !password) return NextResponse.json({ error: 'Email y contraseña requeridos' }, { status: 400 })
     if (password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 })
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
         name: (name || email.split('@')[0]).trim(),
         accountType: accountType as 'ACCOUNTANT' | 'INDIVIDUAL',
         firmName: accountType === 'ACCOUNTANT' ? (firmName?.trim() || null) : null,
-        plan: 'BASIC',
+        plan: (['BASIC','PLUS','ENTERPRISE'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE',
         isActive: true,
       },
     })

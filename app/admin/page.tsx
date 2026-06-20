@@ -23,6 +23,8 @@ interface Metrics {
   aiUsage: number
 }
 
+const EMPTY_FORM = { name: '', email: '', password: '', accountType: 'INDIVIDUAL', plan: 'BASIC', businessName: '', firmName: '' }
+
 export default function AdminPage() {
   const { t } = useTranslation()
   const [users, setUsers] = useState<User[]>([])
@@ -33,6 +35,12 @@ export default function AdminPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [search, setSearch] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  // Create account modal
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [createLoading, setCreateLoading] = useState(false)
+  const [createError, setCreateError] = useState('')
 
   async function load() {
     setLoading(true)
@@ -77,6 +85,45 @@ export default function AdminPage() {
     setActionLoading(null)
   }
 
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.email || !form.password) { setCreateError('Email y contraseña requeridos'); return }
+    if (form.password.length < 8) { setCreateError('Contraseña mínimo 8 caracteres'); return }
+    setCreateLoading(true)
+    setCreateError('')
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        accountType: form.accountType,
+        plan: form.plan,
+        businessName: form.accountType === 'INDIVIDUAL' ? form.businessName : undefined,
+        firmName: form.accountType === 'ACCOUNTANT' ? form.firmName : undefined,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setCreateError(data.error || 'Error al crear cuenta')
+      setCreateLoading(false)
+      return
+    }
+    // Update plan if not BASIC (register always creates BASIC)
+    if (form.plan !== 'BASIC') {
+      await fetch(`/api/admin/users/${data.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: form.plan }),
+      })
+    }
+    setCreateLoading(false)
+    setShowCreate(false)
+    setForm(EMPTY_FORM)
+    await load()
+  }
+
   const filtered = users.filter(u => {
     if (filterType && u.accountType !== filterType) return false
     if (filterPlan && u.plan !== filterPlan) return false
@@ -86,21 +133,26 @@ export default function AdminPage() {
     return true
   })
 
-  const planBadge: Record<string, string> = {
-    BASIC: 'bg-gray-100 text-gray-700',
-    PLUS: 'bg-blue-100 text-blue-700',
-    ENTERPRISE: 'bg-purple-100 text-purple-700',
-  }
-
   const typeBadge: Record<string, string> = {
     SUPERADMIN: 'bg-red-100 text-red-700',
     ACCOUNTANT: 'bg-[#1B4965]/10 text-[#1B4965]',
     INDIVIDUAL: 'bg-emerald-100 text-emerald-700',
   }
 
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#1B4965] focus:ring-2 focus:ring-[#1B4965]/10 transition-all'
+
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">{t('admin.title')}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">{t('admin.title')}</h1>
+        <button
+          onClick={() => { setShowCreate(true); setCreateError(''); setForm(EMPTY_FORM) }}
+          className="flex items-center gap-2 px-4 py-2 bg-[#1B4965] text-white text-sm font-semibold rounded-lg hover:bg-[#143A52] transition-colors"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+          Crear cuenta
+        </button>
+      </div>
 
       {/* Metrics */}
       {metrics && (
@@ -236,6 +288,81 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* Create account modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">Crear cuenta</h2>
+              <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="p-6 space-y-4">
+              {createError && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">{createError}</div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de cuenta</label>
+                  <select className={inputCls} value={form.accountType} onChange={e => setForm(f => ({ ...f, accountType: e.target.value }))}>
+                    <option value="INDIVIDUAL">Independiente</option>
+                    <option value="ACCOUNTANT">Contador</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Plan</label>
+                  <select className={inputCls} value={form.plan} onChange={e => setForm(f => ({ ...f, plan: e.target.value }))}>
+                    <option value="BASIC">Basic</option>
+                    <option value="PLUS">Plus</option>
+                    <option value="ENTERPRISE">Enterprise</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Nombre completo</label>
+                <input className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="María López" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Correo electrónico *</label>
+                <input className={inputCls} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="usuario@ejemplo.com" required />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña *</label>
+                <input className={inputCls} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 8 caracteres" required />
+              </div>
+
+              {form.accountType === 'INDIVIDUAL' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre del negocio</label>
+                  <input className={inputCls} value={form.businessName} onChange={e => setForm(f => ({ ...f, businessName: e.target.value }))} placeholder="Mi Empresa LLC" />
+                </div>
+              )}
+              {form.accountType === 'ACCOUNTANT' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre del despacho</label>
+                  <input className={inputCls} value={form.firmName} onChange={e => setForm(f => ({ ...f, firmName: e.target.value }))} placeholder="García & Asociados" />
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowCreate(false)} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={createLoading} className="flex-1 h-10 bg-[#1B4965] text-white rounded-lg text-sm font-semibold hover:bg-[#143A52] transition-colors disabled:opacity-60">
+                  {createLoading ? 'Creando...' : 'Crear cuenta'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
