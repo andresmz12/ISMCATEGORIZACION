@@ -24,3 +24,33 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   return NextResponse.json(user)
 }
+
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions)
+  if ((session?.user as any)?.accountType !== 'SUPERADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: params.id }, select: { accountType: true } })
+  if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (target.accountType === 'SUPERADMIN') {
+    return NextResponse.json({ error: 'Cannot delete superadmin' }, { status: 400 })
+  }
+
+  // Cascade: delete businesses owned solely by this user
+  const ownedBusinessIds = await prisma.businessUser.findMany({
+    where: { userId: params.id, role: 'OWNER' },
+    select: { businessId: true },
+  })
+  for (const { businessId } of ownedBusinessIds) {
+    const otherOwners = await prisma.businessUser.count({
+      where: { businessId, role: 'OWNER', userId: { not: params.id } },
+    })
+    if (otherOwners === 0) {
+      await prisma.business.delete({ where: { id: businessId } })
+    }
+  }
+
+  await prisma.user.delete({ where: { id: params.id } })
+  return NextResponse.json({ ok: true })
+}

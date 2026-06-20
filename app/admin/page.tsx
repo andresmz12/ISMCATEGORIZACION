@@ -47,6 +47,14 @@ export default function AdminPage() {
 
   useEffect(() => { load() }, [])
 
+  async function deleteUser(user: User) {
+    if (!confirm(`¿Eliminar a ${user.name || user.email}? Esta acción no se puede deshacer.`)) return
+    setActionLoading(user.id)
+    await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' })
+    await load()
+    setActionLoading(null)
+  }
+
   async function toggleStatus(user: User) {
     setActionLoading(user.id)
     await fetch(`/api/admin/users/${user.id}`, {
@@ -194,17 +202,27 @@ export default function AdminPage() {
                     </td>
                     <td className="px-4 py-3">
                       {user.accountType !== 'SUPERADMIN' && (
-                        <button
-                          onClick={() => toggleStatus(user)}
-                          disabled={actionLoading === user.id}
-                          className={`text-xs font-medium px-3 py-1 rounded-lg transition-colors disabled:opacity-50 ${
-                            user.isActive
-                              ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                          }`}
-                        >
-                          {user.isActive ? t('admin.suspend') : t('admin.activate')}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => toggleStatus(user)}
+                            disabled={actionLoading === user.id}
+                            className={`text-xs font-medium px-3 py-1 rounded-lg transition-colors disabled:opacity-50 ${
+                              user.isActive
+                                ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                            }`}
+                          >
+                            {user.isActive ? t('admin.suspend') : t('admin.activate')}
+                          </button>
+                          <button
+                            onClick={() => deleteUser(user)}
+                            disabled={actionLoading === user.id}
+                            title="Eliminar usuario"
+                            className="text-xs font-medium px-2 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-50"
+                          >
+                            🗑
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
