@@ -128,12 +128,7 @@ export default function NegociosPage() {
               </select>
             </div>
           </div>
-          <div>
-            <label className="label">{t('business.taxYearLabel')}</label>
-            <select className="input w-auto" value={form.taxYear} onChange={e => setForm(f => ({ ...f, taxYear: e.target.value }))}>
-              {[2023, 2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
+
           <button type="submit" disabled={submitting} className="btn-primary disabled:opacity-50">
             {submitting ? t('common.loading') : t('business.create')}
           </button>
