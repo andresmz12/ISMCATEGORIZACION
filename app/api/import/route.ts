@@ -104,6 +104,7 @@ export async function POST(req: Request) {
     let imported = 0
     let duplicates = 0
     const errors: string[] = []
+    const importedIds: string[] = []
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
@@ -135,16 +136,17 @@ export async function POST(req: Request) {
         const existing = await prisma.transaction.findFirst({ where: { businessId, checksum } })
         if (existing) { duplicates++; continue }
 
-        await prisma.transaction.create({
+        const tx = await prisma.transaction.create({
           data: { businessId, date, description: descVal, amount, type, status: 'PENDING', checksum, sourceFile: file.name },
         })
         imported++
+        importedIds.push(tx.id)
       } catch (e: any) {
         errors.push(`Row ${i + 2}: ${e.message}`)
       }
     }
 
-    return NextResponse.json({ imported, duplicates, errors, total: rows.length })
+    return NextResponse.json({ imported, duplicates, errors, total: rows.length, importedIds })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

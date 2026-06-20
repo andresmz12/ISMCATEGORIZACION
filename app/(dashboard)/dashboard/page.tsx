@@ -175,20 +175,50 @@ export default function DashboardPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">{activeBiz?.name} · {t('dashboard.ytd')} {now.getFullYear()}</p>
         </div>
-        {businesses.length > 1 && (
-          <select
-            className="input w-auto text-sm flex-shrink-0"
-            value={activeBiz?.id}
-            onChange={e => {
-              const biz = businesses.find(b => b.id === e.target.value)
-              setActiveBiz(biz)
-              if (biz) localStorage.setItem('activeBusiness', biz.id)
-            }}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {businesses.length > 1 && (
+            <select
+              className="input w-auto text-sm"
+              value={activeBiz?.id}
+              onChange={e => {
+                const biz = businesses.find(b => b.id === e.target.value)
+                setActiveBiz(biz)
+                if (biz) localStorage.setItem('activeBusiness', biz.id)
+              }}
+            >
+              {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          )}
+          <Link
+            href="/clasificar"
+            className="flex items-center gap-2 px-4 py-2 bg-[#1B4965] text-white rounded-xl text-sm font-semibold hover:bg-[#153d52] transition-colors shadow-sm"
           >
-            {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        )}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Clasificar con IA
+          </Link>
+        </div>
       </div>
+
+      {/* CTA hero — shown when no transactions */}
+      {ytdTxs.length === 0 && (
+        <div className="rounded-2xl bg-gradient-to-r from-[#1B4965] to-[#2A6080] p-6 text-white flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold mb-1">¿Listo para clasificar tus gastos?</h2>
+            <p className="text-white/70 text-sm">Sube tu estado de cuenta y la IA los clasifica automáticamente en segundos.</p>
+          </div>
+          <Link
+            href="/clasificar"
+            className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 bg-[#2EC4B6] text-white rounded-xl text-sm font-semibold hover:bg-[#25a99e] transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Subir archivo
+          </Link>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
