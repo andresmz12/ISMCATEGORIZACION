@@ -76,6 +76,7 @@ export default function RecibosPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [tab, setTab] = useState<'scan' | 'history'>('scan')
 
@@ -280,14 +281,23 @@ export default function RecibosPage() {
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
-              dragging ? 'border-[#1B4965] bg-[#1B4965]/5' : 'border-gray-200 hover:border-[#1B4965]/50'
+            className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+              dragging ? 'border-[#1B4965] bg-[#1B4965]/5' : 'border-gray-200'
             }`}
-            onClick={() => fileRef.current?.click()}
           >
-            <div className="text-5xl mb-3">📸</div>
+            <div className="text-4xl mb-3">📸</div>
             <p className="text-sm font-medium text-gray-700 mb-1">{t('receipts.dropzone')}</p>
-            <p className="text-xs text-gray-400">{t('receipts.formats')}</p>
+            <p className="text-xs text-gray-400 mb-4">{t('receipts.formats')}</p>
+
+            {/* Hidden inputs */}
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={onFileInput}
+              className="hidden"
+            />
             <input
               ref={fileRef}
               type="file"
@@ -296,13 +306,31 @@ export default function RecibosPage() {
               onChange={onFileInput}
               className="hidden"
             />
-            <button
-              type="button"
-              onClick={e => { e.stopPropagation(); fileRef.current?.click() }}
-              className="btn-primary mt-4 text-sm px-6"
-            >
-              {t('receipts.choose')}
-            </button>
+
+            {/* Mobile: two buttons side by side */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1B4965] text-white rounded-xl text-sm font-semibold hover:bg-[#153d52] transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Tomar foto
+              </button>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Subir archivo / Galería
+              </button>
+            </div>
           </div>
 
           {/* Pending/scanning jobs */}

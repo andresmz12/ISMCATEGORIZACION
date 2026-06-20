@@ -336,19 +336,19 @@ export default function ClasificarPage() {
 
       {/* Step progress */}
       {step !== 'done' && (
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {(['upload', 'map', 'processing', 'review'] as const).map((s, i) => {
-            const labels = ['Subir archivo', 'Mapear columnas', 'Clasificando...', 'Revisar resultados']
+            const labels = ['Subir', 'Mapear', 'Clasificando', 'Revisar']
             const idx = ['upload', 'map', 'processing', 'review'].indexOf(step)
             const done = i < idx
             const active = s === step
             return (
-              <div key={s} className="flex items-center gap-2">
+              <div key={s} className="flex items-center gap-1.5 flex-shrink-0">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${active ? 'bg-[#1B4965] text-white' : done ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
                   {done ? '✓' : i + 1}
                 </div>
-                <span className={`font-medium ${active ? 'text-gray-800' : done ? 'text-emerald-600' : 'text-gray-400'}`}>{labels[i]}</span>
-                {i < 3 && <span className="text-gray-300 text-xs">→</span>}
+                <span className={`text-xs font-medium hidden sm:inline ${active ? 'text-gray-800' : done ? 'text-emerald-600' : 'text-gray-400'}`}>{labels[i]}</span>
+                {i < 3 && <span className="text-gray-300 text-xs">›</span>}
               </div>
             )
           })}
@@ -376,11 +376,10 @@ export default function ClasificarPage() {
           )}
 
           <div
-            className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all cursor-pointer ${dragging ? 'border-[#1B4965] bg-[#1B4965]/5 scale-[1.01]' : 'border-gray-200 hover:border-[#1B4965]/50 hover:bg-gray-50'}`}
+            className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${dragging ? 'border-[#1B4965] bg-[#1B4965]/5' : 'border-gray-200'}`}
             onDragOver={e => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
             onDrop={async e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) await processFile(f) }}
-            onClick={() => fileInputRef.current?.click()}
           >
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 rounded-2xl bg-[#1B4965]/10 flex items-center justify-center">
@@ -389,13 +388,23 @@ export default function ClasificarPage() {
                 </svg>
               </div>
             </div>
-            <p className="text-base font-semibold text-gray-700 mb-1">Arrastra tu estado de cuenta aquí</p>
-            <p className="text-sm text-gray-400 mb-4">o haz click para seleccionar</p>
-            <div className="flex justify-center gap-2">
+            <p className="text-base font-semibold text-gray-700 mb-1">Sube tu estado de cuenta</p>
+            <p className="text-sm text-gray-400 mb-3 hidden sm:block">Arrastra el archivo aquí o usa el botón</p>
+            <div className="flex justify-center gap-2 mb-5">
               {['CSV', 'XLSX', 'XLS'].map(ext => (
                 <span key={ext} className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded font-mono">.{ext.toLowerCase()}</span>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 mx-auto px-6 py-3 bg-[#1B4965] text-white rounded-xl text-sm font-semibold hover:bg-[#153d52] transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Seleccionar archivo
+            </button>
           </div>
 
           <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden"
@@ -608,35 +617,35 @@ export default function ClasificarPage() {
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap items-center gap-3 justify-between">
+          <div className="space-y-3">
             <button
-              onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]) }}
-              className="btn-secondary text-sm"
+              onClick={confirmAll}
+              disabled={confirming}
+              className="w-full btn-primary flex items-center justify-center gap-2 py-3 disabled:opacity-50"
             >
-              ← Clasificar otro archivo
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {confirming ? 'Confirmando...' : `Confirmar clasificación (${totalTx})`}
             </button>
-            <div className="flex flex-wrap gap-3">
-              <button onClick={downloadExcel} className="btn-secondary text-sm flex items-center gap-2">
+            <div className="flex gap-3">
+              <button onClick={downloadExcel} className="flex-1 btn-secondary text-sm flex items-center justify-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                Descargar Excel
+                Excel
               </button>
-              <button onClick={downloadPDF} className="btn-secondary text-sm flex items-center gap-2">
+              <button onClick={downloadPDF} className="flex-1 btn-secondary text-sm flex items-center justify-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                Descargar PDF
+                PDF
               </button>
               <button
-                onClick={confirmAll}
-                disabled={confirming}
-                className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50"
+                onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]) }}
+                className="flex-1 btn-secondary text-sm"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {confirming ? 'Confirmando...' : `Confirmar clasificación (${totalTx})`}
+                Otro archivo
               </button>
             </div>
           </div>
