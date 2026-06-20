@@ -38,6 +38,7 @@ export const config = {
     '/import/:path*',
     '/reports/:path*',
     '/rules/:path*',
+    '/recibos/:path*',
     '/settings/:path*',
     '/admin/:path*',
   ],
