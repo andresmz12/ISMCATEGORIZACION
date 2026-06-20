@@ -43,16 +43,16 @@ function LandingPage() {
       <section className="relative overflow-hidden bg-gradient-to-br from-[#1B4965] via-[#1B4965] to-[#0d3349] text-white">
         <div className="absolute inset-0 opacity-10" style={{backgroundImage:'radial-gradient(circle at 30% 50%, #2EC4B6 0%, transparent 60%), radial-gradient(circle at 80% 20%, #60a5fa 0%, transparent 50%)'}} />
         <div className="relative max-w-6xl mx-auto px-5 pt-24 pb-20 text-center">
-          <div className="inline-flex items-center gap-2 bg-[#2EC4B6]/20 border border-[#2EC4B6]/30 text-[#2EC4B6] text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-            Clasificación de gastos con IA
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white/80 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            Software de P&amp;L para negocios en USA
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight max-w-4xl mx-auto">
-            Tu contabilidad fiscal,<br />
-            <span className="text-[#2EC4B6]">automatizada con IA</span>
+            Controla tus finanzas.<br />
+            <span className="text-[#2EC4B6]">Simplifica tus impuestos.</span>
           </h1>
           <p className="mt-6 text-lg md:text-xl text-white/70 max-w-2xl mx-auto leading-relaxed">
-            Importa tu estado de cuenta bancario, deja que la IA clasifique tus gastos según el IRS Schedule C y genera reportes fiscales en segundos.
+            Registra ingresos y gastos, genera tu reporte P&amp;L y ten todo listo para el IRS Schedule C. Sin hojas de cálculo, sin estrés.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/signup" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#2EC4B6] hover:bg-[#26a89b] text-white font-bold px-8 py-3.5 rounded-xl text-base transition-colors shadow-lg shadow-[#2EC4B6]/30">
@@ -137,19 +137,22 @@ function LandingPage() {
       {/* ── FEATURES ── */}
       <section id="features" className="py-24 max-w-6xl mx-auto px-5">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">Todo lo que necesitas para tus impuestos</h2>
-          <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">Desde la importación del banco hasta el reporte final para tu contador, todo en un solo lugar.</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">Todo lo que necesitas en un solo lugar</h2>
+          <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">Desde importar tus movimientos bancarios hasta entregar el reporte a tu contador — sin complicaciones.</p>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { icon: '⚡', title: 'Clasificación con IA', desc: 'Sube tu CSV o Excel del banco y nuestra IA clasifica automáticamente cada transacción con categorías IRS Schedule C.', color: 'bg-[#2EC4B6]/10 text-[#2EC4B6]' },
-            { icon: '📊', title: 'Reportes fiscales', desc: 'Genera reportes en PDF y Excel con desglose por categoría, deducibles y ganancia neta. Listos para tu contador.', color: 'bg-blue-50 text-blue-600' },
-            { icon: '🏦', title: 'Cualquier banco', desc: 'Compatible con Chase, Bank of America, Wells Fargo y cualquier banco que exporte en CSV o Excel.', color: 'bg-purple-50 text-purple-600' },
-            { icon: '👥', title: 'Trabajo en equipo', desc: 'Crea usuarios para tu personal o contador. Cada uno tiene su propio acceso con la misma información.', color: 'bg-amber-50 text-amber-600' },
-            { icon: '📷', title: 'Escaneo de recibos', desc: 'Adjunta fotos de tus recibos desde tu celular. Todo queda organizado y vinculado a cada gasto.', color: 'bg-rose-50 text-rose-600' },
-            { icon: '🤖', title: 'Reglas automáticas', desc: 'Crea reglas para que "Uber" siempre se clasifique como Transporte. La IA aprende de tus correcciones.', color: 'bg-emerald-50 text-emerald-600' },
+            { icon: '📊', title: 'Reporte P&L en tiempo real', desc: 'Ve tus ingresos, gastos y ganancia neta del año en curso. Tu estado financiero siempre actualizado.', color: 'bg-blue-50 text-blue-600', badge: null },
+            { icon: '🏦', title: 'Importa de cualquier banco', desc: 'Sube el CSV o Excel de tu banco (Chase, BofA, Wells Fargo…) y todas tus transacciones quedan registradas al instante.', color: 'bg-purple-50 text-purple-600', badge: null },
+            { icon: '📁', title: 'Categorías IRS Schedule C', desc: 'Clasifica cada gasto en la categoría correcta del IRS. Todo organizado para tu declaración de impuestos.', color: 'bg-emerald-50 text-emerald-600', badge: null },
+            { icon: '📄', title: 'Exporta PDF y Excel', desc: 'Genera reportes listos para entregar a tu contador o adjuntar a tu declaración con un solo clic.', color: 'bg-amber-50 text-amber-600', badge: null },
+            { icon: '👥', title: 'Trabajo en equipo', desc: 'Crea accesos para tu personal o contador. Cada uno tiene su propio usuario y ve la misma información.', color: 'bg-rose-50 text-rose-600', badge: null },
+            { icon: '⚡', title: 'Clasificación con IA', desc: 'Función Plus: sube tus movimientos y la IA los categoriza automáticamente. Ahorra horas de trabajo manual.', color: 'bg-[#2EC4B6]/10 text-[#2EC4B6]', badge: 'Plus' },
           ].map(f => (
-            <div key={f.title} className="group p-6 rounded-2xl border border-gray-100 hover:border-[#1B4965]/20 hover:shadow-md transition-all">
+            <div key={f.title} className="group relative p-6 rounded-2xl border border-gray-100 hover:border-[#1B4965]/20 hover:shadow-md transition-all">
+              {f.badge && (
+                <span className="absolute top-4 right-4 text-xs font-bold bg-[#2EC4B6] text-white px-2 py-0.5 rounded-full">{f.badge}</span>
+              )}
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 text-2xl ${f.color}`}>
                 {f.icon}
               </div>
@@ -169,9 +172,9 @@ function LandingPage() {
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { step: '01', title: 'Importa tu estado de cuenta', desc: 'Descarga el CSV o Excel de tu banco y arrástralo a la plataforma. Mapeamos las columnas automáticamente.' },
-              { step: '02', title: 'La IA clasifica todo', desc: 'Nuestra IA revisa cada transacción y la asigna a la categoría IRS correcta con nivel de confianza. Tú solo revisas las dudosas.' },
-              { step: '03', title: 'Descarga tu reporte', desc: 'Genera un PDF o Excel con el desglose fiscal completo. Listo para compartir con tu contador.' },
+              { step: '01', title: 'Importa tus movimientos', desc: 'Descarga el CSV o Excel de tu banco y súbelo a la plataforma. Las columnas se mapean automáticamente.' },
+              { step: '02', title: 'Clasifica y organiza', desc: 'Asigna cada transacción a su categoría IRS. Hazlo manualmente o activa la clasificación automática (función Plus).' },
+              { step: '03', title: 'Descarga tu reporte', desc: 'Genera un PDF o Excel con tu P&L completo y el desglose por categoría. Listo para tu contador o declaración.' },
             ].map(s => (
               <div key={s.step} className="relative bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#1B4965] text-white rounded-full flex items-center justify-center text-xs font-bold">
@@ -264,8 +267,8 @@ function LandingPage() {
       {/* ── FINAL CTA ── */}
       <section className="py-24 bg-gradient-to-br from-[#1B4965] to-[#0d3349] text-white text-center">
         <div className="max-w-3xl mx-auto px-5">
-          <h2 className="text-3xl md:text-4xl font-extrabold mb-4">¿Listo para ahorrar horas en tus impuestos?</h2>
-          <p className="text-lg text-white/60 mb-10">Automatiza tu contabilidad fiscal hoy mismo.</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Empieza a controlar tus finanzas hoy</h2>
+          <p className="text-lg text-white/60 mb-10">Organiza tus ingresos y gastos, ten tu P&amp;L siempre listo y no vuelvas a improvisar en época de impuestos.</p>
           <Link href="/signup" className="inline-flex items-center gap-2 bg-[#2EC4B6] hover:bg-[#26a89b] text-white font-bold px-10 py-4 rounded-xl text-lg transition-colors shadow-lg shadow-[#2EC4B6]/30">
             Empezar gratis ahora
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
