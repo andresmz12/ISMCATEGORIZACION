@@ -63,7 +63,7 @@ function LandingPage() {
               Inicia sesión
             </Link>
           </div>
-          <p className="mt-4 text-sm text-white/40">Sin tarjeta de crédito · Configura en 5 minutos</p>
+          <p className="mt-4 text-sm text-white/40">Desde $9/mes · Cancela cuando quieras</p>
         </div>
 
         {/* Dashboard mock */}
@@ -200,18 +200,18 @@ function LandingPage() {
         <div className="grid md:grid-cols-3 gap-6 items-start">
           {[
             {
-              name: 'Básico', price: 'Gratis', sub: 'Para siempre',
-              features: ['1 negocio', 'Hasta 200 transacciones/mes', 'Clasificación IA básica', 'Exportar PDF', 'Soporte por email'],
-              cta: 'Empezar gratis', href: '/signup', highlight: false,
+              name: 'Básico', price: '$9', sub: '/mes',
+              features: ['1 negocio', 'Hasta 200 transacciones/mes', 'Categorías IRS Schedule C', 'Exportar PDF', 'Soporte por email'],
+              cta: 'Comenzar', href: '/signup', highlight: false,
             },
             {
               name: 'Plus', price: '$29', sub: '/mes',
-              features: ['5 negocios', 'Transacciones ilimitadas', 'Clasificación IA avanzada', 'Exportar PDF + Excel', '3 usuarios de equipo', 'Reglas automáticas', 'Soporte prioritario'],
-              cta: 'Empezar con Plus', href: '/signup', highlight: true,
+              features: ['5 negocios', 'Transacciones ilimitadas', 'Clasificación automática con IA', 'Exportar PDF + Excel', '3 usuarios de equipo', 'Reglas automáticas', 'Soporte prioritario'],
+              cta: 'Comenzar con Plus', href: '/signup', highlight: true,
             },
             {
               name: 'Enterprise', price: '$79', sub: '/mes',
-              features: ['Negocios ilimitados', 'Transacciones ilimitadas', 'Clasificación IA máxima', 'Reportes personalizados', 'Usuarios ilimitados', 'API access', 'Soporte dedicado 24/7'],
+              features: ['Negocios ilimitados', 'Transacciones ilimitadas', 'Clasificación IA avanzada', 'Reportes personalizados', 'Usuarios ilimitados', 'Soporte dedicado 24/7'],
               cta: 'Contactar ventas', href: '/signup', highlight: false,
             },
           ].map(p => (
@@ -273,7 +273,7 @@ function LandingPage() {
             Empezar gratis ahora
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
           </Link>
-          <p className="mt-4 text-sm text-white/30">Sin tarjeta de crédito · Cancela cuando quieras</p>
+          <p className="mt-4 text-sm text-white/30">Desde $9/mes · Cancela cuando quieras</p>
         </div>
       </section>
 
