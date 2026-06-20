@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   const { t } = useTranslation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [activeBusiness, setActiveBusiness] = useState<Business | null>(null)
 
   const accountType = (session?.user as any)?.accountType
@@ -85,23 +86,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const roleLabel = accountType === 'SUPERADMIN' ? t('role.superadmin') : accountType === 'ACCOUNTANT' ? t('role.accountant') : t('role.individual')
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ isCollapsed = false }: { isCollapsed?: boolean }) => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="p-5 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#2EC4B6] rounded-xl flex items-center justify-center flex-shrink-0">
-            <span className="text-sm font-bold text-white">MP</span>
-          </div>
-          <div>
+      {/* Logo + collapse toggle */}
+      <div className={`border-b border-white/10 flex items-center ${isCollapsed ? 'justify-center p-3' : 'p-5 gap-3'}`}>
+        <div className="w-9 h-9 bg-[#2EC4B6] rounded-xl flex items-center justify-center flex-shrink-0">
+          <span className="text-sm font-bold text-white">MP</span>
+        </div>
+        {!isCollapsed && (
+          <div className="flex-1 min-w-0">
             <p className="text-white font-bold text-sm leading-none">{t('app.short')}</p>
             <p className="text-white/50 text-xs mt-0.5">{t('app.name')}</p>
           </div>
-        </div>
+        )}
+        {/* Desktop collapse button */}
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors flex-shrink-0"
+          title={isCollapsed ? 'Expandir' : 'Colapsar'}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {isCollapsed
+              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            }
+          </svg>
+        </button>
       </div>
 
       {/* Business switcher — ACCOUNTANT only */}
-      {accountType === 'ACCOUNTANT' && (
+      {accountType === 'ACCOUNTANT' && !isCollapsed && (
         <div className="px-3 py-3 border-b border-white/10">
           <BusinessSwitcher
             activeBusiness={activeBusiness}
@@ -111,19 +125,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map(item => {
           const active = pathname === item.href
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              title={isCollapsed ? item.label : undefined}
+              className={`flex items-center rounded-lg text-sm font-medium transition-colors ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'} ${
                 active ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
               }`}
             >
               {item.icon}
-              {item.label}
+              {!isCollapsed && item.label}
             </Link>
           )
         })}
@@ -131,42 +146,60 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {accountType === 'SUPERADMIN' && (
           <Link
             href="/admin"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mt-2 ${
+            title={isCollapsed ? t('nav.admin') : undefined}
+            className={`flex items-center rounded-lg text-sm font-medium transition-colors mt-2 ${isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'} ${
               pathname.startsWith('/admin') ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
             }`}
           >
             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-            {t('nav.admin')}
+            {!isCollapsed && t('nav.admin')}
           </Link>
         )}
       </nav>
 
-      {/* Footer — user info + signout (in mobile drawer too) */}
-      <div className="p-4 border-t border-white/10">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-8 h-8 rounded-full bg-[#2EC4B6] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {initials}
+      {/* Footer */}
+      <div className={`border-t border-white/10 ${isCollapsed ? 'p-2' : 'p-4'}`}>
+        {isCollapsed ? (
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-[#2EC4B6] flex items-center justify-center text-white text-xs font-bold" title={session.user?.name || session.user?.email || ''}>
+              {initials}
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: '/signin' })}
+              title={t('auth.signout')}
+              className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-white truncate">{session.user?.name || session.user?.email}</p>
-            <p className="text-xs text-white/50 truncate">{roleLabel}</p>
-          </div>
-        </div>
-        <button
-          onClick={() => signOut({ callbackUrl: '/signin' })}
-          className="w-full text-xs text-white/60 hover:text-white py-1.5 rounded-lg hover:bg-white/10 transition-colors text-left px-2"
-        >
-          {t('auth.signout')}
-        </button>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-[#2EC4B6] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                {initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white truncate">{session.user?.name || session.user?.email}</p>
+                <p className="text-xs text-white/50 truncate">{roleLabel}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: '/signin' })}
+              className="w-full text-xs text-white/60 hover:text-white py-1.5 rounded-lg hover:bg-white/10 transition-colors text-left px-2"
+            >
+              {t('auth.signout')}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
 
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
-      {/* Desktop sidebar — fixed height, scrolls internally */}
-      <aside className="hidden lg:flex w-64 bg-[#1B4965] flex-col flex-shrink-0 overflow-y-auto">
-        <SidebarContent />
+      {/* Desktop sidebar — collapsible */}
+      <aside className={`hidden lg:flex bg-[#1B4965] flex-col flex-shrink-0 overflow-y-auto transition-all duration-200 ${collapsed ? 'w-16' : 'w-64'}`}>
+        <SidebarContent isCollapsed={collapsed} />
       </aside>
 
       {/* Mobile sidebar — drawer overlay */}
@@ -177,7 +210,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1B4965] flex flex-col lg:hidden transform transition-transform duration-200 ease-in-out overflow-y-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <SidebarContent />
+        <SidebarContent isCollapsed={false} />
       </aside>
 
       {/* Main content — fills remaining width, scrolls independently */}
