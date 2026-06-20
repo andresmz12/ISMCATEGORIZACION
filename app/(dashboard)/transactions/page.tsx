@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
@@ -26,7 +26,10 @@ export default function TransactionsPage() {
     categoryId: '',
     from: '',
     to: '',
+    search: '',
   })
+  const [searchInput, setSearchInput] = useState('')
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [splitTx, setSplitTx] = useState<any>(null)
   const [splitRows, setSplitRows] = useState([{ categoryId: '', amount: '', deductibility: '' }])
@@ -59,6 +62,7 @@ export default function TransactionsPage() {
     if (filters.categoryId) params.set('categoryId', filters.categoryId)
     if (filters.from) params.set('from', filters.from)
     if (filters.to) params.set('to', filters.to)
+    if (filters.search) params.set('search', filters.search)
     const data = await fetch(`/api/transactions?${params}`).then(r => r.json())
     setTransactions(data.transactions || [])
     setTotal(data.total || 0)
@@ -199,6 +203,26 @@ export default function TransactionsPage() {
 
       {/* Filters */}
       <div className="card p-4 flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[180px]">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Buscar por descripción..."
+            className="input text-sm pl-9 w-full"
+            value={searchInput}
+            onChange={e => {
+              const val = e.target.value
+              setSearchInput(val)
+              if (searchTimer.current) clearTimeout(searchTimer.current)
+              searchTimer.current = setTimeout(() => {
+                setFilters(f => ({ ...f, search: val }))
+                setPage(1)
+              }, 400)
+            }}
+          />
+        </div>
         <select className="input w-auto text-sm" value={filters.status} onChange={e => { setFilters(f => ({ ...f, status: e.target.value })); setPage(1) }}>
           <option value="">{t('tx.allStatus')}</option>
           <option value="PENDING">{t('tx.pending')}</option>
@@ -211,7 +235,7 @@ export default function TransactionsPage() {
         </select>
         <input type="date" className="input w-auto text-sm" value={filters.from} onChange={e => { setFilters(f => ({ ...f, from: e.target.value })); setPage(1) }} />
         <input type="date" className="input w-auto text-sm" value={filters.to} onChange={e => { setFilters(f => ({ ...f, to: e.target.value })); setPage(1) }} />
-        <button onClick={() => { setFilters({ status: '', categoryId: '', from: '', to: '' }); setPage(1) }} className="btn-secondary text-sm">{t('common.clear')}</button>
+        <button onClick={() => { setSearchInput(''); setFilters({ status: '', categoryId: '', from: '', to: '', search: '' }); setPage(1) }} className="btn-secondary text-sm">{t('common.clear')}</button>
       </div>
 
       {/* Bulk action bar — appears above table when items are selected */}

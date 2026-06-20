@@ -21,6 +21,7 @@ export async function GET(req: Request) {
   const categoryId = searchParams.get('categoryId')
   const from = searchParams.get('from')
   const to = searchParams.get('to')
+  const search = searchParams.get('search')
   const page = parseInt(searchParams.get('page') || '1')
   const limit = parseInt(searchParams.get('limit') || '50')
 
@@ -32,12 +33,13 @@ export async function GET(req: Request) {
     if (from) where.date.gte = new Date(from)
     if (to) where.date.lte = new Date(to)
   }
+  if (search) where.description = { contains: search, mode: 'insensitive' }
 
   const [transactions, total] = await Promise.all([
     prisma.transaction.findMany({
       where,
       include: { category: true, splits: { include: { category: true } } },
-      orderBy: { date: 'desc' },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       skip: (page - 1) * limit,
       take: limit,
     }),
