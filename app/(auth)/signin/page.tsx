@@ -1,7 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
@@ -107,13 +107,15 @@ function DashboardMockup() {
   )
 }
 
-export default function SignInPage() {
+function SignInForm() {
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const registered = searchParams.get('registered')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -202,6 +204,13 @@ export default function SignInPage() {
               <h2 className="text-2xl font-semibold text-gray-900 mb-1">Iniciar sesión</h2>
               <p className="text-sm text-gray-400 mb-8">Ingresa a tu cuenta para continuar</p>
 
+              {registered && (
+                <div className="mb-5 p-3 bg-emerald-50 border border-emerald-100 rounded-lg text-emerald-700 text-sm flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0"><circle cx="8" cy="8" r="8" fill="#10b981"/><path d="M5 8l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  ¡Cuenta creada! Ingresa con tus credenciales.
+                </div>
+              )}
+
               {error && (
                 <div className="mb-5 p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
                   {error}
@@ -265,5 +274,13 @@ export default function SignInPage() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignInForm />
+    </Suspense>
   )
 }
