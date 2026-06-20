@@ -39,5 +39,15 @@ export async function POST(req: Request) {
     data: { name, industry, entityType, taxYear: taxYear ? Number(taxYear) : null },
   })
   await prisma.businessUser.create({ data: { userId, businessId: business.id, role: 'OWNER' } })
+
+  // Grant access to all team members of this owner
+  const teamMembers = await prisma.user.findMany({ where: { teamOwnerId: userId }, select: { id: true } })
+  if (teamMembers.length > 0) {
+    await prisma.businessUser.createMany({
+      data: teamMembers.map(m => ({ userId: m.id, businessId: business.id, role: 'VIEWER' as const })),
+      skipDuplicates: true,
+    })
+  }
+
   return NextResponse.json(business, { status: 201 })
 }
