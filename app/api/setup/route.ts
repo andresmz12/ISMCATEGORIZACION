@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
+import { execSync } from 'child_process'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
-// One-time setup endpoint — seeds demo users.
+// One-time setup endpoint — pushes schema + seeds demo users.
 // Protected by SETUP_SECRET env var. Safe to leave deployed.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -15,6 +16,18 @@ export async function GET(req: Request) {
 
   try {
     const results: string[] = []
+
+    // Step 1: Push schema to DB
+    try {
+      execSync('npx prisma db push --accept-data-loss', {
+        stdio: 'pipe',
+        timeout: 60000,
+        env: { ...process.env },
+      })
+      results.push('✓ Schema pushed (prisma db push)')
+    } catch (e: any) {
+      results.push(`⚠ Schema push warning: ${String(e.stderr || e.message).slice(0, 200)}`)
+    }
 
     // Upsert superadmin
     const superHash = await bcrypt.hash('SuperAdmin123!', 12)
