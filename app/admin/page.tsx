@@ -42,6 +42,12 @@ export default function AdminPage() {
   const [createLoading, setCreateLoading] = useState(false)
   const [createError, setCreateError] = useState('')
 
+  // Reset password
+  const [resetUser, setResetUser] = useState<User | null>(null)
+  const [resetPwd, setResetPwd] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetError, setResetError] = useState('')
+
   async function load() {
     setLoading(true)
     const [u, m] = await Promise.all([
@@ -83,6 +89,22 @@ export default function AdminPage() {
     })
     await load()
     setActionLoading(null)
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!resetUser) return
+    if (resetPwd.length < 8) { setResetError('Mínimo 8 caracteres'); return }
+    setResetLoading(true)
+    setResetError('')
+    const res = await fetch(`/api/admin/users/${resetUser.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: resetPwd }),
+    })
+    setResetLoading(false)
+    if (res.ok) { setResetUser(null); setResetPwd('') }
+    else setResetError('Error al cambiar contraseña')
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -267,6 +289,14 @@ export default function AdminPage() {
                             {user.isActive ? t('admin.suspend') : t('admin.activate')}
                           </button>
                           <button
+                            onClick={() => { setResetUser(user); setResetPwd(''); setResetError('') }}
+                            disabled={actionLoading === user.id}
+                            title="Cambiar contraseña"
+                            className="text-xs font-medium px-2 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition-colors disabled:opacity-50"
+                          >
+                            🔑
+                          </button>
+                          <button
                             onClick={() => deleteUser(user)}
                             disabled={actionLoading === user.id}
                             title="Eliminar usuario"
@@ -288,6 +318,46 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* Reset password modal */}
+      {resetUser && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Cambiar contraseña</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{resetUser.email}</p>
+              </div>
+              <button onClick={() => setResetUser(null)} className="text-gray-400 hover:text-gray-600">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+            <form onSubmit={handleResetPassword} className="p-6 space-y-4">
+              {resetError && <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">{resetError}</div>}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Nueva contraseña</label>
+                <input
+                  className={inputCls}
+                  type="password"
+                  value={resetPwd}
+                  onChange={e => setResetPwd(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setResetUser(null)} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={resetLoading} className="flex-1 h-10 bg-[#1B4965] text-white rounded-lg text-sm font-semibold hover:bg-[#143A52] transition-colors disabled:opacity-60">
+                  {resetLoading ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Create account modal */}
       {showCreate && (

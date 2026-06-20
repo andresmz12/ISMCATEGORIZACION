@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -15,6 +16,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (typeof body.isActive === 'boolean') data.isActive = body.isActive
   if (body.plan && ['BASIC', 'PLUS', 'ENTERPRISE'].includes(body.plan)) data.plan = body.plan
   if (body.name) data.name = body.name
+  if (body.password && body.password.length >= 8) {
+    data.passwordHash = await bcrypt.hash(body.password, 12)
+  }
 
   const user = await prisma.user.update({
     where: { id: params.id },
