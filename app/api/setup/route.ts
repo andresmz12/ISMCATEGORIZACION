@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { execSync } from 'child_process'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import path from 'path'
 
 // One-time setup endpoint — pushes schema + seeds demo users.
 // Protected by SETUP_SECRET env var. Safe to leave deployed.
@@ -14,21 +15,31 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Forbidden — set SETUP_SECRET env var and pass ?secret=' }, { status: 403 })
   }
 
+  const results: string[] = []
+
+  // Step 1: Push schema to DB using direct binary (npx can be unreliable in prod)
+  const prismaBin = path.join(process.cwd(), 'node_modules', '.bin', 'prisma')
+  let schemaError: string | null = null
   try {
-    const results: string[] = []
+    const out = execSync(`${prismaBin} db push --accept-data-loss`, {
+      stdio: 'pipe',
+      timeout: 90000,
+      env: { ...process.env },
+      cwd: process.cwd(),
+    })
+    results.push('✓ Schema pushed (prisma db push)')
+  } catch (e: any) {
+    const stderr = Buffer.isBuffer(e.stderr) ? e.stderr.toString() : String(e.stderr || '')
+    const stdout = Buffer.isBuffer(e.stdout) ? e.stdout.toString() : String(e.stdout || '')
+    const msg = (stderr || stdout || e.message || 'unknown error').slice(0, 800)
+    schemaError = msg
+    results.push(`✗ Schema push FAILED: ${msg}`)
+    // Return immediately — cannot seed without schema
+    return NextResponse.json({ ok: false, results, error: msg }, { status: 500 })
+  }
 
-    // Step 1: Push schema to DB
-    try {
-      execSync('npx prisma db push --accept-data-loss', {
-        stdio: 'pipe',
-        timeout: 60000,
-        env: { ...process.env },
-      })
-      results.push('✓ Schema pushed (prisma db push)')
-    } catch (e: any) {
-      results.push(`⚠ Schema push warning: ${String(e.stderr || e.message).slice(0, 200)}`)
-    }
-
+  // Step 2: Seed users + categories
+  try {
     // Upsert superadmin
     const superHash = await bcrypt.hash('SuperAdmin123!', 12)
     await prisma.user.upsert({
@@ -122,6 +133,7 @@ export async function GET(req: Request) {
       db: { users: userCount, categories: catCount },
     })
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message }, { status: 500 })
+    results.push(`✗ Seed error: ${e.message}`)
+    return NextResponse.json({ ok: false, results, error: e.message }, { status: 500 })
   }
 }
