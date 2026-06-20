@@ -17,11 +17,29 @@ export async function GET(req: Request) {
 
   const results: string[] = []
 
-  // Step 1: Push schema to DB using direct binary (npx can be unreliable in prod)
-  const prismaBin = path.join(process.cwd(), 'node_modules', '.bin', 'prisma')
-  let schemaError: string | null = null
+  // Step 1: Pre-migrate SQL — fix enum conflicts that block prisma db push
+  // The DB may have an old Role enum with ACCOUNTANT that needs to be cleared
   try {
-    const out = execSync(`${prismaBin} db push --accept-data-loss`, {
+    // Drop column default so Prisma can recreate the enum freely
+    await prisma.$executeRawUnsafe(`
+      DO $$ BEGIN
+        IF EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_name = 'BusinessUser' AND column_name = 'role'
+        ) THEN
+          ALTER TABLE "BusinessUser" ALTER COLUMN "role" DROP DEFAULT;
+        END IF;
+      END $$;
+    `)
+    results.push('✓ Pre-migration SQL applied')
+  } catch (e: any) {
+    results.push(`⚠ Pre-migration SQL (non-fatal): ${String(e.message).slice(0, 200)}`)
+  }
+
+  // Step 2: Push schema using direct binary
+  const prismaBin = path.join(process.cwd(), 'node_modules', '.bin', 'prisma')
+  try {
+    execSync(`${prismaBin} db push --accept-data-loss`, {
       stdio: 'pipe',
       timeout: 90000,
       env: { ...process.env },
@@ -31,16 +49,13 @@ export async function GET(req: Request) {
   } catch (e: any) {
     const stderr = Buffer.isBuffer(e.stderr) ? e.stderr.toString() : String(e.stderr || '')
     const stdout = Buffer.isBuffer(e.stdout) ? e.stdout.toString() : String(e.stdout || '')
-    const msg = (stderr || stdout || e.message || 'unknown error').slice(0, 800)
-    schemaError = msg
+    const msg = (stderr || stdout || e.message || 'unknown').slice(0, 1000)
     results.push(`✗ Schema push FAILED: ${msg}`)
-    // Return immediately — cannot seed without schema
     return NextResponse.json({ ok: false, results, error: msg }, { status: 500 })
   }
 
-  // Step 2: Seed users + categories
+  // Step 3: Seed users + categories
   try {
-    // Upsert superadmin
     const superHash = await bcrypt.hash('SuperAdmin123!', 12)
     await prisma.user.upsert({
       where: { email: 'superadmin@mypnl.com' },
@@ -56,7 +71,6 @@ export async function GET(req: Request) {
     })
     results.push('✓ superadmin@mypnl.com / SuperAdmin123!')
 
-    // Upsert contador
     const contHash = await bcrypt.hash('password123', 12)
     await prisma.user.upsert({
       where: { email: 'contador@demo.com' },
@@ -72,7 +86,6 @@ export async function GET(req: Request) {
     })
     results.push('✓ contador@demo.com / password123')
 
-    // Upsert individual
     const indHash = await bcrypt.hash('password123', 12)
     await prisma.user.upsert({
       where: { email: 'usuario@demo.com' },
@@ -88,7 +101,6 @@ export async function GET(req: Request) {
     })
     results.push('✓ usuario@demo.com / password123')
 
-    // System categories
     const SYSTEM_CATEGORIES = [
       { name: 'Advertising', irsCode: 'Schedule C Line 8' },
       { name: 'Car & Truck Expenses', irsCode: 'Schedule C Line 9' },
