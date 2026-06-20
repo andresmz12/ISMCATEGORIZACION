@@ -178,21 +178,6 @@ export default function SignInPage() {
               ))}
             </div>
 
-            {/* Social proof */}
-            <div className="flex items-center gap-3 mt-6">
-              <div className="flex -space-x-2">
-                {['MR', 'CL', 'AP', 'TS', 'JM'].map((init, i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-full border-2 border-[#1B4965] flex items-center justify-center text-[9px] font-bold text-white"
-                    style={{ background: ['#2EC4B6','#8B5CF6','#3B82F6','#10B981','#F59E0B'][i] }}
-                  >
-                    {init}
-                  </div>
-                ))}
-              </div>
-              <p className="text-white/60 text-sm">Usado por <span className="text-white font-semibold">+500 negocios</span></p>
-            </div>
           </div>
         </div>
 
