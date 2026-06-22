@@ -97,33 +97,35 @@ export async function POST(req: Request) {
         system: SYSTEM_PROMPT,
       })
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : ''
-      const jsonMatch = text.match(/\[[\s\S]*\]/)
-      if (!jsonMatch) throw new Error('AI returned invalid JSON')
-      const classifications = JSON.parse(jsonMatch[0])
+      let classifications: any[] = []
+      try {
+        const text = response.content[0].type === 'text' ? response.content[0].text : ''
+        const jsonMatch = text.match(/\[[\s\S]*\]/)
+        if (!jsonMatch) throw new Error('no JSON array in response')
+        classifications = JSON.parse(jsonMatch[0])
+      } catch (parseErr) {
+        console.error(`classify-ai: batch ${i / BATCH} JSON parse failed, skipping batch`, parseErr)
+        continue
+      }
 
       for (let j = 0; j < batch.length; j++) {
         const tx = batch[j]
         const cls = classifications[j]
         if (!cls) continue
 
-        const categoryId = categoryMap.get(cls.category) || categoryMap.get('Uncategorized')
+        const uncategorizedId = categoryMap.get('Uncategorized')
+        const categoryId = categoryMap.get(cls.category) ?? uncategorizedId
+        if (!categoryId) continue // no system categories in DB, skip
+
         const confidence = cls.confidence || 'LOW'
 
         const updateData: any = {
           aiConfidence: confidence,
           aiSuggestion: cls.category,
           method: 'AI',
-        }
-
-        if (confidence === 'HIGH') {
-          updateData.status = 'CLASSIFIED'
-          updateData.categoryId = categoryId
-          updateData.deductibility = cls.deductibility || 'NO'
-        } else {
-          updateData.status = 'NEEDS_REVIEW'
-          updateData.categoryId = categoryId
-          updateData.deductibility = cls.deductibility || 'NO'
+          categoryId,
+          deductibility: cls.deductibility || 'NO',
+          status: confidence === 'HIGH' ? 'CLASSIFIED' : 'NEEDS_REVIEW',
         }
 
         await prisma.transaction.update({ where: { id: tx.id }, data: updateData })

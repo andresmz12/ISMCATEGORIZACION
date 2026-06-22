@@ -94,12 +94,15 @@ export default function TransactionsPage() {
 
   async function bulkDelete() {
     if (!selected.size) return
-    if (!confirm(`¿Eliminar ${selected.size} transacciones?`)) return
+    if (!confirm(t('tx.delBulkConfirm').replace('{n}', String(selected.size)))) return
+    const count = selected.size
     setDeleteLoading(true)
-    await Promise.all(Array.from(selected).map(id => fetch(`/api/transactions/${id}`, { method: 'DELETE' })))
+    const results = await Promise.all(Array.from(selected).map(id => fetch(`/api/transactions/${id}`, { method: 'DELETE' })))
+    const failed = results.filter(r => !r.ok).length
     setSelected(new Set())
     setDeleteLoading(false)
-    toast(`${selected.size === 0 ? '' : ''}Transacciones eliminadas`, 'success')
+    if (failed > 0) toast(t('tx.delBulkPartial').replace('{ok}', String(count - failed)).replace('{fail}', String(failed)), 'error')
+    else toast(t('tx.delBulkSuccess').replace('{n}', String(count)), 'success')
     loadTransactions()
   }
 
@@ -292,10 +295,24 @@ export default function TransactionsPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t('common.loading')}</td></tr>
+                <tr>
+                  <td colSpan={7} className="px-4 py-10 text-center">
+                    <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                      {t('common.loading')}
+                    </div>
+                  </td>
+                </tr>
               )}
               {!loading && transactions.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t('tx.noData')}</td></tr>
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center">
+                    <p className="text-gray-400 text-sm">{t('tx.noData')}</p>
+                    {(filters.search || filters.status || filters.categoryId || filters.from || filters.to) && (
+                      <p className="text-xs text-gray-300 mt-1">{t('tx.noDataFilters')}</p>
+                    )}
+                  </td>
+                </tr>
               )}
               {transactions.map((tx: any) => (
                 <tr key={tx.id} className={`hover:bg-gray-50 transition-colors ${selected.has(tx.id) ? 'bg-blue-50/70' : ''}`}>

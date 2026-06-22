@@ -64,7 +64,7 @@ export default function NegociosPage() {
   function setActive(id: string, name: string) {
     localStorage.setItem('activeBusiness', id)
     setActiveBizId(id)
-    toast(`Negocio activo: ${name}`, 'info')
+    toast(t('biz.activated').replace('{name}', name), 'info')
   }
 
   function startEdit(b: any) {
@@ -81,16 +81,16 @@ export default function NegociosPage() {
     })
     const data = await res.json()
     setSaving(false)
-    if (!res.ok) { toast(data.error || 'Error al guardar', 'error'); return }
+    if (!res.ok) { toast(data.error || t('biz.saveFailed'), 'error'); return }
     setBusinesses(bs => bs.map(b => b.id === id ? { ...b, ...data } : b))
     setEditId(null)
-    toast('Negocio actualizado', 'success')
+    toast(t('biz.updated'), 'success')
   }
 
   async function remove(id: string, name: string) {
     if (!confirm(`¿Eliminar "${name}"? Se borrarán todas sus transacciones, categorías y datos. Esta acción no se puede deshacer.`)) return
     const res = await fetch(`/api/businesses/${id}`, { method: 'DELETE' })
-    if (!res.ok) { toast('Error al eliminar', 'error'); return }
+    if (!res.ok) { toast(t('biz.deleteFailed'), 'error'); return }
     const remaining = businesses.filter(b => b.id !== id)
     setBusinesses(remaining)
     if (activeBizId === id) {
@@ -99,7 +99,7 @@ export default function NegociosPage() {
       if (next) localStorage.setItem('activeBusiness', next)
       else localStorage.removeItem('activeBusiness')
     }
-    toast(`"${name}" eliminado`, 'success')
+    toast(t('biz.deleted').replace('{name}', name), 'success')
   }
 
   if (loading) return (

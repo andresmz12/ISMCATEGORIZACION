@@ -20,6 +20,7 @@ export default function UsuariosPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ name: '', password: '', isActive: true })
   const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState('')
 
   async function load() {
     setLoading(true)
@@ -34,6 +35,7 @@ export default function UsuariosPage() {
   async function create() {
     setError('')
     if (!form.name || !form.email || !form.password) { setError('Todos los campos son requeridos'); return }
+    if (form.password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres'); return }
     setCreating(true)
     const res = await fetch('/api/team', {
       method: 'POST',
@@ -49,17 +51,24 @@ export default function UsuariosPage() {
   }
 
   async function saveEdit(id: string) {
+    setEditError('')
+    if (editForm.password && editForm.password.length < 8) { setEditError('La contraseña debe tener al menos 8 caracteres'); return }
     setSaving(true)
     const body: any = {}
     if (editForm.name) body.name = editForm.name
     if (editForm.password) body.password = editForm.password
     body.isActive = editForm.isActive
-    await fetch(`/api/team/${id}`, {
+    const res = await fetch(`/api/team/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
     setSaving(false)
+    if (!res.ok) {
+      const data = await res.json()
+      setEditError(data.error || 'Error al guardar')
+      return
+    }
     setEditId(null)
     load()
   }
@@ -135,7 +144,8 @@ export default function UsuariosPage() {
                         <button onClick={() => saveEdit(m.id)} disabled={saving} className="btn-primary text-sm py-1.5 px-3 disabled:opacity-50">
                           {saving ? 'Guardando...' : 'Guardar'}
                         </button>
-                        <button onClick={() => setEditId(null)} className="btn-secondary text-sm py-1.5 px-3">Cancelar</button>
+                        <button onClick={() => { setEditId(null); setEditError('') }} className="btn-secondary text-sm py-1.5 px-3">Cancelar</button>
+                        {editError && <span className="text-xs text-red-600">{editError}</span>}
                       </div>
                     </td>
                   ) : (

@@ -15,6 +15,8 @@ const es = {
   'nav.plans': 'Planes',
   'nav.defaultCats': 'Categorías Default',
   'nav.logs': 'Logs',
+  'nav.team': 'Usuarios',
+  'nav.classify': 'Clasificar con IA',
 
   // Auth
   'auth.signin': 'Iniciar sesión',
@@ -232,6 +234,10 @@ const es = {
   'tx.allCategories': 'Todas las categorías',
   'tx.classifying': 'Clasificando...',
   'tx.delConfirm': '¿Eliminar esta transacción?',
+  'tx.delBulkConfirm': '¿Eliminar {n} transacciones? Esta acción no se puede deshacer.',
+  'tx.delBulkSuccess': '{n} transacciones eliminadas',
+  'tx.delBulkPartial': '{ok} eliminadas, {fail} fallaron',
+  'tx.noDataFilters': 'Prueba ajustando los filtros',
   'tx.splitParts': 'Split ({n} partes)',
   'tx.aiSuggestion': 'IA: {cat} ({conf})',
   'tx.total': '{total} transacciones',
@@ -301,6 +307,8 @@ const es = {
   'receipts.aiExtracted': 'Ítems extraídos por IA',
   'receipts.selectBusiness': 'Selecciona un negocio primero',
   'receipts.invalidFormat': 'Formato inválido. Usa JPG, PNG, PDF, WEBP o HEIC.',
+  'receipts.tooLarge': 'El archivo supera el límite de 10 MB.',
+  'receipts.rejectConfirm': '¿Descartar este recibo? Se eliminará la transacción asociada.',
 
   // Banks
   'banks.title': 'Bancos',
@@ -318,6 +326,11 @@ const es = {
   'biz.owner': 'Propietario',
   'biz.edit': 'Editar',
   'biz.transactions': 'transacciones',
+  'biz.activated': 'Negocio activo: {name}',
+  'biz.updated': 'Negocio actualizado',
+  'biz.saveFailed': 'Error al guardar',
+  'biz.deleteFailed': 'Error al eliminar',
+  'biz.deleted': '"{name}" eliminado',
 
   // Categories
   'cat.title': 'Categorías',

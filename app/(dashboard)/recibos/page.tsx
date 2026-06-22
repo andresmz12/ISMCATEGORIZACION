@@ -142,6 +142,9 @@ export default function RecibosPage() {
     const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'application/pdf']
     const valid = files.filter(f => ACCEPTED.includes(f.type) || f.name.match(/\.(jpe?g|png|webp|pdf|heic|heif)$/i))
     if (valid.length === 0) { toast(t('receipts.invalidFormat'), 'error'); return }
+    const MAX_SIZE = 10 * 1024 * 1024
+    const tooBig = valid.filter(f => f.size > MAX_SIZE)
+    if (tooBig.length > 0) { toast(t('receipts.tooLarge'), 'error'); return }
 
     // Create jobs with previews
     const newJobs: ScanJob[] = await Promise.all(valid.map(async (file) => {
@@ -234,6 +237,7 @@ export default function RecibosPage() {
   }
 
   async function rejectJob(job: ScanJob) {
+    if (!confirm(t('receipts.rejectConfirm'))) return
     if (job.transactionId) {
       await fetch(`/api/transactions/${job.transactionId}`, { method: 'DELETE' })
     }

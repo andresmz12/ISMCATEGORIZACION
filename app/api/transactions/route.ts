@@ -55,9 +55,12 @@ export async function POST(req: Request) {
   const userId = (session.user as any).id
   const body = await req.json()
   const { businessId, date, description, amount, type } = body
+  if (!businessId || !date || !description) return NextResponse.json({ error: 'businessId, date, description required' }, { status: 400 })
+  const parsedAmount = Number(amount)
+  if (!isFinite(parsedAmount) || parsedAmount <= 0) return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
   if (!await checkAccess(userId, businessId)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const tx = await prisma.transaction.create({
-    data: { businessId, date: new Date(date), description, amount: Number(amount), type: type || 'DEBIT', status: 'PENDING' },
+    data: { businessId, date: new Date(date), description, amount: parsedAmount, type: type || 'DEBIT', status: 'PENDING' },
   })
   return NextResponse.json(tx, { status: 201 })
 }

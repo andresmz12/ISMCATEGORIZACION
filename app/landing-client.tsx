@@ -62,7 +62,7 @@ function Counter({ to, prefix = '', suffix = '', className = '' }: { to: number;
 
   return (
     <span ref={ref} className={className}>
-      {prefix}{display}{suffix}
+      {prefix}{isNaN(display) ? 0 : display}{suffix}
     </span>
   )
 }

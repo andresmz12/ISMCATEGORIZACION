@@ -15,6 +15,8 @@ const en = {
   'nav.plans': 'Plans',
   'nav.defaultCats': 'Default Categories',
   'nav.logs': 'Logs',
+  'nav.team': 'Team',
+  'nav.classify': 'Classify with AI',
 
   // Auth
   'auth.signin': 'Sign In',
@@ -232,6 +234,10 @@ const en = {
   'tx.allCategories': 'All categories',
   'tx.classifying': 'Classifying...',
   'tx.delConfirm': 'Delete this transaction?',
+  'tx.delBulkConfirm': 'Delete {n} transactions? This cannot be undone.',
+  'tx.delBulkSuccess': '{n} transactions deleted',
+  'tx.delBulkPartial': '{ok} deleted, {fail} failed',
+  'tx.noDataFilters': 'Try adjusting the filters',
   'tx.splitParts': 'Split ({n} parts)',
   'tx.aiSuggestion': 'AI: {cat} ({conf})',
   'tx.total': '{total} transactions',
@@ -301,6 +307,8 @@ const en = {
   'receipts.aiExtracted': 'AI extracted items',
   'receipts.selectBusiness': 'Select a business first',
   'receipts.invalidFormat': 'Invalid format. Use JPG, PNG, PDF, WEBP or HEIC.',
+  'receipts.tooLarge': 'File exceeds the 10 MB limit.',
+  'receipts.rejectConfirm': 'Discard this receipt? The associated transaction will be deleted.',
 
   // Banks
   'banks.title': 'Banks',
@@ -318,6 +326,11 @@ const en = {
   'biz.owner': 'Owner',
   'biz.edit': 'Edit',
   'biz.transactions': 'transactions',
+  'biz.activated': 'Active business: {name}',
+  'biz.updated': 'Business updated',
+  'biz.saveFailed': 'Save failed',
+  'biz.deleteFailed': 'Delete failed',
+  'biz.deleted': '"{name}" deleted',
 
   // Categories
   'cat.title': 'Categories',

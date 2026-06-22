@@ -154,6 +154,8 @@ model Transaction {
 
   @@index([businessId, status])
   @@index([businessId, date])
+  @@index([businessId, categoryId])
+  @@index([categoryId])
   @@index([checksum])
 }
 
