@@ -7,12 +7,12 @@ import path from 'path'
 // One-time setup endpoint — pushes schema + seeds demo users.
 // Protected by SETUP_SECRET env var. Safe to leave deployed.
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const secret = searchParams.get('secret')
+  const authHeader = req.headers.get('authorization') || ''
+  const secret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
   const envSecret = process.env.SETUP_SECRET
 
-  if (!envSecret || secret !== envSecret) {
-    return NextResponse.json({ error: 'Forbidden — set SETUP_SECRET env var and pass ?secret=' }, { status: 403 })
+  if (!envSecret || !secret || secret !== envSecret) {
+    return NextResponse.json({ error: 'Forbidden — pass Authorization: Bearer <SETUP_SECRET>' }, { status: 403 })
   }
 
   const results: string[] = []

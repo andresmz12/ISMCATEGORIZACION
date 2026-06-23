@@ -5,7 +5,6 @@ export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token
     const path = req.nextUrl.pathname
-    const res = NextResponse.next()
 
     if (path.startsWith('/admin')) {
       if ((token as any)?.accountType !== 'SUPERADMIN') {
@@ -13,12 +12,9 @@ export default withAuth(
       }
     }
 
-    res.headers.set('X-Frame-Options', 'DENY')
-    res.headers.set('X-Content-Type-Options', 'nosniff')
-    res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-    res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-
-    return res
+    // Security headers are set globally via next.config.js headers().
+    // Middleware only handles auth-gated redirects.
+    return NextResponse.next()
   },
   {
     callbacks: {
@@ -40,6 +36,8 @@ export const config = {
     '/rules/:path*',
     '/recibos/:path*',
     '/settings/:path*',
+    '/usuarios/:path*',
+    '/clasificar/:path*',
     '/admin/:path*',
   ],
 }

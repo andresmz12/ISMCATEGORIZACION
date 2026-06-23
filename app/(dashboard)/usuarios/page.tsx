@@ -35,7 +35,7 @@ export default function UsuariosPage() {
   async function create() {
     setError('')
     if (!form.name || !form.email || !form.password) { setError('Todos los campos son requeridos'); return }
-    if (form.password.length < 8) { setError('La contraseña debe tener al menos 8 caracteres'); return }
+    if (form.password.length < 8 || !/[A-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError('Mín. 8 caracteres, una mayúscula y un número'); return }
     setCreating(true)
     const res = await fetch('/api/team', {
       method: 'POST',
@@ -52,7 +52,7 @@ export default function UsuariosPage() {
 
   async function saveEdit(id: string) {
     setEditError('')
-    if (editForm.password && editForm.password.length < 8) { setEditError('La contraseña debe tener al menos 8 caracteres'); return }
+    if (editForm.password && (editForm.password.length < 8 || !/[A-Z]/.test(editForm.password) || !/[0-9]/.test(editForm.password))) { setEditError('Mín. 8 caracteres, una mayúscula y un número'); return }
     setSaving(true)
     const body: any = {}
     if (editForm.name) body.name = editForm.name
@@ -215,7 +215,7 @@ export default function UsuariosPage() {
                 <input
                   className="input w-full"
                   type="password"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mín. 8 car., una mayúscula y un número"
                   value={form.password}
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 />

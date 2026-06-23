@@ -45,7 +45,9 @@ export default function RegisterPage() {
 
   async function handleSubmit() {
     if (password !== confirmPassword) { setError(t('auth.passwordMismatch')); return }
-    if (password.length < 8) { setError(t('auth.passwordShort')); return }
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setError(t('auth.passwordShort')); return
+    }
     setLoading(true)
     setError('')
     try {
@@ -220,7 +222,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.password')}</label>
-                    <input className={inputCls} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" required />
+                    <input className={inputCls} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('auth.passwordShort')} required />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.confirmPassword')}</label>
@@ -236,7 +238,7 @@ export default function RegisterPage() {
                     onClick={() => {
                       if (!name || !email || !password || !confirmPassword) { setError(t('common.required')); return }
                       if (password !== confirmPassword) { setError(t('auth.passwordMismatch')); return }
-                      if (password.length < 8) { setError(t('auth.passwordShort')); return }
+                      if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) { setError(t('auth.passwordShort')); return }
                       setError('')
                       setStep(3)
                     }}

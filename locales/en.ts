@@ -34,7 +34,7 @@ const en = {
   'auth.signIn': 'Sign in',
   'auth.signout': 'Sign out',
   'auth.passwordMismatch': 'Passwords do not match',
-  'auth.passwordShort': 'Minimum 8 characters',
+  'auth.passwordShort': 'Min 8 characters, one uppercase and one number',
 
   // Register
   'register.step1.title': 'How will you use MyP&L?',

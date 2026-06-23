@@ -3,19 +3,19 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
+import { rateLimit } from './rate-limit'
 
 const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
   ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
   : undefined
 
-// NEXTAUTH_URL must be set; fall back to Railway's auto-provided domain
 if (!process.env.NEXTAUTH_URL && railwayUrl) {
   process.env.NEXTAUTH_URL = railwayUrl
 }
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: 8 * 60 * 60 }, // 8-hour sessions
   pages: { signIn: '/signin' },
   callbacks: {
     async jwt({ token, user }) {
@@ -44,10 +44,18 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
-        const user = await prisma.user.findUnique({ where: { email: credentials.email } })
+
+        const email = credentials.email.toLowerCase().trim()
+
+        // 10 attempts per email per 15 minutes
+        const rl = rateLimit(`login:${email}`, 10, 15 * 60 * 1000)
+        if (!rl.ok) return null
+
+        const user = await prisma.user.findUnique({ where: { email } })
         if (!user || !user.isActive) return null
         const valid = await bcrypt.compare(credentials.password, user.passwordHash)
         if (!valid) return null
+
         await prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } })
         return { id: user.id, email: user.email, name: user.name, accountType: user.accountType, plan: user.plan }
       },

@@ -34,7 +34,7 @@ const es = {
   'auth.signIn': 'Inicia sesión',
   'auth.signout': 'Cerrar sesión',
   'auth.passwordMismatch': 'Las contraseñas no coinciden',
-  'auth.passwordShort': 'Mínimo 8 caracteres',
+  'auth.passwordShort': 'Mínimo 8 caracteres, una mayúscula y un número',
 
   // Register
   'register.step1.title': '¿Cómo usarás MyP&L?',
