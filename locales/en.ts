@@ -381,6 +381,14 @@ const en = {
   'rules.noActiveRules': 'No active rules',
   'rules.patternLabel': 'If description contains',
   'rules.upgrade': 'Upgrade to Plus for automatic AI classification',
+
+  // Audit log
+  'audit.title': 'Audit Log',
+  'audit.events': 'events',
+  'audit.noEvents': 'No events recorded yet',
+
+  // Reports CSV
+  'reports.exportCSV': 'Export CSV',
 } as const
 
 export type TranslationKey = keyof typeof en

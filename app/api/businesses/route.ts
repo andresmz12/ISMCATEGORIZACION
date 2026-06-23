@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { logAudit } from '@/lib/audit'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -49,5 +50,6 @@ export async function POST(req: Request) {
     })
   }
 
+  await logAudit({ userId, businessId: business.id, action: 'CREATE_BUSINESS', entity: 'Business', entityId: business.id, metadata: { name } })
   return NextResponse.json(business, { status: 201 })
 }

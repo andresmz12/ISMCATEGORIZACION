@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { validatePassword } from '@/lib/validate'
+import { logAudit } from '@/lib/audit'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -28,6 +29,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data,
     select: { id: true, name: true, email: true, isActive: true, lastLogin: true },
   })
+  await logAudit({ userId, action: 'UPDATE_TEAM_MEMBER', entity: 'User', entityId: params.id, metadata: { fields: Object.keys(data) } })
   return NextResponse.json(updated)
 }
 
@@ -39,6 +41,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const member = await prisma.user.findUnique({ where: { id: params.id } })
   if (!member || member.teamOwnerId !== userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  await logAudit({ userId, action: 'DELETE_TEAM_MEMBER', entity: 'User', entityId: params.id, metadata: { email: member.email } })
   await prisma.user.delete({ where: { id: params.id } })
   return NextResponse.json({ ok: true })
 }

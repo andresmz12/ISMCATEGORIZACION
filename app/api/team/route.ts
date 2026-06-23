@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { validatePassword, validateEmail, getClientIp } from '@/lib/validate'
+import { logAudit } from '@/lib/audit'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -70,5 +71,6 @@ export async function POST(req: Request) {
     })
   }
 
+  await logAudit({ userId, action: 'INVITE_TEAM_MEMBER', entity: 'User', entityId: member.id, metadata: { email: normalizedEmail } })
   return NextResponse.json({ id: member.id, name: member.name, email: member.email }, { status: 201 })
 }

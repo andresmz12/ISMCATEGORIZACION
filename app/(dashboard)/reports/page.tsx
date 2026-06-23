@@ -37,6 +37,34 @@ export default function ReportsPage() {
       .finally(() => setLoading(false))
   }, [activeBiz, from, to])
 
+  function exportCSV() {
+    if (!report) return
+    const biz = businesses.find((b: any) => b.id === activeBiz)
+    const rows: string[][] = [
+      [`${t('reports.expenseReport')} — ${biz?.name || activeBiz}`],
+      [t('reports.period'), `${from} → ${to}`],
+      [],
+      [t('reports.summary')],
+      [t('reports.totalIncome'), String(report.summary.income)],
+      [t('reports.totalExpenses'), String(report.summary.totalExpenses)],
+      [t('reports.netProfit'), String(report.summary.netProfit)],
+      [t('reports.totalDeductible'), String(report.summary.totalDeductible)],
+      [],
+      [t('reports.expensesByCategory')],
+      [t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')],
+      ...report.expensesByCategory.map((c: any) => [c.name, String(c.total), String(c.deductible), String(c.count)]),
+      [],
+      [t('reports.monthly')],
+      [t('reports.month'), t('dashboard.income'), t('dashboard.expenses'), 'Net'],
+      ...report.byMonth.map((m: any) => [m.month, String(m.income), String(m.expenses), String(m.income - m.expenses)]),
+    ]
+    const csv = rows.map(r => r.map(v => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = `report_${activeBiz}_${from}_${to}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function exportPDF() {
     if (!report) return
     setExporting(true)
@@ -128,6 +156,9 @@ export default function ReportsPage() {
               {businesses.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           )}
+          <button onClick={exportCSV} disabled={!report} className="btn-secondary text-sm disabled:opacity-50">
+            {t('reports.exportCSV')}
+          </button>
           <button onClick={exportPDF} disabled={exporting || !report} className="btn-secondary text-sm disabled:opacity-50">
             {exporting ? t('reports.generating') : t('reports.exportPDF')}
           </button>

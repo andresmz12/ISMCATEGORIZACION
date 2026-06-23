@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { validatePassword } from '@/lib/validate'
+import { logAudit } from '@/lib/audit'
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions)
@@ -53,6 +54,8 @@ export async function PATCH(req: Request) {
     select: { id: true, name: true, email: true, firmName: true, accountType: true, plan: true },
   })
 
+  const changedFields = Object.keys(updates)
+  await logAudit({ userId, action: 'UPDATE_SETTINGS', entity: 'User', entityId: userId, metadata: { fields: changedFields } })
   return NextResponse.json(updated)
 }
 
