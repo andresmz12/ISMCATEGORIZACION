@@ -3,13 +3,21 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { validatePassword } from '@/lib/validate'
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
 
-  const { name, firmName, currentPassword, newPassword } = await req.json()
+  let body: any
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+
+  const { name, firmName, currentPassword, newPassword } = body
 
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -23,14 +31,15 @@ export async function PATCH(req: Request) {
   }
 
   if (firmName !== undefined) {
-    updates.firmName = firmName?.trim() || null
+    updates.firmName = firmName?.trim()?.slice(0, 100) || null
   }
 
   if (newPassword) {
     if (!currentPassword) return NextResponse.json({ error: 'Current password required' }, { status: 400 })
     const valid = await bcrypt.compare(currentPassword, user.passwordHash)
     if (!valid) return NextResponse.json({ error: 'Current password incorrect' }, { status: 400 })
-    if (newPassword.length < 8) return NextResponse.json({ error: 'New password too short (min 8 chars)' }, { status: 400 })
+    const pwError = validatePassword(newPassword)
+    if (pwError) return NextResponse.json({ error: pwError }, { status: 400 })
     updates.passwordHash = await bcrypt.hash(newPassword, 12)
   }
 

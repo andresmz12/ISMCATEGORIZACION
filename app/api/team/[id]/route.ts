@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { validatePassword } from '@/lib/validate'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -17,7 +18,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (body.name) data.name = body.name
   if (typeof body.isActive === 'boolean') data.isActive = body.isActive
   if (body.password) {
-    if (body.password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 })
+    const pwError = validatePassword(body.password)
+    if (pwError) return NextResponse.json({ error: pwError }, { status: 400 })
     data.passwordHash = await bcrypt.hash(body.password, 12)
   }
 

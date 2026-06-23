@@ -19,12 +19,14 @@ export default function SettingsPage() {
   const [businesses, setBusinesses] = useState<any[]>([])
 
   useEffect(() => {
-    fetch('/api/settings').then(r => r.json()).then(d => {
-      if (d.email) setProfile({ name: d.name || '', firmName: d.firmName || '', email: d.email, plan: d.plan, createdAt: d.createdAt })
-    })
-    fetch('/api/businesses').then(r => r.json()).then(d => {
-      if (Array.isArray(d)) setBusinesses(d)
-    })
+    fetch('/api/settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.email) setProfile({ name: d.name || '', firmName: d.firmName || '', email: d.email, plan: d.plan, createdAt: d.createdAt }) })
+      .catch(() => {})
+    fetch('/api/businesses')
+      .then(r => r.ok ? r.json() : [])
+      .then(d => { if (Array.isArray(d)) setBusinesses(d) })
+      .catch(() => {})
   }, [])
 
   async function saveProfile(e: React.FormEvent) {
@@ -49,7 +51,7 @@ export default function SettingsPage() {
     if (pwForm.newPassword !== pwForm.confirmPassword) {
       toast(t('auth.passwordMismatch'), 'error'); return
     }
-    if (pwForm.newPassword.length < 8) {
+    if (pwForm.newPassword.length < 8 || !/[A-Z]/.test(pwForm.newPassword) || !/[0-9]/.test(pwForm.newPassword)) {
       toast(t('auth.passwordShort'), 'error'); return
     }
     setPwLoading(true)
@@ -65,7 +67,7 @@ export default function SettingsPage() {
     toast(t('settings.passwordChanged'), 'success')
   }
 
-  const planLabels: Record<string, string> = { BASIC: 'Basic', PLUS: 'Plus', ENTERPRISE: 'Enterprise' }
+  const planLabels: Record<string, string> = { BASIC: t('plan.basic'), PLUS: t('plan.plus'), ENTERPRISE: t('plan.enterprise') }
   const accountLabels: Record<string, string> = { INDIVIDUAL: t('role.individual'), ACCOUNTANT: t('role.accountant'), SUPERADMIN: t('role.superadmin') }
 
   return (
@@ -100,7 +102,7 @@ export default function SettingsPage() {
               className="input"
               value={profile.name}
               onChange={e => setProfile(p => ({ ...p, name: e.target.value }))}
-              placeholder="Tu nombre"
+              placeholder={t('auth.name')}
               required
             />
           </div>
@@ -184,7 +186,7 @@ export default function SettingsPage() {
                 <button
                   onClick={() => {
                     localStorage.setItem('activeBusiness', b.id)
-                    toast(b.name, 'info')
+                    toast(t('biz.activated').replace('{name}', b.name), 'info')
                   }}
                   className="text-xs text-[#1B4965] font-medium hover:underline flex-shrink-0"
                 >

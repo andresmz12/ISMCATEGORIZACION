@@ -30,10 +30,19 @@ export async function POST(req: Request) {
   const userId = (session.user as any).id
   const { businessId, pattern, categoryId, priority, field, deductibility } = await req.json()
   if (!businessId || !pattern || !categoryId) return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-  if (pattern.length > 500) return NextResponse.json({ error: 'Pattern too long' }, { status: 400 })
+  if (typeof pattern !== 'string' || pattern.trim().length === 0 || pattern.length > 500) {
+    return NextResponse.json({ error: 'Invalid pattern' }, { status: 400 })
+  }
+  const VALID_DEDUCTIBILITY = ['YES', 'NO', 'FIFTY']
+  if (deductibility && !VALID_DEDUCTIBILITY.includes(deductibility)) {
+    return NextResponse.json({ error: 'Invalid deductibility value' }, { status: 400 })
+  }
+  const VALID_FIELDS = ['description', 'amount']
+  const safeField = VALID_FIELDS.includes(field) ? field : 'description'
+  const safePriority = typeof priority === 'number' && isFinite(priority) ? Math.round(priority) : 0
   if (!await checkAccess(userId, businessId)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const rule = await prisma.classificationRule.create({
-    data: { businessId, pattern, categoryId, priority: priority || 0, field: field || 'description', deductibility: deductibility || null },
+    data: { businessId, pattern: pattern.trim(), categoryId, priority: safePriority, field: safeField, deductibility: deductibility || null },
     include: { category: true },
   })
   return NextResponse.json(rule, { status: 201 })

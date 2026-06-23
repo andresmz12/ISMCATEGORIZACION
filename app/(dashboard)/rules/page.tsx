@@ -40,14 +40,15 @@ function ManualRules({ activeBiz, categories, t, toast }: {
     })
     const data = await res.json()
     setLoading(false)
-    if (!res.ok) { toast(data.error, 'error'); return }
+    if (!res.ok) { toast(data.error || t('common.error'), 'error'); return }
     setRules(r => [...r, data])
     setForm({ pattern: '', categoryId: '', priority: '0', field: 'description', deductibility: '' })
     toast(t('rules.added'), 'success')
   }
 
   async function deleteRule(id: string) {
-    await fetch(`/api/rules?id=${id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/rules?id=${id}`, { method: 'DELETE' })
+    if (!res.ok) { toast(t('common.error'), 'error'); return }
     setRules(r => r.filter(x => x.id !== id))
   }
 
@@ -199,15 +200,15 @@ function AILearnedRules({ activeBiz, categories, t, toast }: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ businessId: activeBiz, pattern: p.pattern, categoryId: p.categoryId, priority: 10, field: 'description' }),
     })
-    if (res.ok) {
-      const data = await res.json()
-      setRules(r => [...r, data])
-      toast(t('rules.added'), 'success')
-    }
+    if (!res.ok) { toast(t('common.error'), 'error'); return }
+    const data = await res.json()
+    setRules(r => [...r, data])
+    toast(t('rules.added'), 'success')
   }
 
   async function deleteRule(id: string) {
-    await fetch(`/api/rules?id=${id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/rules?id=${id}`, { method: 'DELETE' })
+    if (!res.ok) { toast(t('common.error'), 'error'); return }
     setRules(r => r.filter(x => x.id !== id))
     toast(t('common.success'), 'info')
   }

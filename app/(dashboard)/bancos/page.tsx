@@ -28,9 +28,9 @@ export default function BancosPage() {
   useEffect(() => {
     if (!activeBizId) return
     fetch(`/api/banks?businessId=${activeBizId}`)
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : [])
       .then(d => setMappings(Array.isArray(d) ? d : []))
-      .catch(() => {})
+      .catch(() => setMappings([]))
   }, [activeBizId])
 
   async function deleteMapping(id: string, bankName: string) {
@@ -39,6 +39,8 @@ export default function BancosPage() {
     if (res.ok) {
       setMappings(m => m.filter(x => x.id !== id))
       toast(`${bankName} ${t('cat.deleted')}`, 'success')
+    } else {
+      toast(t('common.error'), 'error')
     }
   }
 

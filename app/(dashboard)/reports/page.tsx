@@ -29,8 +29,12 @@ export default function ReportsPage() {
   useEffect(() => {
     if (!activeBiz) return
     setLoading(true)
+    setReport(null)
     fetch(`/api/reports?businessId=${activeBiz}&from=${from}&to=${to}`)
-      .then(r => r.json()).then(d => { setReport(d); setLoading(false) })
+      .then(r => { if (!r.ok) throw new Error('failed'); return r.json() })
+      .then(d => setReport(d))
+      .catch(() => setReport(null))
+      .finally(() => setLoading(false))
   }, [activeBiz, from, to])
 
   async function exportPDF() {
@@ -151,6 +155,9 @@ export default function ReportsPage() {
       </div>
 
       {loading && <div className="text-center py-8 text-gray-400 text-sm">{t('common.loading')}</div>}
+      {!loading && !report && activeBiz && (
+        <div className="card p-8 text-center text-gray-400 text-sm">{t('reports.noData')}</div>
+      )}
 
       {report && !loading && (
         <>
