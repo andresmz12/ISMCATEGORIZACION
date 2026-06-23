@@ -488,7 +488,7 @@ export default function LandingClient() {
                 {[
                   { val: 500, suffix: '+', label: lang === 'es' ? 'negocios activos' : 'active businesses' },
                   { val: 95, suffix: '%', label: lang === 'es' ? 'precisión IA' : 'AI accuracy' },
-                  { val: 5, prefix: '<', suffix: 'min', label: lang === 'es' ? 'para 500 txns' : 'for 500 txns' },
+                  { val: 5, prefix: '<', suffix: 'min', label: lang === 'es' ? 'para 500 transacciones' : 'for 500 transactions' },
                 ].map((s, i) => (
                   <motion.div
                     key={s.label}
@@ -534,7 +534,7 @@ export default function LandingClient() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">{lang === 'es' ? 'Clasificadas' : 'Classified'}</p>
-                  <p className="text-base font-black text-[#1B4965]">347 txns</p>
+                  <p className="text-base font-black text-[#1B4965]">347</p>
                 </div>
               </motion.div>
 
