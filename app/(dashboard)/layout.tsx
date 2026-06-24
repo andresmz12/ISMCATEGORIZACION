@@ -77,9 +77,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Logo + collapse toggle */}
       <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center px-3 py-4' : 'px-4 py-4'}`}>
         <img src="/logo.svg" alt="logo" className="w-8 h-8 flex-shrink-0" />
-        {!isCollapsed && activeBusiness && (
+        {!isCollapsed && (
           <div className="flex-1 min-w-0">
-            <p className="text-white font-bold text-sm leading-tight truncate">{activeBusiness.name}</p>
+            <p className="text-white/40 text-[10px] leading-tight">{t('app.name')}</p>
           </div>
         )}
         <button
