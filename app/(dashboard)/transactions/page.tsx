@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
@@ -20,7 +20,10 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const [filters, setFilters] = useState({
     status: searchParams.get('status') || '',
     categoryId: '',
@@ -44,22 +47,50 @@ export default function TransactionsPage() {
     fetch(`/api/categories?businessId=${activeBiz}`).then(r => r.json()).then(setCategories)
   }, [activeBiz])
 
-  const loadTransactions = useCallback(async () => {
+  const loadTransactions = useCallback(async (pageNum: number, append: boolean) => {
     if (!activeBiz) return
-    setLoading(true)
-    const params = new URLSearchParams({ businessId: activeBiz, page: String(page), limit: '25' })
+    if (append) setLoadingMore(true)
+    else setLoading(true)
+    const params = new URLSearchParams({ businessId: activeBiz, page: String(pageNum), limit: '25' })
     if (filters.status) params.set('status', filters.status)
     if (filters.categoryId) params.set('categoryId', filters.categoryId)
     if (filters.from) params.set('from', filters.from)
     if (filters.to) params.set('to', filters.to)
     if (filters.search) params.set('search', filters.search)
     const data = await fetch(`/api/transactions?${params}`).then(r => r.json())
-    setTransactions(data.transactions || [])
+    const newTxs = data.transactions || []
+    setTransactions(prev => append ? [...prev, ...newTxs] : newTxs)
     setTotal(data.total || 0)
-    setLoading(false)
-  }, [activeBiz, page, filters])
+    setHasMore(newTxs.length === 25)
+    if (append) setLoadingMore(false)
+    else setLoading(false)
+  }, [activeBiz, filters])
 
-  useEffect(() => { loadTransactions() }, [loadTransactions])
+  // Reset and reload when filters or business change
+  useEffect(() => {
+    setPage(1)
+    setTransactions([])
+    loadTransactions(1, false)
+  }, [activeBiz, filters]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load more when page increments
+  useEffect(() => {
+    if (page === 1) return
+    loadTransactions(page, true)
+  }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Infinite scroll sentinel
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+        setPage(p => p + 1)
+      }
+    }, { threshold: 0.1 })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, loading])
 
   // Sync select-all checkbox indeterminate state
   useEffect(() => {
@@ -73,13 +104,13 @@ export default function TransactionsPage() {
 
   async function updateTx(id: string, patch: any) {
     await fetch(`/api/transactions/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
-    loadTransactions()
+    loadTransactions(1, false)
   }
 
   async function deleteTx(id: string) {
     if (!confirm(t('tx.delConfirm'))) return
     await fetch(`/api/transactions/${id}`, { method: 'DELETE' })
-    loadTransactions()
+    loadTransactions(1, false)
   }
 
   async function bulkDelete() {
@@ -93,7 +124,7 @@ export default function TransactionsPage() {
     setDeleteLoading(false)
     if (failed > 0) toast(t('tx.delBulkPartial').replace('{ok}', String(count - failed)).replace('{fail}', String(failed)), 'error')
     else toast(t('tx.delBulkSuccess').replace('{n}', String(count)), 'success')
-    loadTransactions()
+    loadTransactions(1, false)
   }
 
   async function bulkClassify() {
@@ -112,7 +143,7 @@ export default function TransactionsPage() {
     setSelected(new Set())
     setBulkCategoryId('')
     setBulkLoading(false)
-    loadTransactions()
+    loadTransactions(1, false)
   }
 
   async function classifyWithAI() {
@@ -128,7 +159,7 @@ export default function TransactionsPage() {
     setAiResult(data)
     setAiLoading(false)
     setSelected(new Set())
-    loadTransactions()
+    loadTransactions(1, false)
   }
 
   async function saveSplit() {
@@ -157,7 +188,6 @@ export default function TransactionsPage() {
   }
 
   const LIMIT = 25
-  const totalPages = Math.ceil(total / LIMIT)
 
   const statusLabel: Record<string, string> = {
     PENDING: t('tx.pending'),
@@ -364,17 +394,22 @@ export default function TransactionsPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
           <p className="text-xs text-gray-500">{t('tx.total').replace('{total}', String(total))}</p>
-          {totalPages > 1 && (
-            <div className="flex gap-2">
-              <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="btn-secondary text-xs py-1 px-3 disabled:opacity-40">{t('tx.prev')}</button>
-              <span className="text-xs text-gray-500 py-1">{page}/{totalPages}</span>
-              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="btn-secondary text-xs py-1 px-3 disabled:opacity-40">{t('tx.next')}</button>
-            </div>
-          )}
+          <p className="text-xs text-gray-400">{transactions.length} de {total}</p>
         </div>
+
+        {/* Infinite scroll sentinel */}
+        <div ref={sentinelRef} className="h-1" />
+        {loadingMore && (
+          <div className="flex items-center justify-center gap-2 py-4 text-gray-400 text-sm">
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+            Cargando más...
+          </div>
+        )}
+        {!hasMore && transactions.length > 0 && !loading && (
+          <p className="text-center text-xs text-gray-300 py-3">— Fin de las transacciones —</p>
+        )}
       </div>
 
       {/* Split Modal */}
