@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useTranslation } from '@/lib/i18n'
+import { switchBusiness } from '@/lib/use-active-biz'
 
 interface Business { id: string; name: string; industry?: string }
 
@@ -24,6 +25,12 @@ export function BusinessSwitcher({ activeBusiness, onSwitch }: Props) {
   }, [])
 
   if (businesses.length <= 1) return null
+
+  function handleSwitch(biz: Business) {
+    switchBusiness(biz.id)
+    onSwitch(biz)
+    setOpen(false)
+  }
 
   return (
     <div className="relative">
@@ -50,7 +57,7 @@ export function BusinessSwitcher({ activeBusiness, onSwitch }: Props) {
           {businesses.map(biz => (
             <button
               key={biz.id}
-              onClick={() => { onSwitch(biz); setOpen(false) }}
+              onClick={() => handleSwitch(biz)}
               className={`w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-gray-50 transition-colors ${activeBusiness?.id === biz.id ? 'bg-blue-50' : ''}`}
             >
               <div className="w-6 h-6 rounded bg-[#1B4965] flex items-center justify-center text-white text-xs font-bold">

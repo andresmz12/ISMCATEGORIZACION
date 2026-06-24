@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useTranslation } from '@/lib/i18n'
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 const ACTION_LABELS: Record<string, string> = {
   CREATE_BUSINESS: 'Negocio creado',
@@ -20,20 +21,18 @@ const ACTION_COLORS: Record<string, string> = {
 
 export default function AuditoriaPage() {
   const { t } = useTranslation()
+  const { businesses, activeBizId } = useActiveBiz()
   const [logs, setLogs] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
-  const [businesses, setBusinesses] = useState<any[]>([])
   const [businessId, setBusinessId] = useState('')
   const [loading, setLoading] = useState(true)
 
+  // Pre-select active business when available
   useEffect(() => {
-    fetch('/api/businesses')
-      .then(r => r.json())
-      .then(d => { if (Array.isArray(d)) setBusinesses(d) })
-      .catch(() => {})
-  }, [])
+    if (activeBizId && !businessId) setBusinessId(activeBizId)
+  }, [activeBizId])
 
   useEffect(() => {
     setLoading(true)
@@ -59,7 +58,7 @@ export default function AuditoriaPage() {
           <select
             className="input w-auto text-sm"
             value={businessId}
-            onChange={e => { setBusinessId(e.target.value); setPage(1) }}
+            onChange={e => { setBusinessId(e.target.value); setPage(1); }}
           >
             <option value="">{t('common.all')}</option>
             {businesses.map((b: any) => (

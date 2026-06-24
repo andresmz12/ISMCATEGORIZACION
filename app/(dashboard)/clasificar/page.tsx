@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
@@ -22,8 +23,7 @@ export default function ClasificarPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
-  const [businesses, setBusinesses] = useState<any[]>([])
-  const [activeBiz, setActiveBiz] = useState('')
+  const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
   const [savedMappings, setSavedMappings] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
 
@@ -41,16 +41,6 @@ export default function ClasificarPage() {
   const [importResult, setImportResult] = useState<{ imported: number; duplicates: number; total: number } | null>(null)
   const [error, setError] = useState('')
   const [confirming, setConfirming] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/businesses').then(r => r.json()).then(d => {
-      if (!Array.isArray(d)) return
-      setBusinesses(d)
-      const saved = localStorage.getItem('activeBusiness')
-      const biz = (saved && d.find((b: any) => b.id === saved)) || d[0]
-      if (biz) setActiveBiz(biz.id)
-    })
-  }, [])
 
   useEffect(() => {
     if (!activeBiz) return

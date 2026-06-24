@@ -2,28 +2,13 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 export default function BancosPage() {
   const { t } = useTranslation()
   const toast = useToast()
-  const [businesses, setBusinesses] = useState<any[]>([])
-  const [activeBizId, setActiveBizId] = useState<string>('')
+  const { businesses, activeBizId, setActiveBizId, loading } = useActiveBiz()
   const [mappings, setMappings] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch('/api/businesses')
-      .then(r => r.json())
-      .then(d => {
-        if (Array.isArray(d) && d.length > 0) {
-          setBusinesses(d)
-          const saved = localStorage.getItem('activeBusiness')
-          const biz = (saved && d.find((b: any) => b.id === saved)) || d[0]
-          setActiveBizId(biz.id)
-        }
-      })
-      .finally(() => setLoading(false))
-  }, [])
 
   useEffect(() => {
     if (!activeBizId) return

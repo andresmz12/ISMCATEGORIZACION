@@ -3,34 +3,19 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 export default function CategoriasPage() {
   const { data: session } = useSession()
   const { t } = useTranslation()
   const toast = useToast()
 
-  const [businesses, setBusinesses] = useState<any[]>([])
-  const [activeBizId, setActiveBizId] = useState<string>('')
+  const { businesses, activeBizId, setActiveBizId, loading } = useActiveBiz()
   const [categories, setCategories] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ name: '', irsCode: '', description: '' })
   const [submitting, setSubmitting] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ name: '', irsCode: '', description: '' })
-
-  useEffect(() => {
-    fetch('/api/businesses')
-      .then(r => r.json())
-      .then(d => {
-        if (Array.isArray(d) && d.length > 0) {
-          setBusinesses(d)
-          const saved = localStorage.getItem('activeBusiness')
-          const biz = (saved && d.find((b: any) => b.id === saved)) || d[0]
-          setActiveBizId(biz.id)
-        }
-      })
-      .finally(() => setLoading(false))
-  }, [])
 
   useEffect(() => {
     if (!activeBizId) return

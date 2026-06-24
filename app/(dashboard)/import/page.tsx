@@ -2,13 +2,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 const FIELD_KEYS = ['date', 'description', 'amount', 'debit', 'credit'] as const
 
 export default function ImportPage() {
   const { t } = useTranslation()
-  const [businesses, setBusinesses] = useState<any[]>([])
-  const [activeBiz, setActiveBiz] = useState<string>('')
+  const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
   const [file, setFile] = useState<File | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
   const [previewRows, setPreviewRows] = useState<string[][]>([])
@@ -20,16 +20,6 @@ export default function ImportPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
-
-  useEffect(() => {
-    fetch('/api/businesses').then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return
-      setBusinesses(data)
-      const saved = localStorage.getItem('activeBusiness')
-      const biz = (saved && data.find((b: any) => b.id === saved)) || data[0]
-      if (biz) setActiveBiz(biz.id)
-    })
-  }, [])
 
   useEffect(() => {
     if (!activeBiz) return

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useTranslation } from '@/lib/i18n'
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
@@ -8,23 +9,13 @@ function fmt(n: number) {
 
 export default function ReportsPage() {
   const { t } = useTranslation()
-  const [businesses, setBusinesses] = useState<any[]>([])
-  const [activeBiz, setActiveBiz] = useState<string>('')
+  const { businesses, activeBizId, setActiveBizId } = useActiveBiz()
+  const activeBiz = activeBizId
   const [report, setReport] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [from, setFrom] = useState(() => `${new Date().getFullYear()}-01-01`)
   const [to, setTo] = useState(() => new Date().toISOString().split('T')[0])
   const [exporting, setExporting] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/businesses').then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return
-      setBusinesses(data)
-      const saved = localStorage.getItem('activeBusiness')
-      const biz = (saved && data.find((b: any) => b.id === saved)) || data[0]
-      if (biz) setActiveBiz(biz.id)
-    })
-  }, [])
 
   useEffect(() => {
     if (!activeBiz) return
@@ -152,7 +143,7 @@ export default function ReportsPage() {
         <h1 className="text-xl font-bold text-gray-900">{t('reports.title')}</h1>
         <div className="flex gap-2 flex-wrap">
           {businesses.length > 1 && (
-            <select className="input w-auto text-sm" value={activeBiz} onChange={e => setActiveBiz(e.target.value)}>
+            <select className="input w-auto text-sm" value={activeBizId} onChange={e => setActiveBizId(e.target.value)}>
               {businesses.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           )}

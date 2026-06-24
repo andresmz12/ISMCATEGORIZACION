@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { useTranslation } from '@/lib/i18n'
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
@@ -76,34 +77,18 @@ const CHART_COLORS = ['#1B4965', '#2EC4B6', '#3b82f6', '#8b5cf6', '#f59e0b', '#e
 export default function DashboardPage() {
   const { data: session } = useSession()
   const { t } = useTranslation()
-  const [businesses, setBusinesses] = useState<any[]>([])
-  const [activeBiz, setActiveBiz] = useState<any>(null)
+  const { businesses, activeBizId, setActiveBizId, loading } = useActiveBiz()
+  const activeBiz = businesses.find(b => b.id === activeBizId) || null
   const [txs, setTxs] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/businesses')
-      .then(r => r.json())
-      .then(d => {
-        if (Array.isArray(d) && d.length > 0) {
-          setBusinesses(d)
-          const saved = localStorage.getItem('activeBusiness')
-          const biz = (saved && d.find((b: any) => b.id === saved)) || d[0]
-          setActiveBiz(biz)
-        }
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [])
-
-  useEffect(() => {
-    if (!activeBiz) return
+    if (!activeBizId) return
     const year = new Date().getFullYear()
-    fetch(`/api/transactions?businessId=${activeBiz.id}&from=${year}-01-01&limit=500`)
+    fetch(`/api/transactions?businessId=${activeBizId}&from=${year}-01-01&limit=500`)
       .then(r => r.json())
       .then(d => setTxs(Array.isArray(d.transactions) ? d.transactions : []))
       .catch(() => {})
-  }, [activeBiz])
+  }, [activeBizId])
 
   const now = new Date()
   const ytdTxs = txs.filter(tx => new Date(tx.date).getFullYear() === now.getFullYear())
@@ -179,12 +164,8 @@ export default function DashboardPage() {
           {businesses.length > 1 && (
             <select
               className="input w-auto text-sm"
-              value={activeBiz?.id}
-              onChange={e => {
-                const biz = businesses.find(b => b.id === e.target.value)
-                setActiveBiz(biz)
-                if (biz) localStorage.setItem('activeBusiness', biz.id)
-              }}
+              value={activeBizId}
+              onChange={e => setActiveBizId(e.target.value)}
             >
               {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>

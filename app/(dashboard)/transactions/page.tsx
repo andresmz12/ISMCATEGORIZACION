@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
@@ -14,8 +15,7 @@ export default function TransactionsPage() {
   const searchParams = useSearchParams()
   const selectAllRef = useRef<HTMLInputElement>(null)
 
-  const [businesses, setBusinesses] = useState<any[]>([])
-  const [activeBiz, setActiveBiz] = useState<string>('')
+  const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
   const [transactions, setTransactions] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [total, setTotal] = useState(0)
@@ -38,16 +38,6 @@ export default function TransactionsPage() {
   const [bulkCategoryId, setBulkCategoryId] = useState('')
   const [bulkLoading, setBulkLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/businesses').then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return
-      setBusinesses(data)
-      const saved = localStorage.getItem('activeBusiness')
-      const biz = (saved && data.find((b: any) => b.id === saved)) || data[0]
-      if (biz) setActiveBiz(biz.id)
-    })
-  }, [])
 
   useEffect(() => {
     if (!activeBiz) return

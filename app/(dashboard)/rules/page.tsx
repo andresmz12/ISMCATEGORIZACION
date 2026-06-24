@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 interface LearnedPattern {
   pattern: string
@@ -324,22 +325,11 @@ export default function RulesPage() {
   const { data: session } = useSession()
   const { t } = useTranslation()
   const toast = useToast()
-  const [businesses, setBusinesses] = useState<any[]>([])
-  const [activeBiz, setActiveBiz] = useState<string>('')
+  const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
   const [categories, setCategories] = useState<any[]>([])
 
   const plan = (session?.user as any)?.plan || 'BASIC'
   const isAIPlan = plan === 'PLUS' || plan === 'ENTERPRISE'
-
-  useEffect(() => {
-    fetch('/api/businesses').then(r => r.json()).then(data => {
-      if (!Array.isArray(data)) return
-      setBusinesses(data)
-      const saved = localStorage.getItem('activeBusiness')
-      const biz = (saved && data.find((b: any) => b.id === saved)) || data[0]
-      if (biz) setActiveBiz(biz.id)
-    })
-  }, [])
 
   useEffect(() => {
     if (!activeBiz) return
@@ -364,7 +354,7 @@ export default function RulesPage() {
             </span>
           )}
           {businesses.length > 1 && (
-            <select className="input w-auto text-sm" value={activeBiz} onChange={e => setActiveBiz(e.target.value)}>
+            <select className="input w-auto text-sm" value={activeBiz} onChange={e => setActiveBiz(e.target.value)} >
               {businesses.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           )}
