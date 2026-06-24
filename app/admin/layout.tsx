@@ -26,6 +26,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { href: '/admin', label: t('nav.accounts'), icon: '👥' },
+    { href: '/admin/categorias', label: 'Categorías', icon: '🏷️' },
+    { href: '/admin/negocios', label: 'Negocios', icon: '🏢' },
     { href: '/admin/plans', label: t('nav.plans'), icon: '📋' },
     { href: '/admin/logs', label: t('nav.logs'), icon: '📄' },
   ]
@@ -51,7 +53,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               key={item.href}
               href={item.href}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                pathname === item.href ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
+                (item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href)) ? 'bg-white/15 text-white' : 'text-white/65 hover:bg-white/10 hover:text-white'
               }`}
             >
               <span>{item.icon}</span>

@@ -14,7 +14,8 @@ export default function ReportsPage() {
   const { businesses, activeBizId } = useActiveBiz()
   const activeBiz = activeBizId
   const accountType = (session?.user as any)?.accountType
-  const isPremium = accountType === 'PLUS' || accountType === 'ENTERPRISE'
+  const plan = (session?.user as any)?.plan || 'BASIC'
+  const isPremium = accountType === 'SUPERADMIN' || plan === 'PLUS' || plan === 'ENTERPRISE'
   const [report, setReport] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [from, setFrom] = useState('2020-01-01')
