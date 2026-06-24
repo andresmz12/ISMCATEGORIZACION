@@ -128,6 +128,112 @@ export default function ReportsPage() {
     setExporting(false)
   }
 
+  async function exportTransactionsByCategory() {
+    if (!activeBiz) return
+    setExporting(true)
+    try {
+      const params = new URLSearchParams({ businessId: activeBiz, limit: '5000' })
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
+      const res = await fetch(`/api/transactions?${params}`)
+      const data = await res.json()
+      const txs: any[] = data.transactions || []
+
+      // Group by category name
+      const grouped: Record<string, any[]> = {}
+      for (const tx of txs) {
+        const cat = tx.category?.name || 'Sin categoría'
+        if (!grouped[cat]) grouped[cat] = []
+        grouped[cat].push(tx)
+      }
+
+      const ExcelJS = await import('exceljs')
+      const wb = new ExcelJS.Workbook()
+      const biz = businesses.find((b: any) => b.id === activeBiz)
+      wb.creator = 'MyP&L'
+      wb.created = new Date()
+
+      const ws = wb.addWorksheet('Transacciones por Categoría')
+      ws.columns = [
+        { key: 'date', width: 14 },
+        { key: 'desc', width: 44 },
+        { key: 'amount', width: 15 },
+        { key: 'type', width: 10 },
+        { key: 'status', width: 13 },
+        { key: 'ded', width: 11 },
+      ]
+
+      // Title
+      ws.addRow([`${biz?.name || ''} — Transacciones por Categoría`])
+      ws.getRow(1).font = { bold: true, size: 13, color: { argb: 'FF1B4965' } }
+      ws.addRow([`Período: ${from} → ${to}  ·  ${txs.length} transacciones`])
+      ws.getRow(2).font = { italic: true, size: 10, color: { argb: 'FF6B7280' } }
+      ws.addRow([])
+
+      const BLUE = 'FF1B4965'
+      const BLUE_LIGHT = 'FFE5EEF4'
+      const sortedCats = Object.keys(grouped).sort((a, b) => {
+        if (a === 'Sin categoría') return 1
+        if (b === 'Sin categoría') return -1
+        return a.localeCompare(b)
+      })
+
+      for (const catName of sortedCats) {
+        const catTxs = grouped[catName].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        const debitTotal = catTxs.filter((tx: any) => tx.type === 'DEBIT').reduce((s: number, tx: any) => s + tx.amount, 0)
+        const creditTotal = catTxs.filter((tx: any) => tx.type === 'CREDIT').reduce((s: number, tx: any) => s + tx.amount, 0)
+
+        // Category header row
+        const catTotal = debitTotal > 0 ? debitTotal : creditTotal
+        const catRow = ws.addRow([catName, `${catTxs.length} transacciones`, catTotal])
+        catRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
+        catRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } }
+        catRow.height = 18
+        catRow.getCell(3).numFmt = '"$"#,##0.00'
+
+        // Column sub-headers
+        const hRow = ws.addRow(['Fecha', 'Descripción', 'Monto', 'Tipo', 'Estado', 'Deducible'])
+        hRow.font = { bold: true, size: 9, color: { argb: 'FF1B4965' } }
+        hRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE_LIGHT } }
+
+        for (const tx of catTxs) {
+          const row = ws.addRow([
+            new Date(tx.date).toLocaleDateString('es-CO'),
+            tx.description,
+            tx.amount,
+            tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
+            tx.status === 'CLASSIFIED' ? 'Clasificado' : tx.status === 'PENDING' ? 'Pendiente' : 'Revisar',
+            tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : '-',
+          ])
+          row.getCell(3).numFmt = '"$"#,##0.00'
+          row.getCell(3).font = { color: { argb: tx.type === 'CREDIT' ? 'FF059669' : 'FFDC2626' } }
+          row.height = 15
+        }
+
+        // Subtotal row
+        const subRow = ws.addRow(['', `Subtotal ${catName}`, catTotal])
+        subRow.font = { bold: true, italic: true, size: 9 }
+        subRow.getCell(3).numFmt = '"$"#,##0.00'
+        subRow.getCell(3).font = { bold: true, italic: true, color: { argb: debitTotal > 0 ? 'FFDC2626' : 'FF059669' } }
+
+        ws.addRow([]) // spacer between categories
+      }
+
+      ws.autoFilter = undefined
+
+      const buf = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `transacciones-por-categoria_${from}_${to}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const year = new Date().getFullYear()
   const quickRanges = [
     { label: 'Todo', from: '2020-01-01', to: new Date().toISOString().split('T')[0] },
@@ -155,6 +261,9 @@ export default function ReportsPage() {
           </button>
           <button onClick={exportExcel} disabled={exporting || !report} className="btn-primary text-sm disabled:opacity-50">
             {exporting ? t('reports.generating') : t('reports.exportExcel')}
+          </button>
+          <button onClick={exportTransactionsByCategory} disabled={exporting || !activeBiz} className="btn-secondary text-sm disabled:opacity-50">
+            {exporting ? t('reports.generating') : 'Tx por Categoría'}
           </button>
         </div>
       </div>
