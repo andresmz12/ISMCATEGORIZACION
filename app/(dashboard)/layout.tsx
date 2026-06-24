@@ -76,9 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex flex-col h-full">
       {/* Logo + collapse toggle */}
       <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center px-3 py-4' : 'px-4 py-4'}`}>
-        <div className="w-8 h-8 bg-[#2EC4B6] rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-          <span className="text-xs font-bold text-white">MP</span>
-        </div>
+        <img src="/logo.svg" alt="MyP&L" className="w-8 h-8 flex-shrink-0" />
         {!isCollapsed && (
           <div className="flex-1 min-w-0">
             <p className="text-white font-bold text-sm leading-tight">{t('app.short')}</p>
@@ -233,9 +231,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#1B4965] rounded-lg flex items-center justify-center">
-              <span className="text-xs font-bold text-white">MP</span>
-            </div>
+            <img src="/logo.svg" alt="MyP&L" className="w-7 h-7" />
             <span className="text-sm font-bold text-[#1B4965]">{t('app.short')}</span>
           </div>
 

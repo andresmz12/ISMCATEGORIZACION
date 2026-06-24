@@ -334,9 +334,7 @@ export default function LandingClient() {
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#1B4965] rounded-xl flex items-center justify-center shadow-sm">
-              <span className="text-sm font-black text-white tracking-tight">MP</span>
-            </div>
+            <img src="/logo.svg" alt="MyP&L" className="w-9 h-9" />
             <span className="font-black text-[#1B4965] text-xl tracking-tight">MyP&amp;L</span>
           </div>
 
@@ -1087,9 +1085,7 @@ export default function LandingClient() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-2">
               <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 bg-[#2EC4B6] rounded-xl flex items-center justify-center">
-                  <span className="text-xs font-black text-white">MP</span>
-                </div>
+                <img src="/logo.svg" alt="MyP&L" className="w-8 h-8" />
                 <span className="font-black text-white text-lg tracking-tight">MyP&amp;L</span>
               </div>
               <p className="text-sm leading-relaxed max-w-xs">

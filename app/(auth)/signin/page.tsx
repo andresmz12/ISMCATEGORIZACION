@@ -26,9 +26,7 @@ function DashboardMockup() {
     >
       {/* App topbar */}
       <div className="bg-[#0F2030] px-4 py-2.5 flex items-center gap-2">
-        <div className="w-6 h-6 bg-[#2EC4B6] rounded-md flex items-center justify-center">
-          <span className="text-white text-[8px] font-bold">MP</span>
-        </div>
+        <img src="/logo.svg" alt="MP" className="w-6 h-6" />
         <span className="text-white/80 text-xs font-medium">My Profit & Loss</span>
         <div className="ml-auto flex gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
@@ -149,9 +147,7 @@ function SignInForm() {
 
           {/* Logo */}
           <div className="relative flex items-center gap-3 mb-16">
-            <div className="w-10 h-10 bg-[#2EC4B6] rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-sm font-bold text-white">MP</span>
-            </div>
+            <img src="/logo.svg" alt="MyP&L Logo" className="w-12 h-12" />
             <span className="text-white font-bold text-xl tracking-tight">MyP&L</span>
           </div>
 
@@ -189,9 +185,7 @@ function SignInForm() {
           <div className="flex justify-between items-center p-6">
             {/* Mobile logo */}
             <div className="flex lg:hidden items-center gap-2">
-              <div className="w-8 h-8 bg-[#1B4965] rounded-lg flex items-center justify-center">
-                <span className="text-xs font-bold text-white">MP</span>
-              </div>
+              <img src="/logo.svg" alt="MyP&L Logo" className="w-8 h-8" />
               <span className="text-[#1B4965] font-bold">MyP&L</span>
             </div>
             <div className="lg:ml-auto">
