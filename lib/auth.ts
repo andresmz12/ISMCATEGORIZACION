@@ -9,7 +9,7 @@ const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
   ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
   : undefined
 
-if (!process.env.NEXTAUTH_URL && railwayUrl) {
+if (railwayUrl) {
   process.env.NEXTAUTH_URL = railwayUrl
 }
 
@@ -56,7 +56,7 @@ export const authOptions: NextAuthOptions = {
         const valid = await bcrypt.compare(credentials.password, user.passwordHash)
         if (!valid) return null
 
-        await prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } })
+        prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } }).catch(() => {})
         return { id: user.id, email: user.email, name: user.name, accountType: user.accountType, plan: user.plan }
       },
     }),
