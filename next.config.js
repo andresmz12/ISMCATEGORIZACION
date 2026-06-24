@@ -30,7 +30,9 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
-  serverExternalPackages: ['@prisma/client', 'bcryptjs'],
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
+  },
   env: {
     NEXTAUTH_URL:
       process.env.NEXTAUTH_URL ||

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkBusinessAccess } from '@/lib/check-business-access'
 import crypto from 'crypto'
 
 function makeChecksum(date: string, description: string, amount: number): string {
@@ -70,6 +71,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
 
   try {
     const formData = await req.formData()
@@ -82,8 +84,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
-    if (!bu) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const mapping = JSON.parse(mappingJson)
     const ext = file.name.split('.').pop()?.toLowerCase()
@@ -207,11 +210,13 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
   if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 })
-  const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
-  if (!bu) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   const mappings = await prisma.bankFormatMapping.findMany({ where: { businessId } })
   return NextResponse.json(mappings)
 }

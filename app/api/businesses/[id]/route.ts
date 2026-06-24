@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-async function checkOwner(userId: string, businessId: string) {
+async function checkOwner(userId: string, businessId: string, accountType?: string) {
+  if (accountType === 'SUPERADMIN') return true
   const bu = await prisma.businessUser.findUnique({
     where: { userId_businessId: { userId, businessId } },
   })
@@ -14,8 +15,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
 
-  if (!await checkOwner(userId, params.id)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!await checkOwner(userId, params.id, accountType)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const { name, industry, entityType, taxYear } = await req.json()
   const updated = await prisma.business.update({
@@ -34,8 +38,11 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
 
-  if (!await checkOwner(userId, params.id)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!await checkOwner(userId, params.id, accountType)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   await prisma.business.delete({ where: { id: params.id } })
   return NextResponse.json({ ok: true })

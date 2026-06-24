@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { checkBusinessAccess } from '@/lib/check-business-access'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
 
   // 30 receipt scans per user per hour to prevent AI API abuse
   const rl = rateLimit(`receipt-scan:${userId}`, 30, 60 * 60 * 1000)
@@ -34,10 +36,9 @@ export async function POST(req: Request) {
     const file = formData.get('file') as File
     if (!businessId || !file) return NextResponse.json({ error: 'businessId and file required' }, { status: 400 })
 
-    const bu = await prisma.businessUser.findUnique({
-      where: { userId_businessId: { userId, businessId } },
-    })
-    if (!bu) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const buffer = Buffer.from(await file.arrayBuffer())
     if (buffer.length > 5 * 1024 * 1024) {

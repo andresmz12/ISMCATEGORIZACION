@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { checkBusinessAccess } from '@/lib/check-business-access'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
 
   // 20 classification jobs per user per hour to prevent AI API abuse
   const rl = rateLimit(`classify:${userId}`, 20, 60 * 60 * 1000)
@@ -65,8 +67,9 @@ export async function POST(req: Request) {
     if (!Array.isArray(transactionIds) || transactionIds.length > 500) {
       return NextResponse.json({ error: 'transactionIds must be an array of at most 500 items' }, { status: 400 })
     }
-    const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
-    if (!bu) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const transactions = await prisma.transaction.findMany({
       where: { id: { in: transactionIds }, businessId, status: 'PENDING' },

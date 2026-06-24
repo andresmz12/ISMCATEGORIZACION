@@ -2,19 +2,21 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkBusinessAccess } from '@/lib/check-business-access'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
 
-  // Always include system categories; custom categories only if caller has access
   const where: any = { OR: [{ isSystem: true }] }
   if (businessId) {
-    const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
-    if (!bu) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     where.OR.push({ businessId })
   }
 
@@ -29,13 +31,15 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
   const { name, irsCode, description, businessId } = await req.json()
   if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 })
   if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 })
   if (name.length > 100) return NextResponse.json({ error: 'Name too long' }, { status: 400 })
 
-  const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
-  if (!bu) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const cat = await prisma.category.create({ data: { name, irsCode, description, businessId } })
   return NextResponse.json(cat, { status: 201 })

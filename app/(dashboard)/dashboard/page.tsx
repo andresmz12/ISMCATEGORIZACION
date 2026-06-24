@@ -233,7 +233,7 @@ export default function DashboardPage() {
       <div className="card overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <h3 className="text-sm font-semibold text-gray-700">{t('dashboard.recentTx')}</h3>
-          <Link href="/transacciones" className="text-xs text-[#1B4965] font-medium hover:underline">{t('dashboard.viewAll')}</Link>
+          <Link href="/transactions" className="text-xs text-[#1B4965] font-medium hover:underline">{t('dashboard.viewAll')}</Link>
         </div>
         {recentTxs.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">{t('tx.noData')}</p>

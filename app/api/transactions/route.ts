@@ -2,20 +2,19 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-
-async function checkAccess(userId: string, businessId: string) {
-  const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
-  return !!bu
-}
+import { checkBusinessAccess } from '@/lib/check-business-access'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
   if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 })
-  if (!await checkAccess(userId, businessId)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const status = searchParams.get('status')
   const categoryId = searchParams.get('categoryId')
@@ -53,12 +52,15 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
   const body = await req.json()
   const { businessId, date, description, amount, type } = body
   if (!businessId || !date || !description) return NextResponse.json({ error: 'businessId, date, description required' }, { status: 400 })
   const parsedAmount = Number(amount)
   if (!isFinite(parsedAmount) || parsedAmount <= 0) return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
-  if (!await checkAccess(userId, businessId)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   const tx = await prisma.transaction.create({
     data: { businessId, date: new Date(date), description, amount: parsedAmount, type: type || 'DEBIT', status: 'PENDING' },
   })
