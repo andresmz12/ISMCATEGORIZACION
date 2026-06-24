@@ -1114,8 +1114,8 @@ export default function LandingClient() {
             <div>
               <p className="text-white font-bold text-sm mb-4">{t.footer.legal}</p>
               <ul className="space-y-2.5 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">{t.footer.privacy}</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">{t.footer.terms}</a></li>
+                <li><Link href="/privacy" className="hover:text-white transition-colors">{t.footer.privacy}</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition-colors">{t.footer.terms}</Link></li>
               </ul>
             </div>
           </div>

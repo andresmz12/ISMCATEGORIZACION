@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 // ── types ────────────────────────────────────────────────────────────
 interface ExtractedData {
@@ -80,8 +81,7 @@ export default function RecibosPage() {
   const [dragging, setDragging] = useState(false)
   const [tab, setTab] = useState<'scan' | 'history'>('scan')
 
-  const [businesses, setBusinesses] = useState<any[]>([])
-  const [activeBiz, setActiveBiz] = useState<string>('')
+  const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
   const [categories, setCategories] = useState<any[]>([])
   const [jobs, setJobs] = useState<ScanJob[]>([])
 
@@ -91,16 +91,6 @@ export default function RecibosPage() {
   const [histTotal, setHistTotal] = useState(0)
   const [histPage, setHistPage] = useState(1)
   const [lightbox, setLightbox] = useState<HistoryReceipt | null>(null)
-
-  useEffect(() => {
-    fetch('/api/businesses').then(r => r.json()).then(d => {
-      if (!Array.isArray(d)) return
-      setBusinesses(d)
-      const saved = localStorage.getItem('activeBusiness')
-      const biz = (saved && d.find((b: any) => b.id === saved)) || d[0]
-      if (biz) setActiveBiz(biz.id)
-    })
-  }, [])
 
   useEffect(() => {
     if (!activeBiz) return
