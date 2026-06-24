@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback, useRef, useMemo, useTransition } from 'react'
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
@@ -9,7 +9,7 @@ function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 }
 
-export default function TransactionsPage() {
+function TransactionsContent() {
   const { t } = useTranslation()
   const toast = useToast()
   const searchParams = useSearchParams()
@@ -51,19 +51,27 @@ export default function TransactionsPage() {
     if (!activeBiz) return
     if (append) setLoadingMore(true)
     else setLoading(true)
-    const params = new URLSearchParams({ businessId: activeBiz, page: String(pageNum), limit: '25' })
-    if (filters.status) params.set('status', filters.status)
-    if (filters.categoryId) params.set('categoryId', filters.categoryId)
-    if (filters.from) params.set('from', filters.from)
-    if (filters.to) params.set('to', filters.to)
-    if (filters.search) params.set('search', filters.search)
-    const data = await fetch(`/api/transactions?${params}`).then(r => r.json())
-    const newTxs = data.transactions || []
-    setTransactions(prev => append ? [...prev, ...newTxs] : newTxs)
-    setTotal(data.total || 0)
-    setHasMore(newTxs.length === 25)
-    if (append) setLoadingMore(false)
-    else setLoading(false)
+    try {
+      const params = new URLSearchParams({ businessId: activeBiz, page: String(pageNum), limit: '25' })
+      if (filters.status) params.set('status', filters.status)
+      if (filters.categoryId) params.set('categoryId', filters.categoryId)
+      if (filters.from) params.set('from', filters.from)
+      if (filters.to) params.set('to', filters.to)
+      if (filters.search) params.set('search', filters.search)
+      const res = await fetch(`/api/transactions?${params}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      const newTxs = Array.isArray(data.transactions) ? data.transactions : []
+      setTransactions(prev => append ? [...prev, ...newTxs] : newTxs)
+      setTotal(data.total || 0)
+      setHasMore(newTxs.length === 25)
+    } catch (err) {
+      console.error('Failed to load transactions:', err)
+      if (!append) setTransactions([])
+    } finally {
+      if (append) setLoadingMore(false)
+      else setLoading(false)
+    }
   }, [activeBiz, filters])
 
   // Reset and reload when filters or business change
@@ -484,5 +492,13 @@ export default function TransactionsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function TransactionsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-64 text-gray-400 text-sm">Cargando...</div>}>
+      <TransactionsContent />
+    </Suspense>
   )
 }
