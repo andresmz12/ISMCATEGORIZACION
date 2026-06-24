@@ -179,48 +179,83 @@ export default function ClasificarPage() {
 
   async function updateTxCategory(txId: string, categoryId: string) {
     const cat = categories.find(c => c.id === categoryId)
+    const oldTx = transactions.find(tx => tx.id === txId)
+
+    // Optimistic update
     setTransactions(prev => prev.map(tx => tx.id === txId ? { ...tx, categoryId, category: cat || tx.category, status: 'CLASSIFIED', method: 'MANUAL' } : tx))
-    await fetch(`/api/transactions/${txId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ categoryId: categoryId || null, status: 'CLASSIFIED', method: 'MANUAL' }),
-    })
+
+    try {
+      const res = await fetch(`/api/transactions/${txId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: categoryId || null, status: 'CLASSIFIED', method: 'MANUAL' }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    } catch (err) {
+      console.error('Update failed, rolling back:', err)
+      // Rollback on failure
+      if (oldTx) setTransactions(prev => prev.map(tx => tx.id === txId ? oldTx : tx))
+      toast('Error al clasificar', 'error')
+    }
   }
 
   async function confirmAll() {
     setConfirming(true)
-    const needsReview = transactions.filter(tx => tx.status === 'NEEDS_REVIEW')
-    await Promise.all(needsReview.map(tx =>
-      fetch(`/api/transactions/${tx.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'CLASSIFIED' }),
-      })
-    ))
-    setTransactions(prev => prev.map(tx => ({ ...tx, status: 'CLASSIFIED' })))
-    setConfirming(false)
-    setStep('done')
+    try {
+      const needsReview = transactions.filter(tx => tx.status === 'NEEDS_REVIEW')
+      if (needsReview.length === 0) {
+        toast('No hay transacciones por confirmar', 'info')
+        setConfirming(false)
+        return
+      }
+      const results = await Promise.all(needsReview.map(tx =>
+        fetch(`/api/transactions/${tx.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'CLASSIFIED' }),
+        })
+      ))
+      const failed = results.filter(r => !r.ok).length
+      if (failed > 0) {
+        toast(`${failed} errores al confirmar`, 'error')
+      } else {
+        setTransactions(prev => prev.map(tx => ({ ...tx, status: 'CLASSIFIED' })))
+        setStep('done')
+        toast('Todas las transacciones confirmadas', 'success')
+      }
+    } catch (err) {
+      console.error('Confirm all failed:', err)
+      toast('Error al confirmar transacciones', 'error')
+    } finally {
+      setConfirming(false)
+    }
   }
 
   async function downloadExcel() {
-    const biz = businesses.find(b => b.id === activeBiz)
-    const res = await fetch('/api/reports/excel', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        businessName: biz?.name || 'Negocio',
-        period: new Date().toLocaleDateString('es', { month: 'long', year: 'numeric' }),
-        transactions,
-      }),
-    })
-    if (!res.ok) return
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `reporte-${Date.now()}.xlsx`
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      const biz = businesses.find(b => b.id === activeBiz)
+      const res = await fetch('/api/reports/excel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: biz?.name || 'Negocio',
+          period: new Date().toLocaleDateString('es', { month: 'long', year: 'numeric' }),
+          transactions,
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `reporte-${Date.now()}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast('Descarga completada', 'success')
+    } catch (err) {
+      console.error('Download Excel failed:', err)
+      toast('Error al descargar reporte', 'error')
+    }
   }
 
   async function downloadPDF() {

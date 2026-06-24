@@ -103,14 +103,27 @@ export default function TransactionsPage() {
   }, [selected, transactions])
 
   async function updateTx(id: string, patch: any) {
-    await fetch(`/api/transactions/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
-    loadTransactions(1, false)
+    try {
+      const res = await fetch(`/api/transactions/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      loadTransactions(1, false)
+    } catch (err) {
+      console.error('Update failed:', err)
+      toast(t('common.error'), 'error')
+    }
   }
 
   async function deleteTx(id: string) {
     if (!confirm(t('tx.delConfirm'))) return
-    await fetch(`/api/transactions/${id}`, { method: 'DELETE' })
-    loadTransactions(1, false)
+    try {
+      const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      loadTransactions(1, false)
+      toast(t('tx.deleted'), 'success')
+    } catch (err) {
+      console.error('Delete failed:', err)
+      toast(t('common.error'), 'error')
+    }
   }
 
   async function bulkDelete() {
@@ -118,57 +131,87 @@ export default function TransactionsPage() {
     if (!confirm(t('tx.delBulkConfirm').replace('{n}', String(selected.size)))) return
     const count = selected.size
     setDeleteLoading(true)
-    const results = await Promise.all(Array.from(selected).map(id => fetch(`/api/transactions/${id}`, { method: 'DELETE' })))
-    const failed = results.filter(r => !r.ok).length
-    setSelected(new Set())
-    setDeleteLoading(false)
-    if (failed > 0) toast(t('tx.delBulkPartial').replace('{ok}', String(count - failed)).replace('{fail}', String(failed)), 'error')
-    else toast(t('tx.delBulkSuccess').replace('{n}', String(count)), 'success')
-    loadTransactions(1, false)
+    try {
+      const results = await Promise.all(Array.from(selected).map(id => fetch(`/api/transactions/${id}`, { method: 'DELETE' })))
+      const failed = results.filter(r => !r.ok).length
+      setSelected(new Set())
+      if (failed > 0) toast(t('tx.delBulkPartial').replace('{ok}', String(count - failed)).replace('{fail}', String(failed)), 'error')
+      else toast(t('tx.delBulkSuccess').replace('{n}', String(count)), 'success')
+      loadTransactions(1, false)
+    } catch (err) {
+      console.error('Bulk delete failed:', err)
+      toast(t('common.error'), 'error')
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   async function bulkClassify() {
     if (!selected.size || !bulkCategoryId) return
     setBulkLoading(true)
-    await Promise.all(
-      Array.from(selected).map(id =>
-        fetch(`/api/transactions/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ categoryId: bulkCategoryId, status: 'CLASSIFIED', method: 'MANUAL' }),
-        })
+    try {
+      const results = await Promise.all(
+        Array.from(selected).map(id =>
+          fetch(`/api/transactions/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoryId: bulkCategoryId, status: 'CLASSIFIED', method: 'MANUAL' }),
+          })
+        )
       )
-    )
-    toast(`${selected.size} transacciones clasificadas`, 'success')
-    setSelected(new Set())
-    setBulkCategoryId('')
-    setBulkLoading(false)
-    loadTransactions(1, false)
+      const failed = results.filter(r => !r.ok).length
+      if (failed > 0) {
+        toast(`${failed} errores al clasificar`, 'error')
+      } else {
+        toast(`${selected.size} transacciones clasificadas`, 'success')
+      }
+      setSelected(new Set())
+      setBulkCategoryId('')
+      loadTransactions(1, false)
+    } catch (err) {
+      console.error('Bulk classify failed:', err)
+      toast(t('common.error'), 'error')
+    } finally {
+      setBulkLoading(false)
+    }
   }
 
   async function classifyWithAI() {
     if (!selected.size) return
     setAiLoading(true)
-    setAiResult(null)
-    const res = await fetch('/api/classify-ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ businessId: activeBiz, transactionIds: Array.from(selected) }),
-    })
-    const data = await res.json()
-    setAiResult(data)
-    setAiLoading(false)
-    setSelected(new Set())
-    loadTransactions(1, false)
+    try {
+      const res = await fetch('/api/classify-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessId: activeBiz, transactionIds: Array.from(selected) }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      setAiResult(data)
+      setSelected(new Set())
+      loadTransactions(1, false)
+      toast('Clasificación completada', 'success')
+    } catch (err) {
+      console.error('AI classify failed:', err)
+      toast('Error en clasificación con IA', 'error')
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   async function saveSplit() {
     const validSplits = splitRows.filter(r => r.categoryId && r.amount)
-    if (!validSplits.length) return
-    await updateTx(splitTx.id, { splits: validSplits, status: 'CLASSIFIED', method: 'MANUAL' })
-    setSplitTx(null)
-    setSplitRows([{ categoryId: '', amount: '', deductibility: '' }])
-    toast(t('tx.saveSplit'), 'success')
+    if (!validSplits.length) {
+      toast('Selecciona al menos una categoría', 'error')
+      return
+    }
+    try {
+      await updateTx(splitTx.id, { splits: validSplits, status: 'CLASSIFIED', method: 'MANUAL' })
+      setSplitTx(null)
+      setSplitRows([{ categoryId: '', amount: '', deductibility: '' }])
+    } catch (err) {
+      console.error('Save split failed:', err)
+    }
   }
 
   function toggleSelect(id: string) {

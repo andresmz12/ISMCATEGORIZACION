@@ -21,9 +21,9 @@ export function useActiveBiz() {
         setBusinesses(d)
         const saved = localStorage.getItem('activeBusiness')
         const biz = (saved && d.find((b: any) => b.id === saved)) || d[0]
-        setActiveBizIdInner(biz.id)
+        if (biz?.id) setActiveBizIdInner(biz.id)
       })
-      .catch(() => {})
+      .catch(() => setLoading(false))
       .finally(() => setLoading(false))
   }, [])
 

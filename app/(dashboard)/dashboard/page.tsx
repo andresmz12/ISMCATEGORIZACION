@@ -83,11 +83,16 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!activeBizId) return
-    const year = new Date().getFullYear()
     fetch(`/api/transactions?businessId=${activeBizId}&limit=5000`)
-      .then(r => r.json())
-      .then(d => setTxs(Array.isArray(d.transactions) ? d.transactions : []))
-      .catch(() => {})
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then(d => setTxs(Array.isArray(d?.transactions) ? d.transactions : []))
+      .catch(err => {
+        console.error('Failed to load transactions:', err)
+        setTxs([])
+      })
   }, [activeBizId])
 
   const now = new Date()

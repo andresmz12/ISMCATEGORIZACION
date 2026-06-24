@@ -18,20 +18,27 @@ function DuplicateTable({ rows, businessId, onImported }: { rows: DupRow[]; busi
 
   async function forceImport(dup: DupRow) {
     setImporting(dup.existingId)
-    await fetch('/api/transactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        businessId,
-        date: dup.date,
-        description: dup.description,
-        amount: dup.amount,
-        type: dup.type,
-        status: 'PENDING',
-      }),
-    })
-    setImporting(null)
-    onImported()
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId,
+          date: dup.date,
+          description: dup.description,
+          amount: dup.amount,
+          type: dup.type,
+          status: 'PENDING',
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      onImported()
+    } catch (err) {
+      console.error('Force import failed:', err)
+      alert('Error al importar. Por favor intenta de nuevo.')
+    } finally {
+      setImporting(null)
+    }
   }
 
   return (
