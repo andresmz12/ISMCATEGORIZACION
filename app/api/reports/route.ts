@@ -28,12 +28,12 @@ export async function GET(req: Request) {
   })
 
   const income = transactions
-    .filter(t => t.type === 'CREDIT' && t.status === 'CLASSIFIED')
+    .filter(t => t.type === 'CREDIT')
     .reduce((sum, t) => sum + t.amount, 0)
 
   const expensesByCategory: Record<string, { name: string; irsCode: string | null; total: number; deductible: number; count: number }> = {}
 
-  for (const t of transactions.filter(t => t.type === 'DEBIT' && t.status === 'CLASSIFIED')) {
+  for (const t of transactions.filter(t => t.type === 'DEBIT')) {
     const catName = t.category?.name || 'Uncategorized'
     const catCode = t.category?.irsCode || null
     if (!expensesByCategory[catName]) {
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
   const totalDeductible = Object.values(expensesByCategory).reduce((s, c) => s + c.deductible, 0)
 
   const byMonth: Record<string, { income: number; expenses: number }> = {}
-  for (const t of transactions.filter(t => t.status === 'CLASSIFIED')) {
+  for (const t of transactions) {
     const key = t.date.toISOString().substring(0, 7)
     if (!byMonth[key]) byMonth[key] = { income: 0, expenses: 0 }
     if (t.type === 'CREDIT') byMonth[key].income += t.amount

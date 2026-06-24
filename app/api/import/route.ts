@@ -15,20 +15,53 @@ function parseAmount(val: string): { amount: number; type: 'DEBIT' | 'CREDIT' } 
   return { amount: Math.abs(num), type: num < 0 ? 'DEBIT' : 'CREDIT' }
 }
 
-function parseDate(val: string): Date | null {
-  const s = String(val).trim()
-  const formats = [
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,
-    /^(\d{4})-(\d{2})-(\d{2})$/,
-    /^(\d{1,2})-(\d{1,2})-(\d{4})$/,
-  ]
-  for (const f of formats) {
-    const m = s.match(f)
-    if (m) {
-      const d = new Date(s)
-      if (!isNaN(d.getTime())) return d
-    }
+function parseDate(val: unknown): Date | null {
+  // ExcelJS returns Date objects for date cells — use them directly
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val
   }
+
+  const s = String(val).trim()
+  if (!s) return null
+
+  // YYYY-MM-DD  (parse as local noon to avoid UTC timezone shift)
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (iso) {
+    const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), 12)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // DD/MM/YYYY or MM/DD/YYYY  (slashes)
+  const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (slash) {
+    const [, a, b, y] = slash.map(Number)
+    // If first part > 12 it must be DD/MM; if second > 12 it must be MM/DD;
+    // otherwise default to DD/MM (Latin American format)
+    const [day, month] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]
+    const d = new Date(y, month - 1, day, 12)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // DD-MM-YYYY or MM-DD-YYYY  (dashes, non-ISO)
+  const dash = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+  if (dash) {
+    const [, a, b, y] = dash.map(Number)
+    const [day, month] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]
+    const d = new Date(y, month - 1, day, 12)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // MM/DD/YY two-digit year
+  const shortYear = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/)
+  if (shortYear) {
+    const [, a, b, yy] = shortYear.map(Number)
+    const y = yy < 50 ? 2000 + yy : 1900 + yy
+    const [day, month] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]
+    const d = new Date(y, month - 1, day, 12)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // Last resort: JS Date parsing (handles "Jun 15 2025" etc.)
   const d = new Date(s)
   return isNaN(d.getTime()) ? null : d
 }
@@ -56,7 +89,12 @@ export async function POST(req: Request) {
     const ext = file.name.split('.').pop()?.toLowerCase()
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    let rows: Record<string, string>[] = []
+    const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+    if (buffer.length > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'File too large. Max 10MB allowed.' }, { status: 400 })
+    }
+
+    let rows: Record<string, unknown>[] = []
 
     if (ext === 'csv') {
       const { parse } = await import('csv-parse/sync')
@@ -71,9 +109,10 @@ export async function POST(req: Request) {
       ws.getRow(1).eachCell((cell) => headers.push(String(cell.value ?? '')))
       ws.eachRow((row, rowNum) => {
         if (rowNum === 1) return
-        const rowObj: Record<string, string> = {}
+        const rowObj: Record<string, unknown> = {}
         row.eachCell((cell, colNum) => {
-          rowObj[headers[colNum - 1]] = String(cell.value ?? '')
+          // Preserve Date objects so parseDate can use them directly
+          rowObj[headers[colNum - 1]] = cell.value instanceof Date ? cell.value : String(cell.value ?? '')
         })
         rows.push(rowObj)
       })
@@ -100,17 +139,18 @@ export async function POST(req: Request) {
     let duplicates = 0
     const errors: string[] = []
     const importedIds: string[] = []
+    const duplicateRows: Array<{ row: number; date: string; description: string; amount: number; type: string; existingId: string }> = []
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
       try {
         const dateVal = row[dateCol]
-        const descVal = row[descCol] || ''
+        const descVal = String(row[descCol] ?? '')
         let amount: number
         let type: 'DEBIT' | 'CREDIT'
 
         if (amountCol && row[amountCol] !== undefined) {
-          const p = parseAmount(row[amountCol])
+          const p = parseAmount(String(row[amountCol] ?? ''))
           amount = p.amount
           type = p.type
         } else if (debitCol || creditCol) {
@@ -129,7 +169,11 @@ export async function POST(req: Request) {
 
         const checksum = makeChecksum(date.toISOString().split('T')[0], descVal, amount)
         const existing = await prisma.transaction.findFirst({ where: { businessId, checksum } })
-        if (existing) { duplicates++; continue }
+        if (existing) {
+          duplicates++
+          duplicateRows.push({ row: i + 2, date: date.toISOString(), description: descVal, amount, type, existingId: existing.id })
+          continue
+        }
 
         const tx = await prisma.transaction.create({
           data: { businessId, date, description: descVal, amount, type, status: 'PENDING', checksum, sourceFile: file.name },
@@ -141,18 +185,22 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ imported, duplicates, errors, total: rows.length, importedIds })
+    return NextResponse.json({ imported, duplicates, errors, total: rows.length, importedIds, duplicateRows })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('import error:', e)
+    return NextResponse.json({ error: 'Error al procesar el archivo' }, { status: 500 })
   }
 }
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = (session.user as any).id
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
   if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 })
+  const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
+  if (!bu) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const mappings = await prisma.bankFormatMapping.findMany({ where: { businessId } })
   return NextResponse.json(mappings)
 }
