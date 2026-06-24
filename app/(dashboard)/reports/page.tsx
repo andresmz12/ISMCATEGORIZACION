@@ -147,7 +147,7 @@ export default function ReportsPage() {
       // Group by category name
       const grouped: Record<string, any[]> = {}
       for (const tx of txs) {
-        const cat = tx.category?.name || 'Sin categoría'
+        const cat = tx.category?.name || t('reports.uncategorized')
         if (!grouped[cat]) grouped[cat] = []
         grouped[cat].push(tx)
       }
@@ -157,7 +157,7 @@ export default function ReportsPage() {
       const biz = businesses.find((b: any) => b.id === activeBiz)
       wb.created = new Date()
 
-      const ws = wb.addWorksheet('Transacciones por Categoría')
+      const ws = wb.addWorksheet(t('reports.txByCategory'))
       ws.columns = [
         { key: 'date', width: 14 },
         { key: 'desc', width: 44 },
@@ -168,17 +168,18 @@ export default function ReportsPage() {
       ]
 
       // Title
-      ws.addRow([`${biz?.name || ''} — Transacciones por Categoría`])
+      ws.addRow([`${biz?.name || ''} — ${t('reports.txByCategory')}`])
       ws.getRow(1).font = { bold: true, size: 13, color: { argb: 'FF1B4965' } }
-      ws.addRow([`Período: ${from} → ${to}  ·  ${txs.length} transacciones`])
+      ws.addRow([`${t('reports.period')}: ${from} → ${to}  ·  ${txs.length} ${t('common.transactions')}`])
       ws.getRow(2).font = { italic: true, size: 10, color: { argb: 'FF6B7280' } }
       ws.addRow([])
 
       const BLUE = 'FF1B4965'
       const BLUE_LIGHT = 'FFE5EEF4'
+      const uncategorizedLabel = t('reports.uncategorized')
       const sortedCats = Object.keys(grouped).sort((a, b) => {
-        if (a === 'Sin categoría') return 1
-        if (b === 'Sin categoría') return -1
+        if (a === uncategorizedLabel) return 1
+        if (b === uncategorizedLabel) return -1
         return a.localeCompare(b)
       })
 
@@ -196,17 +197,17 @@ export default function ReportsPage() {
         catRow.getCell(3).numFmt = '"$"#,##0.00'
 
         // Column sub-headers
-        const hRow = ws.addRow(['Fecha', 'Descripción', 'Monto', 'Tipo', 'Estado', 'Deducible'])
+        const hRow = ws.addRow([t('reports.date'), t('reports.description'), t('tx.amount'), t('reports.type'), t('reports.status'), t('tx.deductible')])
         hRow.font = { bold: true, size: 9, color: { argb: 'FF1B4965' } }
         hRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE_LIGHT } }
 
         for (const tx of catTxs) {
           const row = ws.addRow([
-            new Date(tx.date).toLocaleDateString('es-CO'),
+            new Date(tx.date).toLocaleDateString(),
             tx.description,
             tx.amount,
-            tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
-            tx.status === 'CLASSIFIED' ? 'Clasificado' : tx.status === 'PENDING' ? 'Pendiente' : 'Revisar',
+            tx.type === 'CREDIT' ? t('reports.inflow') : t('reports.outflow'),
+            tx.status === 'CLASSIFIED' ? t('reports.statusClassified') : tx.status === 'PENDING' ? t('reports.statusPending') : t('reports.statusReview'),
             tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : '-',
           ])
           row.getCell(3).numFmt = '"$"#,##0.00'
@@ -215,7 +216,7 @@ export default function ReportsPage() {
         }
 
         // Subtotal row
-        const subRow = ws.addRow(['', `Subtotal ${catName}`, catTotal])
+        const subRow = ws.addRow(['', `${t('reports.subtotal')} ${catName}`, catTotal])
         subRow.font = { bold: true, italic: true, size: 9 }
         subRow.getCell(3).numFmt = '"$"#,##0.00'
         subRow.getCell(3).font = { bold: true, italic: true, color: { argb: debitTotal > 0 ? 'FFDC2626' : 'FF059669' } }
@@ -264,7 +265,7 @@ export default function ReportsPage() {
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(180, 210, 225)
-      doc.text('Reporte Corporativo Financiero', 24, 52)
+      doc.text(t('reports.corporateReport'), 24, 52)
 
       // Divider
       doc.setDrawColor(...TEAL)
@@ -283,14 +284,14 @@ export default function ReportsPage() {
       doc.setFontSize(13)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(...TEAL)
-      doc.text(`Período: ${from} — ${to}`, 24, yPeriod + 8)
+      doc.text(`${t('reports.period')}: ${from} — ${to}`, 24, yPeriod + 8)
 
       // Stats summary on cover
       const stats = [
-        { label: 'Ingresos', val: fmt(report.summary.income) },
-        { label: 'Gastos', val: fmt(report.summary.totalExpenses) },
-        { label: 'Utilidad Neta', val: fmt(report.summary.netProfit) },
-        { label: 'Deducible', val: fmt(report.summary.totalDeductible) },
+        { label: t('reports.income'), val: fmt(report.summary.income) },
+        { label: t('reports.expenses'), val: fmt(report.summary.totalExpenses) },
+        { label: t('reports.netProfit'), val: fmt(report.summary.netProfit) },
+        { label: t('reports.totalDeductible'), val: fmt(report.summary.totalDeductible) },
       ]
       const cardY = yPeriod + 28
       const cardW = (W - 48 - 9) / 2
@@ -315,8 +316,8 @@ export default function ReportsPage() {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(100, 150, 170)
-      doc.text(`Generado el ${new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}`, 24, 280)
-      doc.text('Confidencial', W - 24, 280, { align: 'right' })
+      doc.text(`${t('reports.generatedOn')} ${new Date().toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' })}`, 24, 280)
+      doc.text(t('reports.confidential'), W - 24, 280, { align: 'right' })
 
       // ── PAGE 2: P&L SUMMARY ──────────────────────────────────────────
       doc.addPage()
@@ -329,7 +330,7 @@ export default function ReportsPage() {
       doc.setFontSize(11)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...WHITE)
-      doc.text('Estado de Resultados', 16, 13)
+      doc.text(t('reports.incomeStatement'), 16, 13)
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(180, 210, 225)
@@ -337,14 +338,14 @@ export default function ReportsPage() {
 
       autoTable(doc, {
         startY: 28,
-        head: [['Concepto', 'Monto']],
+        head: [[t('reports.concept'), t('tx.amount')]],
         body: [
-          ['Total Ingresos', fmt(report.summary.income)],
-          ['Total Gastos', fmt(report.summary.totalExpenses)],
-          ['Utilidad Neta', fmt(report.summary.netProfit)],
-          ['Total Deducible', fmt(report.summary.totalDeductible)],
-          ['Pendientes de clasificar', String(report.summary.pending)],
-          ['Clasificadas', String(report.summary.classified)],
+          [t('reports.totalIncome'), fmt(report.summary.income)],
+          [t('reports.totalExpenses'), fmt(report.summary.totalExpenses)],
+          [t('reports.netProfit'), fmt(report.summary.netProfit)],
+          [t('reports.totalDeductible'), fmt(report.summary.totalDeductible)],
+          [t('reports.pendingClassify'), String(report.summary.pending)],
+          [t('reports.classifiedCount'), String(report.summary.classified)],
         ],
         headStyles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
         bodyStyles: { fontSize: 9 },
@@ -362,7 +363,7 @@ export default function ReportsPage() {
       doc.setFontSize(11)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...WHITE)
-      doc.text('Tendencia Mensual', 16, 13)
+      doc.text(t('reports.monthlyTrend'), 16, 13)
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(180, 210, 225)
@@ -414,18 +415,18 @@ export default function ReportsPage() {
         doc.rect(chartX, chartY + chartH + 14, 6, 4, 'F')
         doc.setFontSize(8)
         doc.setTextColor(60, 80, 100)
-        doc.text('Ingresos', chartX + 8, chartY + chartH + 17.5)
+        doc.text(t('reports.income'), chartX + 8, chartY + chartH + 17.5)
 
         doc.setFillColor(...BLUE)
         doc.rect(chartX + 40, chartY + chartH + 14, 6, 4, 'F')
-        doc.text('Gastos', chartX + 48, chartY + chartH + 17.5)
+        doc.text(t('reports.expenses'), chartX + 48, chartY + chartH + 17.5)
       }
 
       // Monthly table below chart
       const tableY = (doc as any).lastAutoTable?.finalY ?? 150
       autoTable(doc, {
         startY: 145,
-        head: [['Mes', 'Ingresos', 'Gastos', 'Neto']],
+        head: [[t('reports.month'), t('reports.income'), t('reports.expenses'), t('reports.net')]],
         body: months.map((m: any) => [
           m.month,
           fmt(m.income),
@@ -448,7 +449,7 @@ export default function ReportsPage() {
       doc.setFontSize(11)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...WHITE)
-      doc.text('Gastos por Categoría', 16, 13)
+      doc.text(t('reports.expensesByCategory'), 16, 13)
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(180, 210, 225)
@@ -482,7 +483,7 @@ export default function ReportsPage() {
 
       autoTable(doc, {
         startY: 30 + cats.length * rowH + 10,
-        head: [['Categoría', 'Total', 'Deducible', 'Transacciones']],
+        head: [[t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')]],
         body: cats.map((c: any) => [c.name, fmt(c.total), fmt(c.deductible), c.count]),
         headStyles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 8 },
         bodyStyles: { fontSize: 8 },
@@ -496,7 +497,7 @@ export default function ReportsPage() {
         doc.setPage(p)
         doc.setFontSize(7)
         doc.setTextColor(160, 170, 180)
-        doc.text(`Página ${p} de ${pageCount}`, W / 2, 292, { align: 'center' })
+        doc.text(`${t('reports.page')} ${p} ${t('reports.of')} ${pageCount}`, W / 2, 292, { align: 'center' })
       }
 
       doc.save(`reporte-corporativo_${bizName.replace(/\s+/g, '-')}_${from}_${to}.pdf`)
@@ -529,7 +530,7 @@ export default function ReportsPage() {
             {exporting ? t('reports.generating') : t('reports.exportExcel')}
           </button>
           <button onClick={exportTransactionsByCategory} disabled={exporting || !activeBiz} className="btn-secondary text-sm disabled:opacity-50">
-            {exporting ? t('reports.generating') : 'Tx por Categoría'}
+            {exporting ? t('reports.generating') : t('reports.txByCategoryBtn')}
           </button>
           {isPremium ? (
             <button
@@ -540,7 +541,7 @@ export default function ReportsPage() {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              {exporting ? 'Generando...' : 'Reporte Corporativo'}
+              {exporting ? t('reports.generating') : t('reports.corporateBtn')}
             </button>
           ) : (
             <div className="relative group">
@@ -548,10 +549,10 @@ export default function ReportsPage() {
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                Reporte Corporativo
+                {t('reports.corporateBtn')}
               </button>
               <div className="absolute right-0 top-full mt-1 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 hidden group-hover:block z-50 shadow-lg">
-                Disponible en planes Plus y Enterprise
+                {t('reports.availableInPlus')}
               </div>
             </div>
           )}

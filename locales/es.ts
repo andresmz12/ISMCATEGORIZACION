@@ -271,6 +271,30 @@ const es = {
   'reports.deductible': 'Deducible',
   'reports.generating': 'Generando...',
   'reports.noData': 'Sin datos para este período',
+  'reports.corporateReport': 'Reporte Corporativo Financiero',
+  'reports.confidential': 'Confidencial',
+  'reports.generatedOn': 'Generado el',
+  'reports.incomeStatement': 'Estado de Resultados',
+  'reports.concept': 'Concepto',
+  'reports.pendingClassify': 'Pendientes de clasificar',
+  'reports.classifiedCount': 'Clasificadas',
+  'reports.monthlyTrend': 'Tendencia Mensual',
+  'reports.net': 'Neto',
+  'reports.page': 'Página',
+  'reports.of': 'de',
+  'reports.income': 'Ingresos',
+  'reports.expenses': 'Gastos',
+  'reports.subtotal': 'Subtotal',
+  'reports.txByCategory': 'Transacciones por Categoría',
+  'reports.date': 'Fecha',
+  'reports.description': 'Descripción',
+  'reports.type': 'Tipo',
+  'reports.status': 'Estado',
+  'reports.inflow': 'Ingreso',
+  'reports.outflow': 'Gasto',
+  'reports.statusClassified': 'Clasificado',
+  'reports.statusPending': 'Pendiente',
+  'reports.statusReview': 'Revisar',
 
   // Business extras
   'business.created': '¡Negocio creado!',
@@ -389,6 +413,10 @@ const es = {
 
   // Reports CSV
   'reports.exportCSV': 'Exportar CSV',
+  'reports.corporateBtn': 'Reporte Corporativo',
+  'reports.txByCategoryBtn': 'Tx por Categoría',
+  'reports.availableInPlus': 'Disponible en planes Plus y Enterprise',
+  'reports.uncategorized': 'Sin categoría',
 } as const
 
 export type TranslationKey = keyof typeof es
