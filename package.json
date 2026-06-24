@@ -23,6 +23,7 @@
     "framer-motion": "^12.40.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "nanoid": "^5.1.16",
     "next": "^14.2.35",
     "next-auth": "^4.24.10",
     "prisma": "^5.22.0",

@@ -154,10 +154,13 @@ export async function POST(req: Request) {
           amount = p.amount
           type = p.type
         } else if (debitCol || creditCol) {
-          const debit = parseFloat(String(row[debitCol] || '0').replace(/[$,]/g, '')) || 0
-          const credit = parseFloat(String(row[creditCol] || '0').replace(/[$,]/g, '')) || 0
-          if (debit > 0) { amount = debit; type = 'DEBIT' }
-          else { amount = credit; type = 'CREDIT' }
+          const debit = debitCol ? parseFloat(String(row[debitCol] ?? '').replace(/[$,\s]/g, '')) : NaN
+          const credit = creditCol ? parseFloat(String(row[creditCol] ?? '').replace(/[$,\s]/g, '')) : NaN
+          const debitVal = isNaN(debit) ? 0 : Math.abs(debit)
+          const creditVal = isNaN(credit) ? 0 : Math.abs(credit)
+          if (debitVal > 0) { amount = debitVal; type = 'DEBIT' }
+          else if (creditVal > 0) { amount = creditVal; type = 'CREDIT' }
+          else { errors.push(`Row ${i + 2}: both debit and credit are zero or empty`); continue }
         } else {
           errors.push(`Row ${i + 2}: no amount column mapped`)
           continue

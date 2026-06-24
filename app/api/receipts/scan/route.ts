@@ -99,10 +99,10 @@ Use null for any field you cannot read. Receipt may be in English or Spanish.`,
     // Resolve category
     const categories = await prisma.category.findMany({ where: { isSystem: true } })
     const catMap = new Map(categories.map(c => [c.name, c.id]))
-    const categoryId = catMap.get(extracted.category_suggestion) ?? catMap.get('Uncategorized')
+    const categoryId = catMap.get(extracted.category_suggestion) ?? catMap.get('Uncategorized') ?? null
 
     const confidence: string = extracted.confidence || 'LOW'
-    const txStatus = confidence === 'HIGH' ? 'CLASSIFIED' : 'PENDING'
+    const txStatus = confidence === 'HIGH' && categoryId ? 'CLASSIFIED' : 'PENDING'
     const amount = Math.abs(parseFloat(String(extracted.total)) || 0)
     const rawDate = extracted.date ? new Date(extracted.date) : null
     const txDate = rawDate && !isNaN(rawDate.getTime()) ? rawDate : new Date()
