@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/components/Toast'
 import { useActiveBiz } from '@/lib/use-active-biz'
 
 function fmt(n: number) {
@@ -20,6 +21,7 @@ const CONFIDENCE_COLOR: Record<string, string> = {
 
 export default function ClasificarPage() {
   const router = useRouter()
+  const toast = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
