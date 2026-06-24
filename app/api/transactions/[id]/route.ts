@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { logAudit } from '@/lib/audit'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -94,5 +95,6 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   await prisma.transaction.delete({ where: { id: params.id } })
+  await logAudit({ userId, businessId: tx.businessId, action: 'DELETE_TRANSACTION', entity: 'Transaction', entityId: params.id, metadata: { description: tx.description, amount: tx.amount } })
   return NextResponse.json({ deleted: params.id })
 }

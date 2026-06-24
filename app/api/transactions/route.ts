@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -64,5 +65,6 @@ export async function POST(req: Request) {
   const tx = await prisma.transaction.create({
     data: { businessId, date: new Date(date), description, amount: parsedAmount, type: type || 'DEBIT', status: 'PENDING' },
   })
+  await logAudit({ userId, businessId, action: 'CREATE_TRANSACTION', entity: 'Transaction', entityId: tx.id, metadata: { description, amount: parsedAmount, type: type || 'DEBIT' } })
   return NextResponse.json(tx, { status: 201 })
 }

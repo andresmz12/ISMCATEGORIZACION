@@ -3,20 +3,62 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { useActiveBiz } from '@/lib/use-active-biz'
 
+function MetaSummary({ action, meta }: { action: string; meta: any }) {
+  const parts: string[] = []
+  if (action === 'IMPORT_TRANSACTIONS') {
+    if (meta.file) parts.push(meta.file)
+    if (meta.imported != null) parts.push(`${meta.imported} importadas`)
+    if (meta.duplicates) parts.push(`${meta.duplicates} duplicadas`)
+  } else if (action === 'CLASSIFY_TRANSACTIONS') {
+    if (meta.total) parts.push(`${meta.total} transacciones`)
+    if (meta.autoClassified) parts.push(`${meta.autoClassified} auto`)
+    if (meta.needsReview) parts.push(`${meta.needsReview} revisar`)
+  } else if (action === 'SCAN_RECEIPT') {
+    if (meta.merchant) parts.push(meta.merchant)
+    if (meta.amount) parts.push(`$${meta.amount}`)
+    if (meta.confidence) parts.push(meta.confidence)
+  } else if (action === 'CREATE_TRANSACTION' || action === 'DELETE_TRANSACTION') {
+    if (meta.description) parts.push(meta.description)
+    if (meta.amount) parts.push(`$${meta.amount}`)
+  } else if (action === 'UPDATE_SETTINGS') {
+    if (Array.isArray(meta.fields)) parts.push(meta.fields.join(', '))
+  } else if (meta.name) {
+    parts.push(meta.name)
+  }
+  if (!parts.length) return null
+  return <span className="text-gray-400 ml-1 text-xs">· {parts.join(' · ')}</span>
+}
+
 const ACTION_LABELS: Record<string, string> = {
   CREATE_BUSINESS: 'Negocio creado',
+  UPDATE_BUSINESS: 'Negocio actualizado',
+  DELETE_BUSINESS: 'Negocio eliminado',
   INVITE_TEAM_MEMBER: 'Usuario invitado',
   UPDATE_TEAM_MEMBER: 'Usuario actualizado',
   DELETE_TEAM_MEMBER: 'Usuario eliminado',
   UPDATE_SETTINGS: 'Perfil actualizado',
+  IMPORT_TRANSACTIONS: 'Importación',
+  CREATE_TRANSACTION: 'Transacción creada',
+  UPDATE_TRANSACTION: 'Transacción actualizada',
+  DELETE_TRANSACTION: 'Transacción eliminada',
+  CLASSIFY_TRANSACTIONS: 'Clasificación IA',
+  SCAN_RECEIPT: 'Recibo escaneado',
 }
 
 const ACTION_COLORS: Record<string, string> = {
   CREATE_BUSINESS: 'bg-emerald-100 text-emerald-700',
+  UPDATE_BUSINESS: 'bg-blue-100 text-blue-700',
+  DELETE_BUSINESS: 'bg-red-100 text-red-700',
   INVITE_TEAM_MEMBER: 'bg-blue-100 text-blue-700',
   UPDATE_TEAM_MEMBER: 'bg-amber-100 text-amber-700',
   DELETE_TEAM_MEMBER: 'bg-red-100 text-red-700',
   UPDATE_SETTINGS: 'bg-gray-100 text-gray-700',
+  IMPORT_TRANSACTIONS: 'bg-violet-100 text-violet-700',
+  CREATE_TRANSACTION: 'bg-emerald-100 text-emerald-700',
+  UPDATE_TRANSACTION: 'bg-amber-100 text-amber-700',
+  DELETE_TRANSACTION: 'bg-red-100 text-red-700',
+  CLASSIFY_TRANSACTIONS: 'bg-[#2EC4B6]/15 text-[#1B8A7A]',
+  SCAN_RECEIPT: 'bg-indigo-100 text-indigo-700',
 }
 
 export default function AuditoriaPage() {
@@ -85,11 +127,7 @@ export default function AuditoriaPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-800">
                     <span className="font-medium">{log.user?.name || log.user?.email || '—'}</span>
-                    {log.metadata && Object.keys(log.metadata).length > 0 && (
-                      <span className="text-gray-400 ml-1 text-xs">
-                        · {JSON.stringify(log.metadata).slice(0, 80)}
-                      </span>
-                    )}
+                    {log.metadata && <MetaSummary action={log.action} meta={log.metadata} />}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {new Date(log.createdAt).toLocaleString()}

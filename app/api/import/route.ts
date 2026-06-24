@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { logAudit } from '@/lib/audit'
 import crypto from 'crypto'
 
 function makeChecksum(date: string, description: string, amount: number): string {
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
     const mappingJson = formData.get('mapping') as string
     const file = formData.get('file') as File
     const bankName = formData.get('bankName') as string | null
+    const headerRow = Math.max(1, parseInt(formData.get('headerRow') as string || '1'))
 
     if (!businessId || !mappingJson || !file) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -109,9 +111,9 @@ export async function POST(req: Request) {
       await wb.xlsx.load(buffer as any)
       const ws = wb.worksheets[0]
       const headers: string[] = []
-      ws.getRow(1).eachCell((cell) => headers.push(String(cell.value ?? '')))
+      ws.getRow(headerRow).eachCell((cell) => headers.push(String(cell.value ?? '')))
       ws.eachRow((row, rowNum) => {
-        if (rowNum === 1) return
+        if (rowNum <= headerRow) return
         const rowObj: Record<string, unknown> = {}
         row.eachCell((cell, colNum) => {
           // Preserve Date objects so parseDate can use them directly
@@ -199,6 +201,7 @@ export async function POST(req: Request) {
       }
     }
 
+    await logAudit({ userId, businessId, action: 'IMPORT_TRANSACTIONS', metadata: { imported, duplicates, errors: errors.length, total: rows.length, file: file.name } })
     return NextResponse.json({ imported, duplicates, errors, total: rows.length, importedIds, duplicateRows })
   } catch (e: any) {
     console.error('import error:', e)

@@ -104,6 +104,7 @@ export default function ImportPage() {
   const [headers, setHeaders] = useState<string[]>([])
   const [previewRows, setPreviewRows] = useState<string[][]>([])
   const [mapping, setMapping] = useState<Record<string, string>>({})
+  const [headerRowNum, setHeaderRowNum] = useState(1)
   const [bankName, setBankName] = useState('')
   const [savedMappings, setSavedMappings] = useState<any[]>([])
   const [step, setStep] = useState<'upload' | 'map' | 'result'>('upload')
@@ -143,14 +144,58 @@ export default function ImportPage() {
       const wb = new ExcelJS.Workbook()
       await wb.xlsx.load(buffer)
       const ws = wb.worksheets[0]
+
+      // Detect app's own export formats (not valid bank statements)
+      const firstCellVal = String(ws.getRow(1).getCell(1).value ?? '')
+      if (
+        f.name.includes('transacciones-por-categoria') ||
+        f.name.includes('reporte-corporativo') ||
+        f.name.startsWith('report_') ||
+        firstCellVal.toLowerCase().includes('transacciones por categoría') ||
+        firstCellVal.toLowerCase().includes('reporte')
+      ) {
+        setError('Este archivo es un reporte generado por la aplicación. Para importar, sube el estado de cuenta original de tu banco (CSV o Excel directo del banco).')
+        setFile(null)
+        e.target.value = ''
+        return
+      }
+
+      // Find actual header row: first row with 3+ non-empty cells
+      let headerRowNum = 1
       const cols: string[] = []
-      ws.getRow(1).eachCell((cell) => cols.push(String(cell.value ?? '')))
+      ws.eachRow((row, rowNum) => {
+        if (cols.length >= 3) return
+        const cells: string[] = []
+        row.eachCell((cell) => {
+          const v = String(cell.value ?? '').trim()
+          if (v) cells.push(v)
+        })
+        if (cells.length >= 3) {
+          headerRowNum = rowNum
+          setHeaderRowNum(rowNum)
+          // Rebuild with includeEmpty to preserve column positions
+          const fullCols: string[] = []
+          row.eachCell({ includeEmpty: true }, (cell) => fullCols.push(String(cell.value ?? '')))
+          cols.push(...fullCols)
+        }
+      })
+      // Fallback to row 1 if nothing found
+      if (cols.length === 0) {
+        ws.getRow(1).eachCell((cell) => cols.push(String(cell.value ?? '')))
+        headerRowNum = 1
+      }
+
       const rows: string[][] = []
       ws.eachRow((row, rowNum) => {
-        if (rowNum > 1 && rowNum <= 6) {
+        if (rowNum > headerRowNum && rowNum <= headerRowNum + 5) {
           const cells: string[] = []
           row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-            if (colNum <= cols.length) cells.push(String(cell.value ?? ''))
+            if (colNum <= cols.length) {
+              const v = cell.value
+              // Format dates nicely
+              if (v instanceof Date) cells.push(v.toLocaleDateString())
+              else cells.push(String(v ?? ''))
+            }
           })
           rows.push(cells)
         }
@@ -195,6 +240,7 @@ export default function ImportPage() {
     fd.append('businessId', activeBiz)
     fd.append('file', file)
     fd.append('mapping', JSON.stringify(mapping))
+    fd.append('headerRow', String(headerRowNum))
     if (bankName) fd.append('bankName', bankName)
     const res = await fetch('/api/import', { method: 'POST', body: fd })
     const data = await res.json()
@@ -344,7 +390,7 @@ export default function ImportPage() {
             <p className="text-xs text-gray-400">{t('import.required_fields')}</p>
 
             <div className="flex gap-3">
-              <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]) }} className="btn-secondary">{t('import.back')}</button>
+              <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setHeaderRowNum(1) }} className="btn-secondary">{t('import.back')}</button>
               <button onClick={handleImport} disabled={loading} className="btn-primary disabled:opacity-50">
                 {loading ? t('import.importing') : t('import.importBtn')}
               </button>

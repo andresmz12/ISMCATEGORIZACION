@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { logAudit } from '@/lib/audit'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -142,6 +143,7 @@ Use null for any field you cannot read. Receipt may be in English or Spanish.`,
       },
     })
 
+    await logAudit({ userId, businessId, action: 'SCAN_RECEIPT', entity: 'Transaction', entityId: transaction.id, metadata: { merchant: extracted.merchant, amount, confidence, file: file.name } })
     return NextResponse.json({
       receiptId: receipt.id,
       transactionId: transaction.id,

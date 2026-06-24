@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { logAudit } from '@/lib/audit'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -143,6 +144,7 @@ export async function POST(req: Request) {
 
     const autoClassified = results.filter(r => r.autoClassified).length
     const needsReview = results.filter(r => !r.autoClassified).length
+    await logAudit({ userId, businessId, action: 'CLASSIFY_TRANSACTIONS', entity: 'Transaction', metadata: { total: results.length, autoClassified, needsReview } })
     return NextResponse.json({ classified: results, autoClassified, needsReview })
   } catch (e: any) {
     console.error('classify-ai error:', e)
