@@ -13,7 +13,7 @@ export default function ReportsPage() {
   const activeBiz = activeBizId
   const [report, setReport] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [from, setFrom] = useState(() => `${new Date().getFullYear()}-01-01`)
+  const [from, setFrom] = useState('2020-01-01')
   const [to, setTo] = useState(() => new Date().toISOString().split('T')[0])
   const [exporting, setExporting] = useState(false)
 
@@ -130,11 +130,11 @@ export default function ReportsPage() {
 
   const year = new Date().getFullYear()
   const quickRanges = [
+    { label: 'Todo', from: '2020-01-01', to: new Date().toISOString().split('T')[0] },
     { label: t('reports.thisYear'), from: `${year}-01-01`, to: new Date().toISOString().split('T')[0] },
+    { label: `${year - 1}`, from: `${year - 1}-01-01`, to: `${year - 1}-12-31` },
     { label: 'Q1', from: `${year}-01-01`, to: `${year}-03-31` },
     { label: 'Q2', from: `${year}-04-01`, to: `${year}-06-30` },
-    { label: 'Q3', from: `${year}-07-01`, to: `${year}-09-30` },
-    { label: 'Q4', from: `${year}-10-01`, to: `${year}-12-31` },
   ]
 
   return (

@@ -84,14 +84,14 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!activeBizId) return
     const year = new Date().getFullYear()
-    fetch(`/api/transactions?businessId=${activeBizId}&from=${year}-01-01&limit=500`)
+    fetch(`/api/transactions?businessId=${activeBizId}&limit=5000`)
       .then(r => r.json())
       .then(d => setTxs(Array.isArray(d.transactions) ? d.transactions : []))
       .catch(() => {})
   }, [activeBizId])
 
   const now = new Date()
-  const ytdTxs = txs.filter(tx => new Date(tx.date).getFullYear() === now.getFullYear())
+  const ytdTxs = txs
   const income = ytdTxs.filter(tx => tx.type === 'CREDIT').reduce((s, tx) => s + tx.amount, 0)
   const expenses = ytdTxs.filter(tx => tx.type === 'DEBIT').reduce((s, tx) => s + tx.amount, 0)
   const profit = income - expenses
@@ -158,7 +158,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">
             {session?.user?.name ? greeting(session.user.name, t) : t('nav.dashboard')}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">{activeBiz?.name} · {t('dashboard.ytd')} {now.getFullYear()}</p>
+          <p className="text-sm text-gray-500 mt-0.5">{activeBiz?.name} · Todos los movimientos</p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           {businesses.length > 1 && (

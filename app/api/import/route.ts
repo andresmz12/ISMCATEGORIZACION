@@ -15,20 +15,53 @@ function parseAmount(val: string): { amount: number; type: 'DEBIT' | 'CREDIT' } 
   return { amount: Math.abs(num), type: num < 0 ? 'DEBIT' : 'CREDIT' }
 }
 
-function parseDate(val: string): Date | null {
-  const s = String(val).trim()
-  const formats = [
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,
-    /^(\d{4})-(\d{2})-(\d{2})$/,
-    /^(\d{1,2})-(\d{1,2})-(\d{4})$/,
-  ]
-  for (const f of formats) {
-    const m = s.match(f)
-    if (m) {
-      const d = new Date(s)
-      if (!isNaN(d.getTime())) return d
-    }
+function parseDate(val: unknown): Date | null {
+  // ExcelJS returns Date objects for date cells — use them directly
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val
   }
+
+  const s = String(val).trim()
+  if (!s) return null
+
+  // YYYY-MM-DD  (parse as local noon to avoid UTC timezone shift)
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (iso) {
+    const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), 12)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // DD/MM/YYYY or MM/DD/YYYY  (slashes)
+  const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (slash) {
+    const [, a, b, y] = slash.map(Number)
+    // If first part > 12 it must be DD/MM; if second > 12 it must be MM/DD;
+    // otherwise default to DD/MM (Latin American format)
+    const [day, month] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]
+    const d = new Date(y, month - 1, day, 12)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // DD-MM-YYYY or MM-DD-YYYY  (dashes, non-ISO)
+  const dash = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+  if (dash) {
+    const [, a, b, y] = dash.map(Number)
+    const [day, month] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]
+    const d = new Date(y, month - 1, day, 12)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // MM/DD/YY two-digit year
+  const shortYear = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/)
+  if (shortYear) {
+    const [, a, b, yy] = shortYear.map(Number)
+    const y = yy < 50 ? 2000 + yy : 1900 + yy
+    const [day, month] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]
+    const d = new Date(y, month - 1, day, 12)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // Last resort: JS Date parsing (handles "Jun 15 2025" etc.)
   const d = new Date(s)
   return isNaN(d.getTime()) ? null : d
 }
@@ -61,7 +94,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'File too large. Max 10MB allowed.' }, { status: 400 })
     }
 
-    let rows: Record<string, string>[] = []
+    let rows: Record<string, unknown>[] = []
 
     if (ext === 'csv') {
       const { parse } = await import('csv-parse/sync')
@@ -76,9 +109,10 @@ export async function POST(req: Request) {
       ws.getRow(1).eachCell((cell) => headers.push(String(cell.value ?? '')))
       ws.eachRow((row, rowNum) => {
         if (rowNum === 1) return
-        const rowObj: Record<string, string> = {}
+        const rowObj: Record<string, unknown> = {}
         row.eachCell((cell, colNum) => {
-          rowObj[headers[colNum - 1]] = String(cell.value ?? '')
+          // Preserve Date objects so parseDate can use them directly
+          rowObj[headers[colNum - 1]] = cell.value instanceof Date ? cell.value : String(cell.value ?? '')
         })
         rows.push(rowObj)
       })
@@ -111,12 +145,12 @@ export async function POST(req: Request) {
       const row = rows[i]
       try {
         const dateVal = row[dateCol]
-        const descVal = row[descCol] || ''
+        const descVal = String(row[descCol] ?? '')
         let amount: number
         let type: 'DEBIT' | 'CREDIT'
 
         if (amountCol && row[amountCol] !== undefined) {
-          const p = parseAmount(row[amountCol])
+          const p = parseAmount(String(row[amountCol] ?? ''))
           amount = p.amount
           type = p.type
         } else if (debitCol || creditCol) {
