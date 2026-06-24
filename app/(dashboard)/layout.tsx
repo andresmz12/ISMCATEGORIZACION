@@ -229,10 +229,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </svg>
           </button>
 
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-2">
-            <img src="/logo.svg" alt="MyP&L" className="w-7 h-7" />
-            <span className="text-sm font-bold text-[#1B4965]">{t('app.short')}</span>
+          {/* Mobile logo + business name */}
+          <div className="lg:hidden flex items-center gap-2 min-w-0">
+            <img src="/logo.svg" alt="logo" className="w-7 h-7 flex-shrink-0" />
+            {activeBusiness && (
+              <span className="text-sm font-semibold text-[#1B4965] truncate">{activeBusiness.name}</span>
+            )}
           </div>
 
           {/* Business name — desktop */}

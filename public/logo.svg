@@ -1,19 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
-  <!-- Outer circle - green arc top-left -->
+  <!-- Outer ring: green arc top, red arc bottom -->
   <path d="M 100 12 A 88 88 0 0 1 188 100" stroke="#22c55e" stroke-width="9" stroke-linecap="round" fill="none"/>
-  <!-- Outer circle - dark/gray arc bottom (transition) -->
   <path d="M 188 100 A 88 88 0 0 1 155 166" stroke="#4b5563" stroke-width="9" stroke-linecap="round" fill="none"/>
-  <!-- Outer circle - red arc bottom-right -->
   <path d="M 155 166 A 88 88 0 0 1 100 188" stroke="#ef4444" stroke-width="9" stroke-linecap="round" fill="none"/>
-  <!-- Outer circle - red continues -->
   <path d="M 100 188 A 88 88 0 0 1 12 100" stroke="#ef4444" stroke-width="9" stroke-linecap="round" fill="none"/>
-  <!-- Outer circle - green arc back to top -->
   <path d="M 12 100 A 88 88 0 0 1 100 12" stroke="#22c55e" stroke-width="9" stroke-linecap="round" fill="none"/>
 
-  <!-- Bar chart - 3 bars (dark gray) -->
-  <rect x="58" y="105" width="18" height="45" rx="3" fill="#374151"/>
-  <rect x="83" y="82" width="18" height="68" rx="3" fill="#374151"/>
-  <rect x="108" y="62" width="18" height="88" rx="3" fill="#374151"/>
+  <!-- Bar chart - 3 bars (teal so they show on both dark and light backgrounds) -->
+  <rect x="58" y="105" width="18" height="45" rx="3" fill="#2EC4B6"/>
+  <rect x="83" y="82" width="18" height="68" rx="3" fill="#2EC4B6"/>
+  <rect x="108" y="62" width="18" height="88" rx="3" fill="#2EC4B6"/>
 
   <!-- Green upward arrow -->
   <path d="M 72 118 Q 68 88 88 65" stroke="#22c55e" stroke-width="7" stroke-linecap="round" fill="none"/>

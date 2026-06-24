@@ -106,7 +106,7 @@ export default function ReportsPage() {
 
     const ws1 = wb.addWorksheet(t('reports.summary'))
     ws1.addRows([
-      [`${t('app.short')} — ${t('reports.expenseReport')}`],
+      [t('reports.expenseReport')],
       [t('business.name') + ':', biz?.name || activeBiz],
       [t('reports.period') + ':', `${from} → ${to}`],
       [],
@@ -155,7 +155,6 @@ export default function ReportsPage() {
       const ExcelJS = await import('exceljs')
       const wb = new ExcelJS.Workbook()
       const biz = businesses.find((b: any) => b.id === activeBiz)
-      wb.creator = 'MyP&L'
       wb.created = new Date()
 
       const ws = wb.addWorksheet('Transacciones por Categoría')
@@ -261,22 +260,11 @@ export default function ReportsPage() {
       doc.setFillColor(...TEAL)
       doc.rect(0, 0, 8, 297, 'F')
 
-      // Logo badge
-      doc.setFillColor(...TEAL)
-      doc.roundedRect(24, 40, 18, 18, 3, 3, 'F')
-      doc.setFont('helvetica', 'bold')
+      // Report type label
       doc.setFontSize(10)
-      doc.setTextColor(...WHITE)
-      doc.text('MP', 33, 51.5, { align: 'center' })
-
-      // App name
-      doc.setFontSize(11)
       doc.setFont('helvetica', 'normal')
-      doc.setTextColor(255, 255, 255)
-      doc.text('MyP&L / My Profit and Loss', 46, 48)
-      doc.setFontSize(9)
       doc.setTextColor(180, 210, 225)
-      doc.text('Reporte Corporativo Financiero', 46, 54)
+      doc.text('Reporte Corporativo Financiero', 24, 52)
 
       // Divider
       doc.setDrawColor(...TEAL)
@@ -328,7 +316,7 @@ export default function ReportsPage() {
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(100, 150, 170)
       doc.text(`Generado el ${new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}`, 24, 280)
-      doc.text('Confidencial — MyP&L', W - 24, 280, { align: 'right' })
+      doc.text('Confidencial', W - 24, 280, { align: 'right' })
 
       // ── PAGE 2: P&L SUMMARY ──────────────────────────────────────────
       doc.addPage()
