@@ -12,11 +12,12 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   const category = await prisma.category.findUnique({ where: { id: params.id } })
   if (!category) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (category.isSystem) return NextResponse.json({ error: 'Cannot delete system categories' }, { status: 403 })
-  if (!category.businessId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  if (!await checkBusinessAccess(userId, category.businessId, accountType)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (accountType !== 'SUPERADMIN') {
+    if (category.isSystem) return NextResponse.json({ error: 'Cannot delete system categories' }, { status: 403 })
+    if (!category.businessId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!await checkBusinessAccess(userId, category.businessId, accountType)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
   }
 
   try {
@@ -35,11 +36,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const category = await prisma.category.findUnique({ where: { id: params.id } })
   if (!category) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (category.isSystem) return NextResponse.json({ error: 'Cannot edit system categories' }, { status: 403 })
-  if (!category.businessId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  if (!await checkBusinessAccess(userId, category.businessId, accountType)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (accountType !== 'SUPERADMIN') {
+    if (category.isSystem) return NextResponse.json({ error: 'Cannot edit system categories' }, { status: 403 })
+    if (!category.businessId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!await checkBusinessAccess(userId, category.businessId, accountType)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
   }
 
   const { name, irsCode, description } = await req.json()
