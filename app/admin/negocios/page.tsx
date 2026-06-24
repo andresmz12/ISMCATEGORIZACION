@@ -9,7 +9,7 @@ interface Business {
   entityType: string | null
   taxYear: number | null
   createdAt: string
-  businessUsers: {
+  users: {
     role: string
     user: { id: string; name: string | null; email: string; accountType: string; plan: string }
   }[]
@@ -34,7 +34,7 @@ export default function AdminNegociosPage() {
 
   const filtered = businesses.filter(b => {
     if (search && !b.name.toLowerCase().includes(search.toLowerCase())) {
-      const userMatch = b.businessUsers.some(bu =>
+      const userMatch = b.users.some(bu =>
         bu.user.email.toLowerCase().includes(search.toLowerCase()) ||
         bu.user.name?.toLowerCase().includes(search.toLowerCase())
       )
@@ -90,7 +90,7 @@ export default function AdminNegociosPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-400">{biz.businessUsers.length} usuario{biz.businessUsers.length !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-gray-400">{biz.users.length} usuario{biz.users.length !== 1 ? 's' : ''}</span>
                 <svg className={`w-4 h-4 text-gray-400 transition-transform ${expanded === biz.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -121,7 +121,7 @@ export default function AdminNegociosPage() {
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Usuarios con acceso</p>
                   <div className="space-y-1.5">
-                    {biz.businessUsers.map(bu => (
+                    {biz.users.map(bu => (
                       <div key={bu.user.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-100">
                         <div>
                           <p className="text-sm font-medium text-gray-800">{bu.user.name || bu.user.email}</p>

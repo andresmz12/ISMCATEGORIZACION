@@ -16,7 +16,7 @@ export async function GET() {
   const businesses = await prisma.business.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
-      businessUsers: {
+      users: {
         include: { user: { select: { id: true, name: true, email: true, accountType: true, plan: true } } },
       },
       _count: { select: { transactions: true } },
