@@ -25,9 +25,9 @@ export async function GET() {
     // 2. Check if User table exists
     try {
       const count = await db.$queryRaw<{ count: number }[]>`
-        SELECT COUNT(*) as count FROM "User"
+        SELECT COUNT(*)::integer as count FROM "User"
       `
-      checks.results.userTable = { ok: true, userCount: count[0]?.count ?? 0 }
+      checks.results.userTable = { ok: true, userCount: Number(count[0]?.count ?? 0) }
     } catch (e: any) {
       checks.results.userTable = { ok: false, error: e.message }
     }
@@ -93,7 +93,8 @@ export async function GET() {
     const allOk = Object.values(checks.results).every((r: any) => r.ok !== false)
     checks.status = allOk ? 'healthy' : 'degraded'
 
-    return NextResponse.json(checks)
+    // Ensure safe JSON serialization
+    return NextResponse.json(JSON.parse(JSON.stringify(checks, (_, v) => typeof v === 'bigint' ? Number(v) : v)))
   } catch (error: any) {
     checks.status = 'error'
     checks.error = error.message
