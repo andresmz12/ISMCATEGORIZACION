@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { resetPassword } from './actions'
 
 export default function SetupPage() {
   const [secret, setSecret] = useState('')
@@ -12,22 +13,17 @@ export default function SetupPage() {
     e.preventDefault()
     setStatus('loading')
     try {
-      const res = await fetch('/api/admin/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret, email, newPassword: password }),
-      })
-      const data = await res.json()
-      if (res.ok) {
+      const result = await resetPassword(secret, email, password)
+      if (result.ok) {
         setStatus('ok')
-        setMsg(data.message || 'Password actualizado correctamente')
+        setMsg(result.message)
       } else {
         setStatus('error')
-        setMsg(data.error || 'Error desconocido')
+        setMsg(result.message)
       }
-    } catch {
+    } catch (err: any) {
       setStatus('error')
-      setMsg('Error de conexión')
+      setMsg(err?.message || 'Error inesperado')
     }
   }
 
@@ -41,7 +37,7 @@ export default function SetupPage() {
             </svg>
           </div>
           <h1 className="text-xl font-bold text-gray-900">Resetear Contraseña</h1>
-          <p className="text-sm text-gray-500 mt-1">Solo funciona si ADMIN_RESET_SECRET está configurado</p>
+          <p className="text-sm text-gray-500 mt-1">Requiere <code className="bg-gray-100 px-1 rounded text-xs">ADMIN_RESET_SECRET</code> en Railway</p>
         </div>
 
         {status === 'ok' ? (
@@ -52,8 +48,11 @@ export default function SetupPage() {
               </svg>
             </div>
             <p className="text-sm font-medium text-emerald-700 bg-emerald-50 rounded-lg p-3">{msg}</p>
-            <a href="/signin" className="block w-full py-2.5 px-4 bg-[#1B4965] text-white rounded-xl text-sm font-semibold text-center hover:bg-[#153d52] transition-colors">
-              Ir a Iniciar Sesión
+            <a
+              href="/signin"
+              className="block w-full py-2.5 px-4 bg-[#1B4965] text-white rounded-xl text-sm font-semibold text-center hover:bg-[#153d52] transition-colors"
+            >
+              Ir a Iniciar Sesión →
             </a>
           </div>
         ) : (
