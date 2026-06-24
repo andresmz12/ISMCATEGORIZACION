@@ -325,7 +325,7 @@ export default function RulesPage() {
   const { data: session } = useSession()
   const { t } = useTranslation()
   const toast = useToast()
-  const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
+  const { activeBizId: activeBiz } = useActiveBiz()
   const [categories, setCategories] = useState<any[]>([])
 
   const plan = (session?.user as any)?.plan || 'BASIC'
@@ -352,11 +352,6 @@ export default function RulesPage() {
             <span className="text-xs bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full font-medium">
               {t('rules.upgrade')}
             </span>
-          )}
-          {businesses.length > 1 && (
-            <select className="input w-auto text-sm" value={activeBiz} onChange={e => setActiveBiz(e.target.value)} >
-              {businesses.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
           )}
         </div>
       </div>

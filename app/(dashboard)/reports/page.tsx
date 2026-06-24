@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { useTranslation } from '@/lib/i18n'
 import { useActiveBiz } from '@/lib/use-active-biz'
 
@@ -8,9 +9,12 @@ function fmt(n: number) {
 }
 
 export default function ReportsPage() {
+  const { data: session } = useSession()
   const { t } = useTranslation()
-  const { businesses, activeBizId, setActiveBizId } = useActiveBiz()
+  const { businesses, activeBizId } = useActiveBiz()
   const activeBiz = activeBizId
+  const accountType = (session?.user as any)?.accountType
+  const isPremium = accountType === 'PLUS' || accountType === 'ENTERPRISE'
   const [report, setReport] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [from, setFrom] = useState('2020-01-01')
@@ -234,6 +238,284 @@ export default function ReportsPage() {
     }
   }
 
+  async function exportCorporatePDF() {
+    if (!report || !activeBiz) return
+    setExporting(true)
+    try {
+      const { jsPDF } = await import('jspdf')
+      const autoTable = (await import('jspdf-autotable')).default
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const biz = businesses.find((b: any) => b.id === activeBiz)
+      const bizName = biz?.name || ''
+      const W = 210
+      const BLUE = [27, 73, 101] as [number, number, number]
+      const TEAL = [46, 196, 182] as [number, number, number]
+      const WHITE: [number, number, number] = [255, 255, 255]
+
+      // ── PAGE 1: COVER ──────────────────────────────────────────────
+      doc.setFillColor(...BLUE)
+      doc.rect(0, 0, W, 297, 'F')
+
+      // Accent bar
+      doc.setFillColor(...TEAL)
+      doc.rect(0, 0, 8, 297, 'F')
+
+      // Logo badge
+      doc.setFillColor(...TEAL)
+      doc.roundedRect(24, 40, 18, 18, 3, 3, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(...WHITE)
+      doc.text('MP', 33, 51.5, { align: 'center' })
+
+      // App name
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(255, 255, 255)
+      doc.text('MyP&L / My Profit and Loss', 46, 48)
+      doc.setFontSize(9)
+      doc.setTextColor(180, 210, 225)
+      doc.text('Reporte Corporativo Financiero', 46, 54)
+
+      // Divider
+      doc.setDrawColor(...TEAL)
+      doc.setLineWidth(0.5)
+      doc.line(24, 72, W - 24, 72)
+
+      // Business name
+      doc.setFontSize(28)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...WHITE)
+      const titleLines = doc.splitTextToSize(bizName, W - 48)
+      doc.text(titleLines, 24, 90)
+
+      // Period
+      const yPeriod = 90 + titleLines.length * 12
+      doc.setFontSize(13)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(...TEAL)
+      doc.text(`Período: ${from} — ${to}`, 24, yPeriod + 8)
+
+      // Stats summary on cover
+      const stats = [
+        { label: 'Ingresos', val: fmt(report.summary.income) },
+        { label: 'Gastos', val: fmt(report.summary.totalExpenses) },
+        { label: 'Utilidad Neta', val: fmt(report.summary.netProfit) },
+        { label: 'Deducible', val: fmt(report.summary.totalDeductible) },
+      ]
+      const cardY = yPeriod + 28
+      const cardW = (W - 48 - 9) / 2
+      stats.forEach((s, i) => {
+        const col = i % 2
+        const row = Math.floor(i / 2)
+        const cx = 24 + col * (cardW + 6)
+        const cy = cardY + row * 26
+        doc.setFillColor(255, 255, 255, 0.08)
+        doc.setFillColor(35, 90, 120)
+        doc.roundedRect(cx, cy, cardW, 20, 2, 2, 'F')
+        doc.setFontSize(8)
+        doc.setTextColor(160, 200, 220)
+        doc.text(s.label.toUpperCase(), cx + 4, cy + 7)
+        doc.setFontSize(13)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...WHITE)
+        doc.text(s.val, cx + 4, cy + 16)
+      })
+
+      // Footer
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(100, 150, 170)
+      doc.text(`Generado el ${new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}`, 24, 280)
+      doc.text('Confidencial — MyP&L', W - 24, 280, { align: 'right' })
+
+      // ── PAGE 2: P&L SUMMARY ──────────────────────────────────────────
+      doc.addPage()
+
+      // Header bar
+      doc.setFillColor(...BLUE)
+      doc.rect(0, 0, W, 20, 'F')
+      doc.setFillColor(...TEAL)
+      doc.rect(0, 0, 8, 20, 'F')
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...WHITE)
+      doc.text('Estado de Resultados', 16, 13)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(180, 210, 225)
+      doc.text(bizName, W - 14, 13, { align: 'right' })
+
+      autoTable(doc, {
+        startY: 28,
+        head: [['Concepto', 'Monto']],
+        body: [
+          ['Total Ingresos', fmt(report.summary.income)],
+          ['Total Gastos', fmt(report.summary.totalExpenses)],
+          ['Utilidad Neta', fmt(report.summary.netProfit)],
+          ['Total Deducible', fmt(report.summary.totalDeductible)],
+          ['Pendientes de clasificar', String(report.summary.pending)],
+          ['Clasificadas', String(report.summary.classified)],
+        ],
+        headStyles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 9 },
+        alternateRowStyles: { fillColor: [240, 246, 250] },
+        columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+      })
+
+      // ── PAGE 3: MONTHLY BAR CHART ─────────────────────────────────────
+      doc.addPage()
+
+      doc.setFillColor(...BLUE)
+      doc.rect(0, 0, W, 20, 'F')
+      doc.setFillColor(...TEAL)
+      doc.rect(0, 0, 8, 20, 'F')
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...WHITE)
+      doc.text('Tendencia Mensual', 16, 13)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(180, 210, 225)
+      doc.text(bizName, W - 14, 13, { align: 'right' })
+
+      const months = report.byMonth.slice(-12)
+      if (months.length > 0) {
+        const chartX = 20
+        const chartY = 35
+        const chartW = W - 40
+        const chartH = 80
+        const maxVal = Math.max(...months.flatMap((m: any) => [m.income, m.expenses]), 1)
+        const barW = (chartW / months.length) * 0.35
+        const gap = chartW / months.length
+
+        // Grid lines
+        doc.setDrawColor(220, 230, 235)
+        doc.setLineWidth(0.2)
+        for (let i = 0; i <= 4; i++) {
+          const y = chartY + chartH - (i / 4) * chartH
+          doc.line(chartX, y, chartX + chartW, y)
+          const label = fmt((maxVal * i) / 4).replace(/\.\d+/, '')
+          doc.setFontSize(6)
+          doc.setTextColor(150, 160, 170)
+          doc.text(label, chartX - 2, y + 1, { align: 'right' })
+        }
+
+        months.forEach((m: any, i: number) => {
+          const x = chartX + i * gap + gap * 0.1
+          const incH = (m.income / maxVal) * chartH
+          const expH = (m.expenses / maxVal) * chartH
+
+          // Income bar (teal)
+          doc.setFillColor(...TEAL)
+          doc.rect(x, chartY + chartH - incH, barW, incH, 'F')
+
+          // Expense bar (blue)
+          doc.setFillColor(...BLUE)
+          doc.rect(x + barW + 1, chartY + chartH - expH, barW, expH, 'F')
+
+          // Month label
+          doc.setFontSize(6.5)
+          doc.setTextColor(80, 100, 120)
+          doc.text(m.month.substring(0, 7), x + barW, chartY + chartH + 5, { align: 'center' })
+        })
+
+        // Legend
+        doc.setFillColor(...TEAL)
+        doc.rect(chartX, chartY + chartH + 14, 6, 4, 'F')
+        doc.setFontSize(8)
+        doc.setTextColor(60, 80, 100)
+        doc.text('Ingresos', chartX + 8, chartY + chartH + 17.5)
+
+        doc.setFillColor(...BLUE)
+        doc.rect(chartX + 40, chartY + chartH + 14, 6, 4, 'F')
+        doc.text('Gastos', chartX + 48, chartY + chartH + 17.5)
+      }
+
+      // Monthly table below chart
+      const tableY = (doc as any).lastAutoTable?.finalY ?? 150
+      autoTable(doc, {
+        startY: 145,
+        head: [['Mes', 'Ingresos', 'Gastos', 'Neto']],
+        body: months.map((m: any) => [
+          m.month,
+          fmt(m.income),
+          fmt(m.expenses),
+          fmt(m.income - m.expenses),
+        ]),
+        headStyles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { fontSize: 8 },
+        alternateRowStyles: { fillColor: [240, 246, 250] },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right', fontStyle: 'bold' } },
+      })
+
+      // ── PAGE 4: EXPENSES BY CATEGORY ──────────────────────────────────
+      doc.addPage()
+
+      doc.setFillColor(...BLUE)
+      doc.rect(0, 0, W, 20, 'F')
+      doc.setFillColor(...TEAL)
+      doc.rect(0, 0, 8, 20, 'F')
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...WHITE)
+      doc.text('Gastos por Categoría', 16, 13)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(180, 210, 225)
+      doc.text(bizName, W - 14, 13, { align: 'right' })
+
+      const cats = report.expensesByCategory.slice(0, 12)
+      const maxCat = Math.max(...cats.map((c: any) => c.total), 1)
+      const barChartX = 70
+      const barChartW = W - barChartX - 50
+      const rowH = 9
+
+      cats.forEach((c: any, i: number) => {
+        const y = 30 + i * rowH
+        const bw = (c.total / maxCat) * barChartW
+
+        doc.setFontSize(7.5)
+        doc.setTextColor(40, 60, 80)
+        const label = c.name.length > 22 ? c.name.substring(0, 21) + '…' : c.name
+        doc.text(label, barChartX - 4, y + 5, { align: 'right' })
+
+        doc.setFillColor(230, 238, 244)
+        doc.rect(barChartX, y, barChartW, 6, 'F')
+
+        doc.setFillColor(...BLUE)
+        doc.rect(barChartX, y, bw, 6, 'F')
+
+        doc.setFontSize(7)
+        doc.setTextColor(60, 80, 100)
+        doc.text(fmt(c.total).replace(/\.\d+/, ''), barChartX + barChartW + 3, y + 5)
+      })
+
+      autoTable(doc, {
+        startY: 30 + cats.length * rowH + 10,
+        head: [['Categoría', 'Total', 'Deducible', 'Transacciones']],
+        body: cats.map((c: any) => [c.name, fmt(c.total), fmt(c.deductible), c.count]),
+        headStyles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { fontSize: 8 },
+        alternateRowStyles: { fillColor: [240, 246, 250] },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'center' } },
+      })
+
+      // Page numbers on all pages
+      const pageCount = (doc as any).internal.getNumberOfPages()
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p)
+        doc.setFontSize(7)
+        doc.setTextColor(160, 170, 180)
+        doc.text(`Página ${p} de ${pageCount}`, W / 2, 292, { align: 'center' })
+      }
+
+      doc.save(`reporte-corporativo_${bizName.replace(/\s+/g, '-')}_${from}_${to}.pdf`)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const year = new Date().getFullYear()
   const quickRanges = [
     { label: 'Todo', from: '2020-01-01', to: new Date().toISOString().split('T')[0] },
@@ -248,11 +530,6 @@ export default function ReportsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-gray-900">{t('reports.title')}</h1>
         <div className="flex gap-2 flex-wrap">
-          {businesses.length > 1 && (
-            <select className="input w-auto text-sm" value={activeBizId} onChange={e => setActiveBizId(e.target.value)}>
-              {businesses.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          )}
           <button onClick={exportCSV} disabled={!report} className="btn-secondary text-sm disabled:opacity-50">
             {t('reports.exportCSV')}
           </button>
@@ -265,6 +542,30 @@ export default function ReportsPage() {
           <button onClick={exportTransactionsByCategory} disabled={exporting || !activeBiz} className="btn-secondary text-sm disabled:opacity-50">
             {exporting ? t('reports.generating') : 'Tx por Categoría'}
           </button>
+          {isPremium ? (
+            <button
+              onClick={exportCorporatePDF}
+              disabled={exporting || !report}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-[#1B4965] to-[#2EC4B6] text-white hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {exporting ? 'Generando...' : 'Reporte Corporativo'}
+            </button>
+          ) : (
+            <div className="relative group">
+              <button disabled className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-[#1B4965] to-[#2EC4B6] text-white opacity-40 cursor-not-allowed shadow-sm">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Reporte Corporativo
+              </button>
+              <div className="absolute right-0 top-full mt-1 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 hidden group-hover:block z-50 shadow-lg">
+                Disponible en planes Plus y Enterprise
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

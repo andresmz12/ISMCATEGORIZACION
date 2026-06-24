@@ -23,7 +23,7 @@ export default function ClasificarPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
-  const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
+  const { businesses, activeBizId: activeBiz } = useActiveBiz()
   const [savedMappings, setSavedMappings] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
 
@@ -317,11 +317,6 @@ export default function ClasificarPage() {
           <h1 className="text-xl font-bold text-gray-900">Clasificar con IA</h1>
           <p className="text-sm text-gray-500 mt-0.5">Sube tu estado de cuenta y la IA lo clasifica automáticamente</p>
         </div>
-        {businesses.length > 1 && (
-          <select className="input w-auto text-sm" value={activeBiz} onChange={e => setActiveBiz(e.target.value)}>
-            {businesses.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        )}
       </div>
 
       {/* Step progress */}

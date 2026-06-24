@@ -10,7 +10,7 @@ export default function CategoriasPage() {
   const { t } = useTranslation()
   const toast = useToast()
 
-  const { businesses, activeBizId, setActiveBizId, loading } = useActiveBiz()
+  const { activeBizId, loading } = useActiveBiz()
   const [categories, setCategories] = useState<any[]>([])
   const [form, setForm] = useState({ name: '', irsCode: '', description: '' })
   const [submitting, setSubmitting] = useState(false)
@@ -81,15 +81,6 @@ export default function CategoriasPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-gray-900">{t('cat.title')}</h1>
-        {businesses.length > 1 && (
-          <select
-            className="input w-auto text-sm"
-            value={activeBizId}
-            onChange={e => setActiveBizId(e.target.value)}
-          >
-            {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        )}
       </div>
 
       {/* Custom categories form */}

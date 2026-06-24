@@ -15,7 +15,7 @@ export default function TransactionsPage() {
   const searchParams = useSearchParams()
   const selectAllRef = useRef<HTMLInputElement>(null)
 
-  const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
+  const { activeBizId: activeBiz } = useActiveBiz()
   const [transactions, setTransactions] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [total, setTotal] = useState(0)
@@ -208,11 +208,6 @@ export default function TransactionsPage() {
         <h1 className="text-xl font-bold text-gray-900">{t('nav.transactions')}</h1>
         <div className="flex gap-2 flex-wrap items-center">
           <button onClick={selectPending} className="btn-secondary text-sm">{t('tx.selectPending')}</button>
-          {businesses.length > 1 && (
-            <select className="input w-auto text-sm" value={activeBiz} onChange={e => { setActiveBiz(e.target.value); setPage(1) }}>
-              {businesses.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          )}
         </div>
       </div>
 

@@ -81,7 +81,7 @@ export default function RecibosPage() {
   const [dragging, setDragging] = useState(false)
   const [tab, setTab] = useState<'scan' | 'history'>('scan')
 
-  const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
+  const { activeBizId: activeBiz } = useActiveBiz()
   const [categories, setCategories] = useState<any[]>([])
   const [jobs, setJobs] = useState<ScanJob[]>([])
 
@@ -246,11 +246,6 @@ export default function RecibosPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-gray-900">{t('receipts.title')}</h1>
-        {businesses.length > 1 && (
-          <select className="input w-auto text-sm" value={activeBiz} onChange={e => setActiveBiz(e.target.value)}>
-            {businesses.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        )}
       </div>
 
       {/* Tabs */}

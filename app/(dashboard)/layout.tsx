@@ -4,10 +4,8 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslation } from '@/lib/i18n'
-import { LanguageToggle } from '@/components/LanguageToggle'
 import { BusinessSwitcher } from '@/components/BusinessSwitcher'
-
-interface Business { id: string; name: string; industry?: string }
+import { useActiveBiz } from '@/lib/use-active-biz'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
@@ -16,7 +14,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { t } = useTranslation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
-  const [activeBusiness, setActiveBusiness] = useState<Business | null>(null)
+  const { businesses, activeBizId, setActiveBizId } = useActiveBiz()
+  const activeBusiness = businesses.find(b => b.id === activeBizId) || null
 
   const accountType = (session?.user as any)?.accountType
 
@@ -54,17 +53,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/signin')
   }, [status, router])
-
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetch('/api/businesses')
-        .then(r => r.json())
-        .then(data => {
-          if (Array.isArray(data) && data.length > 0) setActiveBusiness(data[0])
-        })
-        .catch(() => {})
-    }
-  }, [status])
 
   // Close sidebar when navigating
   useEffect(() => { setSidebarOpen(false) }, [pathname])
@@ -111,12 +99,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </button>
       </div>
 
-      {/* Business switcher — ACCOUNTANT only */}
-      {accountType === 'ACCOUNTANT' && !isCollapsed && (
-        <div className="px-3 py-3 border-b border-white/10">
+      {/* Business switcher — shown when user has multiple businesses */}
+      {!isCollapsed && (
+        <div className="px-3 pb-2">
           <BusinessSwitcher
             activeBusiness={activeBusiness}
-            onSwitch={biz => setActiveBusiness(biz)}
+            onSwitch={biz => setActiveBizId(biz.id)}
           />
         </div>
       )}

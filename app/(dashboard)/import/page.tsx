@@ -92,7 +92,7 @@ function DuplicateTable({ rows, businessId, onImported }: { rows: DupRow[]; busi
 
 export default function ImportPage() {
   const { t } = useTranslation()
-  const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
+  const { activeBizId: activeBiz } = useActiveBiz()
   const [file, setFile] = useState<File | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
   const [previewRows, setPreviewRows] = useState<string[][]>([])
@@ -214,15 +214,6 @@ export default function ImportPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <h1 className="text-xl font-bold text-gray-900">{t('import.title')}</h1>
-
-      {businesses.length > 1 && (
-        <div>
-          <label className="label">{t('business.switch')}</label>
-          <select className="input w-auto" value={activeBiz} onChange={e => setActiveBiz(e.target.value)}>
-            {businesses.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        </div>
-      )}
 
       {/* Steps indicator */}
       <div className="flex items-center gap-4 text-sm">

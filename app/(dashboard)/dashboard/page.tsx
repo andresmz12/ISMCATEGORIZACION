@@ -77,7 +77,7 @@ const CHART_COLORS = ['#1B4965', '#2EC4B6', '#3b82f6', '#8b5cf6', '#f59e0b', '#e
 export default function DashboardPage() {
   const { data: session } = useSession()
   const { t } = useTranslation()
-  const { businesses, activeBizId, setActiveBizId, loading } = useActiveBiz()
+  const { businesses, activeBizId, loading } = useActiveBiz()
   const activeBiz = businesses.find(b => b.id === activeBizId) || null
   const [txs, setTxs] = useState<any[]>([])
 
@@ -161,15 +161,6 @@ export default function DashboardPage() {
           <p className="text-sm text-gray-500 mt-0.5">{activeBiz?.name} · Todos los movimientos</p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          {businesses.length > 1 && (
-            <select
-              className="input w-auto text-sm"
-              value={activeBizId}
-              onChange={e => setActiveBizId(e.target.value)}
-            >
-              {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          )}
           <Link
             href="/clasificar"
             className="flex items-center gap-2 px-4 py-2 bg-[#1B4965] text-white rounded-xl text-sm font-semibold hover:bg-[#153d52] transition-colors shadow-sm"
