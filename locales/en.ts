@@ -417,6 +417,28 @@ const en = {
   'reports.txByCategoryBtn': 'Tx by Category',
   'reports.availableInPlus': 'Available in Plus and Enterprise plans',
   'reports.uncategorized': 'Uncategorized',
+
+  // Dashboard extras
+  'dashboard.allMovements': 'All transactions',
+
+  // Transactions extras II
+  'tx.searchPlaceholder': 'Search by description...',
+  'tx.selected': '{n} selected',
+  'tx.classifyAs': 'Classify as...',
+  'tx.apply': 'Apply',
+  'tx.deleteCount': 'Delete ({n})',
+  'tx.xOf': '{x} of {total}',
+  'tx.loadingMore': 'Loading more...',
+  'tx.endOfList': '— End of transactions —',
+  'tx.deleted': 'Transaction deleted',
+  'tx.nClassified': '{n} transactions classified',
+  'tx.nClassifyErrors': '{n} errors classifying',
+  'tx.aiDone': 'Classification complete',
+  'tx.aiError': 'Error classifying with AI',
+  'tx.splitCatRequired': 'Select at least one category',
+
+  // Common extras II
+  'common.operationError': 'Error in operation',
 } as const
 
 export type TranslationKey = keyof typeof en

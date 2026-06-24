@@ -117,7 +117,7 @@ function TransactionsContent() {
       loadTransactions(1, false)
     } catch (err) {
       console.error('Update failed:', err)
-      toast('Error en la operación', 'error')
+      toast(t('common.operationError'), 'error')
     }
   }
 
@@ -127,7 +127,7 @@ function TransactionsContent() {
       const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       loadTransactions(1, false)
-      toast('Transacción eliminada', 'success')
+      toast(t('tx.deleted'), 'success')
     } catch (err) {
       console.error('Delete failed:', err)
       toast('Error en la operación', 'error')
@@ -148,7 +148,7 @@ function TransactionsContent() {
       loadTransactions(1, false)
     } catch (err) {
       console.error('Bulk delete failed:', err)
-      toast('Error en la operación', 'error')
+      toast(t('common.operationError'), 'error')
     } finally {
       setDeleteLoading(false)
     }
@@ -169,9 +169,9 @@ function TransactionsContent() {
       )
       const failed = results.filter(r => !r.ok).length
       if (failed > 0) {
-        toast(`${failed} errores al clasificar`, 'error')
+        toast(t('tx.nClassifyErrors').replace('{n}', String(failed)), 'error')
       } else {
-        toast(`${selected.size} transacciones clasificadas`, 'success')
+        toast(t('tx.nClassified').replace('{n}', String(selected.size)), 'success')
       }
       setSelected(new Set())
       setBulkCategoryId('')
@@ -198,10 +198,10 @@ function TransactionsContent() {
       setAiResult(data)
       setSelected(new Set())
       loadTransactions(1, false)
-      toast('Clasificación completada', 'success')
+      toast(t('tx.aiDone'), 'success')
     } catch (err) {
       console.error('AI classify failed:', err)
-      toast('Error en clasificación con IA', 'error')
+      toast(t('tx.aiError'), 'error')
     } finally {
       setAiLoading(false)
     }
@@ -210,7 +210,7 @@ function TransactionsContent() {
   async function saveSplit() {
     const validSplits = splitRows.filter(r => r.categoryId && r.amount)
     if (!validSplits.length) {
-      toast('Selecciona al menos una categoría', 'error')
+      toast(t('tx.splitCatRequired'), 'error')
       return
     }
     try {
@@ -278,7 +278,7 @@ function TransactionsContent() {
           </svg>
           <input
             type="text"
-            placeholder="Buscar por descripción..."
+            placeholder={t('tx.searchPlaceholder')}
             className="flex-1 text-sm py-2 outline-none bg-transparent"
             value={searchInput}
             onChange={e => {
@@ -310,7 +310,7 @@ function TransactionsContent() {
       {/* Bulk action bar — appears above table when items are selected */}
       {selected.size > 0 && (
         <div className="card p-3 bg-[#1B4965]/5 border-[#1B4965]/20 flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-[#1B4965]">{selected.size} seleccionadas</span>
+          <span className="text-sm font-medium text-[#1B4965]">{t('tx.selected').replace('{n}', String(selected.size))}</span>
           <div className="h-4 w-px bg-gray-300" />
           <div className="flex items-center gap-2">
             <select
@@ -318,11 +318,11 @@ function TransactionsContent() {
               value={bulkCategoryId}
               onChange={e => setBulkCategoryId(e.target.value)}
             >
-              <option value="">Clasificar como...</option>
+              <option value="">{t('tx.classifyAs')}</option>
               {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <button onClick={bulkClassify} disabled={!bulkCategoryId || bulkLoading} className="btn-primary text-sm py-1 px-3 disabled:opacity-40">
-              {bulkLoading ? t('common.loading') : 'Aplicar'}
+              {bulkLoading ? t('common.loading') : t('tx.apply')}
             </button>
           </div>
           <div className="h-4 w-px bg-gray-300" />
@@ -331,7 +331,7 @@ function TransactionsContent() {
           </button>
           <div className="h-4 w-px bg-gray-300" />
           <button onClick={bulkDelete} disabled={deleteLoading} className="text-sm text-red-600 font-medium hover:text-red-800 disabled:opacity-50">
-            {deleteLoading ? t('common.loading') : `Eliminar (${selected.size})`}
+            {deleteLoading ? t('common.loading') : t('tx.deleteCount').replace('{n}', String(selected.size))}
           </button>
           <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-gray-400 hover:text-gray-600">✕</button>
         </div>
@@ -442,7 +442,7 @@ function TransactionsContent() {
 
         <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
           <p className="text-xs text-gray-500">{t('tx.total').replace('{total}', String(total))}</p>
-          <p className="text-xs text-gray-400">{transactions.length} de {total}</p>
+          <p className="text-xs text-gray-400">{t('tx.xOf').replace('{x}', String(transactions.length)).replace('{total}', String(total))}</p>
         </div>
 
         {/* Infinite scroll sentinel */}
@@ -450,11 +450,11 @@ function TransactionsContent() {
         {loadingMore && (
           <div className="flex items-center justify-center gap-2 py-4 text-gray-400 text-sm">
             <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-            Cargando más...
+            {t('tx.loadingMore')}
           </div>
         )}
         {!hasMore && transactions.length > 0 && !loading && (
-          <p className="text-center text-xs text-gray-300 py-3">— Fin de las transacciones —</p>
+          <p className="text-center text-xs text-gray-300 py-3">{t('tx.endOfList')}</p>
         )}
       </div>
 
@@ -496,8 +496,9 @@ function TransactionsContent() {
 }
 
 export default function TransactionsPage() {
+  const { t } = useTranslation()
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-64 text-gray-400 text-sm">Cargando...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-64 text-gray-400 text-sm">{t('common.loading')}</div>}>
       <TransactionsContent />
     </Suspense>
   )

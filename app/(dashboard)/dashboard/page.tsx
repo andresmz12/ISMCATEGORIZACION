@@ -163,7 +163,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">
             {session?.user?.name ? greeting(session.user.name, t) : t('nav.dashboard')}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">{activeBiz?.name} · Todos los movimientos</p>
+          <p className="text-sm text-gray-500 mt-0.5">{activeBiz?.name} · {t('dashboard.allMovements')}</p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <Link
@@ -173,7 +173,7 @@ export default function DashboardPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            Clasificar con IA
+            {t('nav.classify')}
           </Link>
         </div>
       </div>

@@ -417,6 +417,28 @@ const es = {
   'reports.txByCategoryBtn': 'Tx por Categoría',
   'reports.availableInPlus': 'Disponible en planes Plus y Enterprise',
   'reports.uncategorized': 'Sin categoría',
+
+  // Dashboard extras
+  'dashboard.allMovements': 'Todos los movimientos',
+
+  // Transactions extras II
+  'tx.searchPlaceholder': 'Buscar por descripción...',
+  'tx.selected': '{n} seleccionadas',
+  'tx.classifyAs': 'Clasificar como...',
+  'tx.apply': 'Aplicar',
+  'tx.deleteCount': 'Eliminar ({n})',
+  'tx.xOf': '{x} de {total}',
+  'tx.loadingMore': 'Cargando más...',
+  'tx.endOfList': '— Fin de las transacciones —',
+  'tx.deleted': 'Transacción eliminada',
+  'tx.nClassified': '{n} transacciones clasificadas',
+  'tx.nClassifyErrors': '{n} errores al clasificar',
+  'tx.aiDone': 'Clasificación completada',
+  'tx.aiError': 'Error en clasificación con IA',
+  'tx.splitCatRequired': 'Selecciona al menos una categoría',
+
+  // Common extras II
+  'common.operationError': 'Error en la operación',
 } as const
 
 export type TranslationKey = keyof typeof es

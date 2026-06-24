@@ -80,6 +80,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {!isCollapsed && activeBusiness && (
           <div className="flex-1 min-w-0">
             <p className="text-white font-bold text-sm leading-tight truncate">{activeBusiness.name}</p>
+            <p className="text-white/40 text-[10px] leading-tight">{t('app.name')}</p>
           </div>
         )}
         <button

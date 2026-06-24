@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   const ExcelJS = await import('exceljs')
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'MyP&L'
+  wb.creator = ''
   wb.created = new Date()
 
   // ── Sheet 1: All transactions ──
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
   const expenses = transactions.filter((t: any) => t.type === 'DEBIT').reduce((s: number, t: any) => s + t.amount, 0)
   const totalDeductible = sorted.reduce((s, c) => s + c.deductible, 0)
 
-  wsSummary.addRow(['Reporte P&L — ' + businessName])
+  wsSummary.addRow(['Reporte — ' + businessName])
   wsSummary.getRow(1).font = { bold: true, size: 14, color: { argb: 'FF1B4965' } }
   wsSummary.addRow([period || ''])
   wsSummary.addRow([])

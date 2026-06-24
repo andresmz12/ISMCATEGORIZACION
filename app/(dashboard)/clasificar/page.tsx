@@ -274,10 +274,10 @@ export default function ClasificarPage() {
     doc.setTextColor(255, 255, 255)
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
-    doc.text('MyP&L — Reporte de Clasificación', 14, 9)
+    doc.text(`${biz?.name || ''} — Reporte de Clasificación`, 14, 9)
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    doc.text(`${biz?.name || ''} · ${now.toLocaleDateString('es')}`, 14, 17)
+    doc.text(now.toLocaleDateString(), 14, 17)
 
     // Summary row
     const income = transactions.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0)
