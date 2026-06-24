@@ -5,6 +5,9 @@ import { PrismaClient } from '@prisma/client'
 
 const cuid = customAlphabet('36ghjkmnpqrtvwxyz2468', 24)
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET() {
   const db = new PrismaClient()
   const checks: Record<string, any> = {

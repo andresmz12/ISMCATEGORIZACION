@@ -18,9 +18,24 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (notes && notes.length > 1000) return NextResponse.json({ error: 'Notes too long' }, { status: 400 })
 
   if (splits && Array.isArray(splits) && splits.length > 0) {
+    // Validate all splits have categoryId and amount
+    if (splits.some((s: any) => !s.categoryId || !s.amount)) {
+      return NextResponse.json({ error: 'All splits must have category and amount' }, { status: 400 })
+    }
+
     const splitTotal = splits.reduce((s: number, sp: any) => s + Number(sp.amount), 0)
     if (Math.abs(splitTotal - tx.amount) > 0.02) {
       return NextResponse.json({ error: 'Split amounts must equal transaction total' }, { status: 400 })
+    }
+
+    // Validate all categories exist and belong to this business
+    const categoryIds = splits.map((s: any) => s.categoryId)
+    const validCats = await prisma.category.findMany({
+      where: { id: { in: categoryIds }, OR: [{ businessId: tx.businessId }, { businessId: null }] },
+      select: { id: true },
+    })
+    if (validCats.length !== categoryIds.length) {
+      return NextResponse.json({ error: 'One or more categories do not exist' }, { status: 400 })
     }
 
     // Atomic: delete old splits and create new ones in a single transaction

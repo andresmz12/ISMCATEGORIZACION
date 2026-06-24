@@ -168,18 +168,26 @@ export async function POST(req: Request) {
         if (!descVal) { errors.push(`Row ${i + 2}: empty description`); continue }
 
         const checksum = makeChecksum(date.toISOString().split('T')[0], descVal, amount)
-        const existing = await prisma.transaction.findFirst({ where: { businessId, checksum } })
-        if (existing) {
-          duplicates++
-          duplicateRows.push({ row: i + 2, date: date.toISOString(), description: descVal, amount, type, existingId: existing.id })
-          continue
-        }
 
-        const tx = await prisma.transaction.create({
-          data: { businessId, date, description: descVal, amount, type, status: 'PENDING', checksum, sourceFile: file.name },
+        // Use transaction to prevent race condition duplicates
+        const result = await prisma.$transaction(async (tx) => {
+          const existing = await tx.transaction.findFirst({ where: { businessId, checksum } })
+          if (existing) {
+            return { type: 'duplicate', id: existing.id }
+          }
+          const created = await tx.transaction.create({
+            data: { businessId, date, description: descVal, amount, type, status: 'PENDING', checksum, sourceFile: file.name },
+          })
+          return { type: 'created', id: created.id }
         })
-        imported++
-        importedIds.push(tx.id)
+
+        if (result.type === 'duplicate') {
+          duplicates++
+          duplicateRows.push({ row: i + 2, date: date.toISOString(), description: descVal, amount, type, existingId: result.id })
+        } else {
+          imported++
+          importedIds.push(result.id)
+        }
       } catch (e: any) {
         errors.push(`Row ${i + 2}: ${e.message}`)
       }
