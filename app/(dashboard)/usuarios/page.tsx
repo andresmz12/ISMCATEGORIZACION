@@ -24,10 +24,15 @@ export default function UsuariosPage() {
 
   async function load() {
     setLoading(true)
-    const res = await fetch('/api/team')
-    const data = await res.json()
-    setMembers(Array.isArray(data) ? data : [])
-    setLoading(false)
+    try {
+      const res = await fetch('/api/team')
+      const data = await res.json()
+      setMembers(Array.isArray(data) ? data : [])
+    } catch {
+      setMembers([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
