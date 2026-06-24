@@ -105,6 +105,7 @@ export async function POST(req: Request) {
     let duplicates = 0
     const errors: string[] = []
     const importedIds: string[] = []
+    const duplicateRows: Array<{ row: number; date: string; description: string; amount: number; type: string; existingId: string }> = []
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
@@ -134,7 +135,11 @@ export async function POST(req: Request) {
 
         const checksum = makeChecksum(date.toISOString().split('T')[0], descVal, amount)
         const existing = await prisma.transaction.findFirst({ where: { businessId, checksum } })
-        if (existing) { duplicates++; continue }
+        if (existing) {
+          duplicates++
+          duplicateRows.push({ row: i + 2, date: date.toISOString(), description: descVal, amount, type, existingId: existing.id })
+          continue
+        }
 
         const tx = await prisma.transaction.create({
           data: { businessId, date, description: descVal, amount, type, status: 'PENDING', checksum, sourceFile: file.name },
@@ -146,7 +151,7 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ imported, duplicates, errors, total: rows.length, importedIds })
+    return NextResponse.json({ imported, duplicates, errors, total: rows.length, importedIds, duplicateRows })
   } catch (e: any) {
     console.error('import error:', e)
     return NextResponse.json({ error: 'Error al procesar el archivo' }, { status: 500 })

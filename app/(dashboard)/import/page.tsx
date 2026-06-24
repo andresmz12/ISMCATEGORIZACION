@@ -6,6 +6,90 @@ import { useActiveBiz } from '@/lib/use-active-biz'
 
 const FIELD_KEYS = ['date', 'description', 'amount', 'debit', 'credit'] as const
 
+function fmt(n: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
+}
+
+interface DupRow { row: number; date: string; description: string; amount: number; type: string; existingId: string }
+
+function DuplicateTable({ rows, businessId, onImported }: { rows: DupRow[]; businessId: string; onImported: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [importing, setImporting] = useState<string | null>(null)
+
+  async function forceImport(dup: DupRow) {
+    setImporting(dup.existingId)
+    await fetch('/api/transactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessId,
+        date: dup.date,
+        description: dup.description,
+        amount: dup.amount,
+        type: dup.type,
+        status: 'PENDING',
+      }),
+    })
+    setImporting(null)
+    onImported()
+  }
+
+  return (
+    <div className="border border-amber-200 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-amber-50 text-left"
+      >
+        <span className="text-sm font-semibold text-amber-800">
+          {rows.length} transacción{rows.length !== 1 ? 'es' : ''} marcada{rows.length !== 1 ? 's' : ''} como duplicada{rows.length !== 1 ? 's' : ''} — click para revisar
+        </span>
+        <svg className={`w-4 h-4 text-amber-600 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fila</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Descripción</th>
+                <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Monto</th>
+                <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Acción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {rows.map(dup => (
+                <tr key={`${dup.row}-${dup.existingId}`} className="hover:bg-amber-50/50">
+                  <td className="px-4 py-2.5 text-gray-400 text-xs">#{dup.row}</td>
+                  <td className="px-4 py-2.5 text-gray-600 text-xs">{new Date(dup.date).toLocaleDateString()}</td>
+                  <td className="px-4 py-2.5 text-gray-800 max-w-xs truncate">{dup.description}</td>
+                  <td className={`px-4 py-2.5 text-right font-semibold text-xs ${dup.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {dup.type === 'CREDIT' ? '+' : '-'}{fmt(dup.amount)}
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <button
+                      onClick={() => forceImport(dup)}
+                      disabled={importing === dup.existingId}
+                      className="text-xs text-[#1B4965] font-medium hover:underline disabled:opacity-50"
+                    >
+                      {importing === dup.existingId ? 'Importando...' : 'Importar igualmente'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="px-4 py-2 text-xs text-gray-400 bg-gray-50 border-t border-gray-100">
+            Estas transacciones ya existen con la misma fecha, descripción y monto. Si son realmente distintas, usa "Importar igualmente".
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ImportPage() {
   const { t } = useTranslation()
   const { businesses, activeBizId: activeBiz, setActiveBizId: setActiveBiz } = useActiveBiz()
@@ -292,6 +376,9 @@ export default function ImportPage() {
               <p className="text-sm text-gray-500">{t('import.total')}</p>
             </div>
           </div>
+          {result.duplicateRows?.length > 0 && (
+            <DuplicateTable rows={result.duplicateRows} businessId={activeBiz} onImported={() => { setResult((r: any) => ({ ...r, duplicateRows: [] })) }} />
+          )}
           {result.errors?.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-sm font-medium text-red-700 mb-1">{t('import.errors')} ({result.errors.length}):</p>
