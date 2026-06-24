@@ -46,19 +46,24 @@ export default function NegociosPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
-    const res = await fetch('/api/businesses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    const data = await res.json()
-    setSubmitting(false)
-    if (!res.ok) { toast(data.error || t('business.failed'), 'error'); return }
-    setBusinesses(b => [...b, data])
-    setForm({ name: '', industry: '', entityType: '', taxYear: new Date().getFullYear().toString() })
-    localStorage.setItem('activeBusiness', data.id)
-    setActiveBizId(data.id)
-    toast(t('business.created'), 'success')
+    try {
+      const res = await fetch('/api/businesses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast(data.error || t('business.failed'), 'error'); return }
+      setBusinesses(b => [...b, data])
+      setForm({ name: '', industry: '', entityType: '', taxYear: new Date().getFullYear().toString() })
+      localStorage.setItem('activeBusiness', data.id)
+      setActiveBizId(data.id)
+      toast(t('business.created'), 'success')
+    } catch {
+      toast(t('business.failed'), 'error')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function setActive(id: string, name: string) {
@@ -74,17 +79,22 @@ export default function NegociosPage() {
 
   async function saveEdit(id: string) {
     setSaving(true)
-    const res = await fetch(`/api/businesses/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
-    })
-    const data = await res.json()
-    setSaving(false)
-    if (!res.ok) { toast(data.error || t('biz.saveFailed'), 'error'); return }
-    setBusinesses(bs => bs.map(b => b.id === id ? { ...b, ...data } : b))
-    setEditId(null)
-    toast(t('biz.updated'), 'success')
+    try {
+      const res = await fetch(`/api/businesses/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast(data.error || t('biz.saveFailed'), 'error'); return }
+      setBusinesses(bs => bs.map(b => b.id === id ? { ...b, ...data } : b))
+      setEditId(null)
+      toast(t('biz.updated'), 'success')
+    } catch {
+      toast(t('biz.saveFailed'), 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function remove(id: string, name: string) {
