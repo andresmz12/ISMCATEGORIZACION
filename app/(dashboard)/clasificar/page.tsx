@@ -197,7 +197,7 @@ export default function ClasificarPage() {
       console.error('Update failed, rolling back:', err)
       // Rollback on failure
       if (oldTx) setTransactions(prev => prev.map(tx => tx.id === txId ? oldTx : tx))
-      toast('Error al clasificar', 'error')
+      toast('Error al actualizar categoría', 'error')
     }
   }
 

@@ -109,7 +109,7 @@ export default function TransactionsPage() {
       loadTransactions(1, false)
     } catch (err) {
       console.error('Update failed:', err)
-      toast(t('common.error'), 'error')
+      toast('Error en la operación', 'error')
     }
   }
 
@@ -119,10 +119,10 @@ export default function TransactionsPage() {
       const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       loadTransactions(1, false)
-      toast(t('tx.deleted'), 'success')
+      toast('Transacción eliminada', 'success')
     } catch (err) {
       console.error('Delete failed:', err)
-      toast(t('common.error'), 'error')
+      toast('Error en la operación', 'error')
     }
   }
 
@@ -140,7 +140,7 @@ export default function TransactionsPage() {
       loadTransactions(1, false)
     } catch (err) {
       console.error('Bulk delete failed:', err)
-      toast(t('common.error'), 'error')
+      toast('Error en la operación', 'error')
     } finally {
       setDeleteLoading(false)
     }
@@ -170,7 +170,7 @@ export default function TransactionsPage() {
       loadTransactions(1, false)
     } catch (err) {
       console.error('Bulk classify failed:', err)
-      toast(t('common.error'), 'error')
+      toast('Error en la operación', 'error')
     } finally {
       setBulkLoading(false)
     }
