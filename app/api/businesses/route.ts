@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { customAlphabet } from 'nanoid'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+
+const cuid = customAlphabet('36ghjkmnpqrtvwxyz2468', 24)
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -11,16 +14,26 @@ export async function GET() {
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
 
-  if (accountType === 'SUPERADMIN') {
-    const businesses = await prisma.business.findMany({ orderBy: { name: 'asc' } })
-    return NextResponse.json(businesses)
-  }
+  try {
+    if (accountType === 'SUPERADMIN') {
+      const businesses = await prisma.$queryRaw<any[]>`
+        SELECT * FROM "Business" ORDER BY name ASC
+      `
+      return NextResponse.json(businesses)
+    }
 
-  const businessUsers = await prisma.businessUser.findMany({
-    where: { userId },
-    include: { business: true },
-  })
-  return NextResponse.json(businessUsers.map(bu => ({ ...bu.business, userRole: bu.role })))
+    const businessUsers = await prisma.$queryRaw<any[]>`
+      SELECT b.*, bu.role as "userRole"
+      FROM "Business" b
+      INNER JOIN "BusinessUser" bu ON b.id = bu."businessId"
+      WHERE bu."userId" = ${userId}
+      ORDER BY b.name ASC
+    `
+    return NextResponse.json(businessUsers)
+  } catch (error: any) {
+    console.error('GET /api/businesses error:', error)
+    return NextResponse.json({ error: 'Failed to fetch businesses' }, { status: 500 })
+  }
 }
 
 export async function POST(req: Request) {
@@ -34,25 +47,45 @@ export async function POST(req: Request) {
     if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 })
 
     if (accountType === 'INDIVIDUAL') {
-      const existing = await prisma.businessUser.count({ where: { userId } })
-      if (existing >= 1) return NextResponse.json({ error: 'El plan Independiente solo permite un negocio' }, { status: 403 })
+      const existing = await prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(*) as count FROM "BusinessUser" WHERE "userId" = ${userId}
+      `
+      if (existing[0].count >= 1n) {
+        return NextResponse.json({ error: 'El plan Independiente solo permite un negocio' }, { status: 403 })
+      }
     }
 
-    const business = await prisma.business.create({
-      data: { name, industry, entityType, taxYear: taxYear ? Number(taxYear) : null },
-    })
-    await prisma.businessUser.create({ data: { userId, businessId: business.id, role: 'OWNER' } })
+    const businessId = cuid()
+    const now = new Date()
+    await prisma.$executeRaw`
+      INSERT INTO "Business" (id, name, industry, "entityType", "taxYear", "createdAt", "updatedAt")
+      VALUES (${businessId}, ${name}, ${industry || null}, ${entityType || null}, ${taxYear ? Number(taxYear) : null}, ${now}, ${now})
+    `
+    await prisma.$executeRaw`
+      INSERT INTO "BusinessUser" (id, "userId", "businessId", role, "createdAt")
+      VALUES (${cuid()}, ${userId}, ${businessId}, 'OWNER', ${now})
+    `
 
-    const teamMembers = await prisma.user.findMany({ where: { teamOwnerId: userId }, select: { id: true } })
-    if (teamMembers.length > 0) {
-      await prisma.businessUser.createMany({
-        data: teamMembers.map(m => ({ userId: m.id, businessId: business.id, role: 'VIEWER' as const })),
-        skipDuplicates: true,
-      })
+    // Try to add team members if they exist (but don't fail if this fails)
+    try {
+      const teamMembers = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "User" WHERE "teamOwnerId" = ${userId}
+      `
+      if (teamMembers.length > 0) {
+        for (const member of teamMembers) {
+          await prisma.$executeRaw`
+            INSERT INTO "BusinessUser" (id, "userId", "businessId", role, "createdAt")
+            VALUES (${cuid()}, ${member.id}, ${businessId}, 'VIEWER', ${now})
+            ON CONFLICT DO NOTHING
+          `
+        }
+      }
+    } catch {
+      // Silently fail if team member assignment fails
     }
 
-    await logAudit({ userId, businessId: business.id, action: 'CREATE_BUSINESS', entity: 'Business', entityId: business.id, metadata: { name } })
-    return NextResponse.json(business, { status: 201 })
+    await logAudit({ userId, businessId, action: 'CREATE_BUSINESS', entity: 'Business', entityId: businessId, metadata: { name } })
+    return NextResponse.json({ id: businessId, name, industry, entityType, taxYear }, { status: 201 })
   } catch (e: any) {
     console.error('create business error:', e)
     return NextResponse.json({ error: 'Error al crear el negocio' }, { status: 500 })
