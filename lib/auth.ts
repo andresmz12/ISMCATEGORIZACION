@@ -5,14 +5,6 @@ import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 import { rateLimit } from './rate-limit'
 
-const railwayUrl = process.env.RAILWAY_PUBLIC_DOMAIN
-  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-  : undefined
-
-if (railwayUrl) {
-  process.env.NEXTAUTH_URL = railwayUrl
-}
-
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
   session: { strategy: 'jwt', maxAge: 8 * 60 * 60 }, // 8-hour sessions
