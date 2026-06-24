@@ -66,23 +66,7 @@ export async function POST(req: Request) {
       VALUES (${cuid()}, ${userId}, ${businessId}, 'OWNER', ${now})
     `
 
-    // Try to add team members if they exist (but don't fail if this fails)
-    try {
-      const teamMembers = await prisma.$queryRaw<{ id: string }[]>`
-        SELECT id FROM "User" WHERE "teamOwnerId" = ${userId}
-      `
-      if (teamMembers.length > 0) {
-        for (const member of teamMembers) {
-          await prisma.$executeRaw`
-            INSERT INTO "BusinessUser" (id, "userId", "businessId", role, "createdAt")
-            VALUES (${cuid()}, ${member.id}, ${businessId}, 'VIEWER', ${now})
-            ON CONFLICT DO NOTHING
-          `
-        }
-      }
-    } catch {
-      // Silently fail if team member assignment fails
-    }
+    // Team features disabled for now
 
     await logAudit({ userId, businessId, action: 'CREATE_BUSINESS', entity: 'Business', entityId: businessId, metadata: { name } })
     return NextResponse.json({ id: businessId, name, industry, entityType, taxYear }, { status: 201 })

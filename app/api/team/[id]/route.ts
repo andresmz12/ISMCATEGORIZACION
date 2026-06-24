@@ -7,41 +7,11 @@ import { validatePassword } from '@/lib/validate'
 import { logAudit } from '@/lib/audit'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const userId = (session.user as any).id
-
-  const member = await prisma.user.findUnique({ where: { id: params.id } })
-  if (!member || member.teamOwnerId !== userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  const body = await req.json()
-  const data: any = {}
-  if (body.name) data.name = body.name
-  if (typeof body.isActive === 'boolean') data.isActive = body.isActive
-  if (body.password) {
-    const pwError = validatePassword(body.password)
-    if (pwError) return NextResponse.json({ error: pwError }, { status: 400 })
-    data.passwordHash = await bcrypt.hash(body.password, 12)
-  }
-
-  const updated = await prisma.user.update({
-    where: { id: params.id },
-    data,
-    select: { id: true, name: true, email: true, isActive: true, lastLogin: true },
-  })
-  await logAudit({ userId, action: 'UPDATE_TEAM_MEMBER', entity: 'User', entityId: params.id, metadata: { fields: Object.keys(data) } })
-  return NextResponse.json(updated)
+  // Team management disabled for now
+  return NextResponse.json({ error: 'Team features temporarily disabled' }, { status: 503 })
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const userId = (session.user as any).id
-
-  const member = await prisma.user.findUnique({ where: { id: params.id } })
-  if (!member || member.teamOwnerId !== userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-  await logAudit({ userId, action: 'DELETE_TEAM_MEMBER', entity: 'User', entityId: params.id, metadata: { email: member.email } })
-  await prisma.user.delete({ where: { id: params.id } })
-  return NextResponse.json({ ok: true })
+  // Team management disabled for now
+  return NextResponse.json({ error: 'Team features temporarily disabled' }, { status: 503 })
 }
