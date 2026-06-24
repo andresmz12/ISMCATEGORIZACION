@@ -47,10 +47,10 @@ export async function POST(req: Request) {
     if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 })
 
     if (accountType === 'INDIVIDUAL') {
-      const existing = await prisma.$queryRaw<{ count: bigint }[]>`
-        SELECT COUNT(*) as count FROM "BusinessUser" WHERE "userId" = ${userId}
+      const existing = await prisma.$queryRaw<{ count: number }[]>`
+        SELECT COUNT(*)::integer as count FROM "BusinessUser" WHERE "userId" = ${userId}
       `
-      if (existing[0].count >= 1n) {
+      if (existing[0].count >= 1) {
         return NextResponse.json({ error: 'El plan Independiente solo permite un negocio' }, { status: 403 })
       }
     }
