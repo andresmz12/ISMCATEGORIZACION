@@ -1,6 +1,9 @@
 'use server'
 import bcrypt from 'bcryptjs'
+import { customAlphabet } from 'nanoid'
 import { PrismaClient } from '@prisma/client'
+
+const cuid = customAlphabet('36ghjkmnpqrtvwxyz2468', 24)
 
 export async function resetPassword(
   secret: string,
@@ -23,26 +26,23 @@ export async function resetPassword(
     const normalizedEmail = email.toLowerCase().trim()
     const hash = await bcrypt.hash(newPassword, 12)
 
-    const existing = await db.user.findUnique({ where: { email: normalizedEmail } })
+    // Use raw SQL to avoid schema validation issues with missing teamOwnerId column
+    const existing = await db.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "User" WHERE email = ${normalizedEmail}
+    `
 
-    if (!existing) {
-      await db.user.create({
-        data: {
-          email: normalizedEmail,
-          passwordHash: hash,
-          name: 'Super Admin',
-          accountType: 'SUPERADMIN' as any,
-          plan: 'ENTERPRISE' as any,
-          isActive: true,
-        },
-      })
+    if (existing.length === 0) {
+      await db.$executeRaw`
+        INSERT INTO "User" (id, email, "passwordHash", name, "accountType", plan, "isActive", "createdAt", "updatedAt")
+        VALUES (${cuid()}, ${normalizedEmail}, ${hash}, 'Super Admin', 'SUPERADMIN', 'ENTERPRISE', true, NOW(), NOW())
+      `
       return { ok: true, message: `Usuario creado: ${normalizedEmail}` }
     }
 
-    await db.user.update({
-      where: { email: normalizedEmail },
-      data: { passwordHash: hash, isActive: true },
-    })
+    await db.$executeRaw`
+      UPDATE "User" SET "passwordHash" = ${hash}, "isActive" = true, "updatedAt" = NOW()
+      WHERE email = ${normalizedEmail}
+    `
     return { ok: true, message: `✓ Contraseña actualizada para ${normalizedEmail}` }
   } catch (e: any) {
     return { ok: false, message: `Error DB: ${e?.message ?? String(e)}` }
