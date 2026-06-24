@@ -43,12 +43,16 @@ export const authOptions: NextAuthOptions = {
         const rl = rateLimit(`login:${email}`, 10, 15 * 60 * 1000)
         if (!rl.ok) return null
 
-        const user = await prisma.user.findUnique({ where: { email } })
+        // Use raw SQL to avoid schema validation with missing teamOwnerId
+        const result = await prisma.$queryRaw<any[]>`
+          SELECT id, email, "passwordHash", name, "accountType", plan, "isActive" FROM "User" WHERE email = ${email}
+        `
+        const user = result[0]
         if (!user || !user.isActive) return null
         const valid = await bcrypt.compare(credentials.password, user.passwordHash)
         if (!valid) return null
 
-        prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } }).catch(() => {})
+        prisma.$executeRaw`UPDATE "User" SET "lastLogin" = NOW() WHERE id = ${user.id}`.catch(() => {})
         return { id: user.id, email: user.email, name: user.name, accountType: user.accountType, plan: user.plan }
       },
     }),
