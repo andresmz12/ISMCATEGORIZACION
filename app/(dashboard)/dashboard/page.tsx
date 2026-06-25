@@ -160,7 +160,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="page-title">
             {session?.user?.name ? greeting(session.user.name, t) : t('nav.dashboard')}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">{activeBiz?.name} · {t('dashboard.allMovements')}</p>
@@ -182,14 +182,48 @@ export default function DashboardPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: t('dashboard.income'), value: income, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-          { label: t('dashboard.expenses'), value: expenses, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-100' },
-          { label: t('dashboard.profit'), value: profit, color: profit >= 0 ? 'text-emerald-600' : 'text-red-600', bg: profit >= 0 ? 'bg-emerald-50' : 'bg-red-50', border: profit >= 0 ? 'border-emerald-100' : 'border-red-100' },
-          { label: t('dashboard.deductible'), value: deductible, color: 'text-[#1B4965]', bg: 'bg-blue-50', border: 'border-blue-100' },
-        ].map(card => (
-          <div key={card.label} className={`rounded-xl border p-4 ${card.bg} ${card.border}`}>
-            <p className="text-xs text-gray-500 font-medium mb-1">{card.label}</p>
-            <p className={`text-xl font-bold ${card.color}`}>{fmt(card.value)}</p>
+          {
+            label: t('dashboard.income'),
+            value: income,
+            color: '#059669',
+            iconBg: 'rgb(16 185 129 / 0.10)',
+            icon: <svg className="w-3.5 h-3.5" style={{ color: '#059669' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>,
+          },
+          {
+            label: t('dashboard.expenses'),
+            value: expenses,
+            color: '#dc2626',
+            iconBg: 'rgb(239 68 68 / 0.10)',
+            icon: <svg className="w-3.5 h-3.5" style={{ color: '#dc2626' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>,
+          },
+          {
+            label: t('dashboard.profit'),
+            value: profit,
+            color: profit >= 0 ? '#059669' : '#dc2626',
+            iconBg: profit >= 0 ? 'rgb(16 185 129 / 0.10)' : 'rgb(239 68 68 / 0.10)',
+            icon: <svg className="w-3.5 h-3.5" style={{ color: profit >= 0 ? '#059669' : '#dc2626' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>,
+          },
+          {
+            label: t('dashboard.deductible'),
+            value: deductible,
+            color: '#1B4965',
+            iconBg: 'rgb(27 73 101 / 0.10)',
+            icon: <svg className="w-3.5 h-3.5 text-[#1B4965]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
+          },
+        ].map((card, idx) => (
+          <div
+            key={card.label}
+            className="card p-4 flex flex-col gap-2 animate-slide-up"
+            style={{ animationDelay: `${idx * 60}ms` }}
+            data-hover
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{card.label}</p>
+              <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: card.iconBg }}>
+                {card.icon}
+              </div>
+            </div>
+            <p className="amount-lg" style={{ color: card.color }}>{fmt(card.value)}</p>
           </div>
         ))}
       </div>
@@ -198,7 +232,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Monthly bar chart */}
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('dashboard.monthlyExpenses')}</h3>
+          <h3 className="section-title mb-4">{t('dashboard.monthlyExpenses')}</h3>
           <div className="flex items-end gap-2 h-36">
             {months.map(({ label, val }) => {
               const pct = maxMonthly > 0 ? (val / maxMonthly) * 100 : 0
@@ -220,7 +254,7 @@ export default function DashboardPage() {
 
         {/* Donut chart — by category */}
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">{t('dashboard.byCategory')}</h3>
+          <h3 className="section-title mb-4">{t('dashboard.byCategory')}</h3>
           {donutData.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">{t('common.noData')}</p>
           ) : (
@@ -232,7 +266,7 @@ export default function DashboardPage() {
       {/* Recent transactions */}
       <div className="card overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-700">{t('dashboard.recentTx')}</h3>
+          <h3 className="section-title">{t('dashboard.recentTx')}</h3>
           <Link href="/transactions" className="text-xs text-[#1B4965] font-medium hover:underline">{t('dashboard.viewAll')}</Link>
         </div>
         {recentTxs.length === 0 ? (
@@ -249,14 +283,15 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-400">{new Date(tx.date).toLocaleDateString()} · {tx.category?.name || t('tx.unassigned')}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className={`text-sm font-semibold ${tx.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <p className={`amount-sm ${tx.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-600'}`}>
                     {tx.type === 'CREDIT' ? '+' : '−'}{fmt(tx.amount)}
                   </p>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    tx.status === 'CLASSIFIED' ? 'bg-emerald-100 text-emerald-700' :
-                    tx.status === 'NEEDS_REVIEW' ? 'bg-red-100 text-red-700' :
-                    'bg-amber-100 text-amber-700'
-                  }`}>
+                  <span className={
+                    tx.status === 'CLASSIFIED' ? 'badge-classified' :
+                    tx.status === 'NEEDS_REVIEW' ? 'badge-needs-review' :
+                    'badge-pending'
+                  }>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60 flex-shrink-0" />
                     {tx.status === 'CLASSIFIED' ? t('tx.classified') : tx.status === 'NEEDS_REVIEW' ? t('tx.needsReview') : t('tx.pending')}
                   </span>
                 </div>

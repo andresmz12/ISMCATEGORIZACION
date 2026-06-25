@@ -112,8 +112,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div key={gi}>
             {group.label && !isCollapsed && (
               <>
-                {gi > 0 && <div className="border-t border-white/8 mb-2 mt-1" />}
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-white/25 px-2 mb-1">{group.label}</p>
+                {gi > 0 && <div className="mb-2 mt-1 mx-2 h-px" style={{ background: 'linear-gradient(to right, transparent, rgb(255 255 255 / 0.12), transparent)' }} />}
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40 px-2 mb-1.5">{group.label}</p>
               </>
             )}
             <div className={isCollapsed ? 'space-y-1' : 'space-y-0.5'}>
@@ -127,7 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     className={`flex items-center rounded-lg text-sm font-medium transition-colors ${
                       isCollapsed ? 'justify-center p-2.5' : 'gap-2.5 px-3 py-2'
                     } ${
-                      active ? 'bg-white/15 text-white' :
+                      active ? 'nav-item-active' :
                       item.highlight ? 'text-[#2EC4B6] hover:bg-[#2EC4B6]/15' :
                       'text-white/55 hover:bg-white/8 hover:text-white/90'
                     }`}
@@ -136,7 +136,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       {item.icon}
                     </span>
                     {!isCollapsed && item.label}
-                    {!isCollapsed && active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2EC4B6] flex-shrink-0" />}
                   </Link>
                 )
               })}
@@ -146,14 +145,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {accountType === 'SUPERADMIN' && (
           <div>
-            {!isCollapsed && <div className="border-t border-white/8 mb-2 mt-1" />}
-            {!isCollapsed && <p className="text-[10px] font-semibold uppercase tracking-widest text-white/25 px-2 mb-1">Admin</p>}
+            {!isCollapsed && <div className="mb-2 mt-1 mx-2 h-px" style={{ background: 'linear-gradient(to right, transparent, rgb(255 255 255 / 0.12), transparent)' }} />}
+            {!isCollapsed && <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40 px-2 mb-1.5">Admin</p>}
             <Link
               href="/admin"
               title={isCollapsed ? t('nav.admin') : undefined}
               className={`flex items-center rounded-lg text-sm font-medium transition-colors ${
                 isCollapsed ? 'justify-center p-2.5' : 'gap-2.5 px-3 py-2'
-              } ${pathname.startsWith('/admin') ? 'bg-white/15 text-white' : 'text-white/55 hover:bg-white/8 hover:text-white/90'}`}
+              } ${pathname.startsWith('/admin') ? 'nav-item-active' : 'text-white/55 hover:bg-white/8 hover:text-white/90'}`}
             >
               <span className={`flex-shrink-0 ${pathname.startsWith('/admin') ? 'text-white' : 'text-white/35'}`}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
@@ -165,7 +164,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       {/* Footer */}
-      <div className={`border-t border-white/8 ${isCollapsed ? 'p-2' : 'p-3'}`}>
+      <div className={isCollapsed ? 'p-2' : 'px-3 py-3'}>
         {isCollapsed ? (
           <div className="flex flex-col items-center gap-2">
             <div className="w-7 h-7 rounded-full bg-[#2EC4B6] flex items-center justify-center text-white text-xs font-bold" title={session.user?.name || session.user?.email || ''}>
@@ -177,18 +176,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2.5 px-1">
-            <div className="w-7 h-7 rounded-full bg-[#2EC4B6] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-              {initials}
+          <div className="rounded-lg px-2.5 py-2" style={{ background: 'rgb(255 255 255 / 0.06)', border: '1px solid rgb(255 255 255 / 0.08)' }}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-[#2EC4B6] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                {initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white truncate">{session.user?.name || session.user?.email}</p>
+                <p className="text-[10px] text-white/40 truncate">{roleLabel}</p>
+              </div>
+              <button onClick={() => signOut({ callbackUrl: '/signin' })} title={t('auth.signout')}
+                className="flex-shrink-0 p-1.5 rounded-lg text-white/35 hover:text-white hover:bg-white/10 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate">{session.user?.name || session.user?.email}</p>
-              <p className="text-[10px] text-white/40 truncate">{roleLabel}</p>
-            </div>
-            <button onClick={() => signOut({ callbackUrl: '/signin' })} title={t('auth.signout')}
-              className="flex-shrink-0 p-1.5 rounded-lg text-white/35 hover:text-white hover:bg-white/10 transition-colors">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-            </button>
           </div>
         )}
       </div>
@@ -198,7 +199,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Desktop sidebar — collapsible */}
-      <aside className={`hidden lg:flex bg-[#1B4965] flex-col flex-shrink-0 overflow-y-auto transition-all duration-200 ${collapsed ? 'w-16' : 'w-64'}`}>
+      <aside className={`hidden lg:flex sidebar flex-col flex-shrink-0 overflow-y-auto transition-all duration-200 ${collapsed ? 'w-16' : 'w-64'}`}>
         <SidebarContent isCollapsed={collapsed} />
       </aside>
 
@@ -209,14 +210,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1B4965] flex flex-col lg:hidden transform transition-transform duration-200 ease-in-out overflow-y-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 sidebar flex flex-col lg:hidden transform transition-transform duration-200 ease-in-out overflow-y-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <SidebarContent isCollapsed={false} />
       </aside>
 
       {/* Main content — fills remaining width, scrolls independently */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top header — pinned at top */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+        <header className="bg-white/95 backdrop-blur-sm border-b border-slate-100 px-4 py-2.5 flex items-center gap-3 flex-shrink-0">
           {/* Hamburger — mobile only */}
           <button
             onClick={() => setSidebarOpen(true)}
