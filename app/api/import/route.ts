@@ -178,7 +178,7 @@ export async function POST(req: Request) {
         const checksum = makeChecksum(date.toISOString().split('T')[0], descVal, amount)
 
         // Use transaction to prevent race condition duplicates
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: any) => {
           const existing = await tx.transaction.findFirst({ where: { businessId, checksum } })
           if (existing) {
             return { type: 'duplicate', id: existing.id }

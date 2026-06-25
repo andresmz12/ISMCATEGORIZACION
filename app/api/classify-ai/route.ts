@@ -78,7 +78,7 @@ export async function POST(req: Request) {
     if (!transactions.length) return NextResponse.json({ classified: [], skipped: transactionIds.length })
 
     const categories = await prisma.category.findMany({ where: { isSystem: true } })
-    const categoryMap = new Map(categories.map(c => [c.name, c.id]))
+    const categoryMap = new Map(categories.map((c: { name: string; id: string }) => [c.name, c.id]))
 
     // Process in batches of 20
     const BATCH = 20
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
 
     for (let i = 0; i < transactions.length; i += BATCH) {
       const batch = transactions.slice(i, i + BATCH)
-      const txList = batch.map((t, idx) => ({
+      const txList = batch.map((t: any, idx: number) => ({
         index: idx,
         date: t.date.toISOString().split('T')[0],
         description: t.description,

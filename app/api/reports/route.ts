@@ -33,12 +33,12 @@ export async function GET(req: Request) {
   })
 
   const income = round(transactions
-    .filter(t => t.type === 'CREDIT')
-    .reduce((sum, t) => sum + t.amount, 0))
+    .filter((t: any) => t.type === 'CREDIT')
+    .reduce((sum: number, t: any) => sum + t.amount, 0))
 
   const expensesByCategory: Record<string, { name: string; irsCode: string | null; total: number; deductible: number; count: number }> = {}
 
-  for (const t of transactions.filter(t => t.type === 'DEBIT')) {
+  for (const t of transactions.filter((t: any) => t.type === 'DEBIT')) {
     const catName = t.category?.name || 'Uncategorized'
     const catCode = t.category?.irsCode || null
     if (!expensesByCategory[catName]) {
@@ -61,8 +61,8 @@ export async function GET(req: Request) {
     else byMonth[key].expenses = round(byMonth[key].expenses + t.amount)
   }
 
-  const pending = transactions.filter(t => t.status === 'PENDING').length
-  const classified = transactions.filter(t => t.status === 'CLASSIFIED').length
+  const pending = transactions.filter((t: any) => t.status === 'PENDING').length
+  const classified = transactions.filter((t: any) => t.status === 'CLASSIFIED').length
 
   return NextResponse.json({
     summary: { income, totalExpenses, netProfit: round(income - totalExpenses), totalDeductible, pending, classified },

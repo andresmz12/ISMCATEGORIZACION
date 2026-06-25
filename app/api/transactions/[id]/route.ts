@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: 'One or more categories do not exist' }, { status: 400 })
     }
 
-    const updated = await prisma.$transaction(async (trx) => {
+    const updated = await prisma.$transaction(async (trx: any) => {
       await trx.transactionSplit.deleteMany({ where: { transactionId: params.id } })
       await trx.transactionSplit.createMany({
         data: splits.map((s: any) => ({
