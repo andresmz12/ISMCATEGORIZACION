@@ -48,6 +48,12 @@ export default function AdminPage() {
   const [resetLoading, setResetLoading] = useState(false)
   const [resetError, setResetError] = useState('')
 
+  // Edit user
+  const [editUser, setEditUser] = useState<User | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', email: '', accountType: '', plan: '' })
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState('')
+
   async function load() {
     setLoading(true)
     const [u, m] = await Promise.all([
@@ -89,6 +95,28 @@ export default function AdminPage() {
     })
     await load()
     setActionLoading(null)
+  }
+
+  function openEdit(user: User) {
+    setEditUser(user)
+    setEditForm({ name: user.name || '', email: user.email, accountType: user.accountType, plan: user.plan })
+    setEditError('')
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editUser) return
+    if (!editForm.email) { setEditError('El correo es requerido'); return }
+    setEditLoading(true)
+    setEditError('')
+    const res = await fetch(`/api/admin/users/${editUser.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editForm.name, email: editForm.email, accountType: editForm.accountType, plan: editForm.plan }),
+    })
+    setEditLoading(false)
+    if (res.ok) { setEditUser(null); await load() }
+    else { const d = await res.json(); setEditError(d.error || 'Error al guardar') }
   }
 
   async function handleResetPassword(e: React.FormEvent) {
@@ -275,8 +303,8 @@ export default function AdminPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {user.accountType !== 'SUPERADMIN' && (
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        {user.accountType !== 'SUPERADMIN' && (
                           <button
                             onClick={() => toggleStatus(user)}
                             disabled={actionLoading === user.id}
@@ -288,24 +316,36 @@ export default function AdminPage() {
                           >
                             {user.isActive ? t('admin.suspend') : t('admin.activate')}
                           </button>
-                          <button
-                            onClick={() => { setResetUser(user); setResetPwd(''); setResetError('') }}
-                            disabled={actionLoading === user.id}
-                            title="Cambiar contraseña"
-                            className="text-xs font-medium px-2 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition-colors disabled:opacity-50"
-                          >
-                            🔑
-                          </button>
-                          <button
-                            onClick={() => deleteUser(user)}
-                            disabled={actionLoading === user.id}
-                            title="Eliminar usuario"
-                            className="text-xs font-medium px-2 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-50"
-                          >
-                            🗑
-                          </button>
-                        </div>
-                      )}
+                        )}
+                        <button
+                          onClick={() => openEdit(user)}
+                          disabled={actionLoading === user.id}
+                          title="Editar usuario"
+                          className="text-xs font-medium px-2 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-amber-100 hover:text-amber-600 transition-colors disabled:opacity-50"
+                        >
+                          ✏️
+                        </button>
+                        {user.accountType !== 'SUPERADMIN' && (
+                          <>
+                            <button
+                              onClick={() => { setResetUser(user); setResetPwd(''); setResetError('') }}
+                              disabled={actionLoading === user.id}
+                              title="Cambiar contraseña"
+                              className="text-xs font-medium px-2 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition-colors disabled:opacity-50"
+                            >
+                              🔑
+                            </button>
+                            <button
+                              onClick={() => deleteUser(user)}
+                              disabled={actionLoading === user.id}
+                              title="Eliminar usuario"
+                              className="text-xs font-medium px-2 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-50"
+                            >
+                              🗑
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -352,6 +392,80 @@ export default function AdminPage() {
                 </button>
                 <button type="submit" disabled={resetLoading} className="flex-1 h-10 bg-[#1B4965] text-white rounded-lg text-sm font-semibold hover:bg-[#143A52] transition-colors disabled:opacity-60">
                   {resetLoading ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit user modal */}
+      {editUser && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Editar usuario</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{editUser.email}</p>
+              </div>
+              <button onClick={() => setEditUser(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+            <form onSubmit={handleEdit} className="p-6 space-y-4">
+              {editError && <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">{editError}</div>}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Nombre completo</label>
+                <input
+                  className={inputCls}
+                  value={editForm.name}
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="María López"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Correo electrónico *</label>
+                <input
+                  className={inputCls}
+                  type="email"
+                  value={editForm.email}
+                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="usuario@ejemplo.com"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de cuenta</label>
+                  <select
+                    className={inputCls}
+                    value={editForm.accountType}
+                    onChange={e => setEditForm(f => ({ ...f, accountType: e.target.value }))}
+                  >
+                    <option value="INDIVIDUAL">Independiente</option>
+                    <option value="ACCOUNTANT">Contador</option>
+                    <option value="SUPERADMIN">Superadmin</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Plan</label>
+                  <select
+                    className={inputCls}
+                    value={editForm.plan}
+                    onChange={e => setEditForm(f => ({ ...f, plan: e.target.value }))}
+                  >
+                    <option value="BASIC">Basic</option>
+                    <option value="PLUS">Plus</option>
+                    <option value="ENTERPRISE">Enterprise</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setEditUser(null)} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={editLoading} className="flex-1 h-10 bg-[#1B4965] text-white rounded-lg text-sm font-semibold hover:bg-[#143A52] transition-colors disabled:opacity-60">
+                  {editLoading ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </form>
