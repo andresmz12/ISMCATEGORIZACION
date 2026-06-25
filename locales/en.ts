@@ -436,6 +436,7 @@ const en = {
   'tx.aiDone': 'Classification complete',
   'tx.aiError': 'Error classifying with AI',
   'tx.splitCatRequired': 'Select at least one category',
+  'tx.splitTotalMismatch': 'Split amounts must add up to the transaction total',
 
   // Common extras II
   'common.operationError': 'Error in operation',

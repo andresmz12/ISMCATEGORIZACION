@@ -39,9 +39,9 @@ export default function SettingsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    const data = await res.json()
     setProfileLoading(false)
-    if (!res.ok) { toast(data.error || t('common.error'), 'error'); return }
+    if (!res.ok) { toast((await res.text()) || t('common.error'), 'error'); return }
+    const data = await res.json()
     await updateSession({ name: data.name })
     toast(t('settings.profileSaved'), 'success')
   }
@@ -60,9 +60,9 @@ export default function SettingsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
     })
-    const data = await res.json()
     setPwLoading(false)
-    if (!res.ok) { toast(data.error || t('common.error'), 'error'); return }
+    if (!res.ok) { toast((await res.text()) || t('common.error'), 'error'); return }
+    const data = await res.json()
     setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
     toast(t('settings.passwordChanged'), 'success')
   }

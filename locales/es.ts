@@ -436,6 +436,7 @@ const es = {
   'tx.aiDone': 'Clasificación completada',
   'tx.aiError': 'Error en clasificación con IA',
   'tx.splitCatRequired': 'Selecciona al menos una categoría',
+  'tx.splitTotalMismatch': 'Los montos del desglose deben sumar el total de la transacción',
 
   // Common extras II
   'common.operationError': 'Error en la operación',

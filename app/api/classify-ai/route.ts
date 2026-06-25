@@ -108,7 +108,8 @@ export async function POST(req: Request) {
 
       let classifications: any[] = []
       try {
-        const text = response.content[0].type === 'text' ? response.content[0].text : ''
+        const firstBlock = response.content?.[0]
+        const text = firstBlock?.type === 'text' ? firstBlock.text : ''
         const jsonMatch = text.match(/\[[\s\S]*\]/)
         if (!jsonMatch) throw new Error('no JSON array in response')
         classifications = JSON.parse(jsonMatch[0])

@@ -46,10 +46,10 @@ export default function ClasificarPage() {
 
   useEffect(() => {
     if (!activeBiz) return
-    fetch(`/api/import?businessId=${activeBiz}`).then(r => r.json()).then(d => {
+    fetch(`/api/import?businessId=${activeBiz}`).then(r => r.ok ? r.json() : []).then(d => {
       if (Array.isArray(d)) setSavedMappings(d)
     })
-    fetch(`/api/categories?businessId=${activeBiz}`).then(r => r.json()).then(d => {
+    fetch(`/api/categories?businessId=${activeBiz}`).then(r => r.ok ? r.json() : []).then(d => {
       if (Array.isArray(d)) setCategories(d)
     })
   }, [activeBiz])

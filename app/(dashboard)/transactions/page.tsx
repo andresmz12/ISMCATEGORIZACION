@@ -44,7 +44,7 @@ function TransactionsContent() {
 
   useEffect(() => {
     if (!activeBiz) return
-    fetch(`/api/categories?businessId=${activeBiz}`).then(r => r.json()).then(setCategories)
+    fetch(`/api/categories?businessId=${activeBiz}`).then(r => r.ok ? r.json() : []).then(setCategories)
   }, [activeBiz])
 
   const loadTransactions = useCallback(async (pageNum: number, append: boolean) => {
@@ -130,7 +130,7 @@ function TransactionsContent() {
       toast(t('tx.deleted'), 'success')
     } catch (err) {
       console.error('Delete failed:', err)
-      toast('Error en la operación', 'error')
+      toast(t('common.operationError'), 'error')
     }
   }
 
@@ -178,7 +178,7 @@ function TransactionsContent() {
       loadTransactions(1, false)
     } catch (err) {
       console.error('Bulk classify failed:', err)
-      toast('Error en la operación', 'error')
+      toast(t('common.operationError'), 'error')
     } finally {
       setBulkLoading(false)
     }
@@ -211,6 +211,11 @@ function TransactionsContent() {
     const validSplits = splitRows.filter(r => r.categoryId && r.amount)
     if (!validSplits.length) {
       toast(t('tx.splitCatRequired'), 'error')
+      return
+    }
+    const splitTotal = validSplits.reduce((s, r) => s + Number(r.amount), 0)
+    if (Math.abs(splitTotal - splitTx.amount) > 0.01) {
+      toast(t('tx.splitTotalMismatch'), 'error')
       return
     }
     try {
