@@ -415,6 +415,7 @@ const es = {
   'reports.exportCSV': 'Exportar CSV',
   'reports.corporateBtn': 'Reporte Corporativo',
   'reports.txByCategoryBtn': 'Tx por Categoría',
+  'reports.txByCategoryPdfBtn': 'PDF Transacciones',
   'reports.availableInPlus': 'Disponible en planes Plus y Enterprise',
   'reports.uncategorized': 'Sin categoría',
 

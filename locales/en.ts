@@ -415,6 +415,7 @@ const en = {
   'reports.exportCSV': 'Export CSV',
   'reports.corporateBtn': 'Corporate Report',
   'reports.txByCategoryBtn': 'Tx by Category',
+  'reports.txByCategoryPdfBtn': 'Transactions PDF',
   'reports.availableInPlus': 'Available in Plus and Enterprise plans',
   'reports.uncategorized': 'Uncategorized',
 

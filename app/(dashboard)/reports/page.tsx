@@ -51,7 +51,7 @@ export default function ReportsPage() {
       ...report.expensesByCategory.map((c: any) => [c.name, String(c.total), String(c.deductible), String(c.count)]),
       [],
       [t('reports.monthly')],
-      [t('reports.month'), t('dashboard.income'), t('dashboard.expenses'), 'Net'],
+      [t('reports.month'), t('dashboard.income'), t('dashboard.expenses'), t('reports.net')],
       ...report.byMonth.map((m: any) => [m.month, String(m.income), String(m.expenses), String(m.income - m.expenses)]),
     ]
     const csv = rows.map(r => r.map(v => `"${v.replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -122,7 +122,7 @@ export default function ReportsPage() {
     report.expensesByCategory.forEach((c: any) => ws2.addRow([c.name, c.total, c.deductible, c.count]))
 
     const ws3 = wb.addWorksheet(t('reports.monthly'))
-    ws3.addRow([t('reports.month'), t('dashboard.income'), t('dashboard.expenses'), 'Net'])
+    ws3.addRow([t('reports.month'), t('dashboard.income'), t('dashboard.expenses'), t('reports.net')])
     report.byMonth.forEach((m: any) => ws3.addRow([m.month, m.income, m.expenses, m.income - m.expenses]))
 
     const buf = await wb.xlsx.writeBuffer()
@@ -190,7 +190,7 @@ export default function ReportsPage() {
 
         // Category header row
         const catTotal = debitTotal > 0 ? debitTotal : creditTotal
-        const catRow = ws.addRow([catName, `${catTxs.length} transacciones`, catTotal])
+        const catRow = ws.addRow([catName, `${catTxs.length} ${t('common.transactions')}`, catTotal])
         catRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
         catRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } }
         catRow.height = 18
@@ -234,6 +234,119 @@ export default function ReportsPage() {
       a.download = `transacciones-por-categoria_${from}_${to}.xlsx`
       a.click()
       URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function exportTransactionsPDF() {
+    if (!activeBiz) return
+    setExporting(true)
+    try {
+      const params = new URLSearchParams({ businessId: activeBiz, limit: '5000' })
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
+      const res = await fetch(`/api/transactions?${params}`)
+      const data = await res.json()
+      const txs: any[] = data.transactions || []
+
+      // Group by category name (same as Excel version)
+      const grouped: Record<string, any[]> = {}
+      for (const tx of txs) {
+        const cat = tx.category?.name || t('reports.uncategorized')
+        if (!grouped[cat]) grouped[cat] = []
+        grouped[cat].push(tx)
+      }
+      const uncategorizedLabel = t('reports.uncategorized')
+      const sortedCats = Object.keys(grouped).sort((a, b) => {
+        if (a === uncategorizedLabel) return 1
+        if (b === uncategorizedLabel) return -1
+        return a.localeCompare(b)
+      })
+
+      const { jsPDF } = await import('jspdf')
+      const autoTable = (await import('jspdf-autotable')).default
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const biz = businesses.find((b: any) => b.id === activeBiz)
+      const bizName = biz?.name || ''
+      const W = 210
+      const BLUE: [number, number, number] = [27, 73, 101]
+      const TEAL: [number, number, number] = [46, 196, 182]
+      const WHITE: [number, number, number] = [255, 255, 255]
+
+      let pageNum = 1
+      const addHeader = () => {
+        doc.setFillColor(...BLUE)
+        doc.rect(0, 0, W, 20, 'F')
+        doc.setFillColor(...TEAL)
+        doc.rect(0, 0, 8, 20, 'F')
+        doc.setFontSize(11)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...WHITE)
+        doc.text(t('reports.txByCategory'), 16, 13)
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(180, 210, 225)
+        doc.text(bizName, W - 14, 13, { align: 'right' })
+        if (pageNum === 1) {
+          doc.setFontSize(9)
+          doc.setFont('helvetica', 'normal')
+          doc.setTextColor(...BLUE)
+          doc.text(`${t('reports.period')}: ${from} — ${to}  ·  ${txs.length} ${t('common.transactions')}`, 16, 27)
+        }
+      }
+
+      addHeader()
+      let startY = pageNum === 1 ? 33 : 28
+
+      for (const catName of sortedCats) {
+        const catTxs = grouped[catName].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        const debitTotal = catTxs.filter((tx: any) => tx.type === 'DEBIT').reduce((s: number, tx: any) => s + tx.amount, 0)
+        const creditTotal = catTxs.filter((tx: any) => tx.type === 'CREDIT').reduce((s: number, tx: any) => s + tx.amount, 0)
+        const catTotal = debitTotal > 0 ? debitTotal : creditTotal
+
+        autoTable(doc, {
+          startY,
+          head: [[
+            { content: catName, colSpan: 4, styles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 9 } },
+            { content: `${t('reports.subtotal')}: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(catTotal)}`, styles: { fillColor: BLUE, textColor: [200, 230, 240] as [number,number,number], fontStyle: 'italic', fontSize: 8, halign: 'right' } },
+          ]],
+          body: catTxs.map((tx: any) => [
+            new Date(tx.date).toLocaleDateString(),
+            tx.description?.substring(0, 45) || '',
+            new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(tx.amount),
+            tx.type === 'CREDIT' ? t('reports.inflow') : t('reports.outflow'),
+            tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : '-',
+          ]),
+          headStyles: { fontSize: 9 },
+          bodyStyles: { fontSize: 7.5 },
+          alternateRowStyles: { fillColor: [240, 246, 250] },
+          columnStyles: {
+            0: { cellWidth: 24 },
+            2: { halign: 'right', cellWidth: 26 },
+            3: { cellWidth: 20 },
+            4: { halign: 'center', cellWidth: 16 },
+          },
+          didDrawPage: () => {
+            pageNum++
+            addHeader()
+          },
+          margin: { top: 28 },
+        })
+
+        startY = (doc as any).lastAutoTable.finalY + 4
+      }
+
+      // Page numbers
+      const totalPages = (doc as any).internal.getNumberOfPages()
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p)
+        doc.setFontSize(7)
+        doc.setTextColor(160, 170, 180)
+        doc.text(`${t('reports.page')} ${p} ${t('reports.of')} ${totalPages}`, W / 2, 292, { align: 'center' })
+      }
+
+      doc.save(`transacciones-${bizName.replace(/\s+/g, '-')}_${from}_${to}.pdf`)
     } finally {
       setExporting(false)
     }
@@ -531,6 +644,9 @@ export default function ReportsPage() {
           </button>
           <button onClick={exportTransactionsByCategory} disabled={exporting || !activeBiz} className="btn-secondary text-sm disabled:opacity-50">
             {exporting ? t('reports.generating') : t('reports.txByCategoryBtn')}
+          </button>
+          <button onClick={exportTransactionsPDF} disabled={exporting || !activeBiz} className="btn-secondary text-sm disabled:opacity-50">
+            {exporting ? t('reports.generating') : t('reports.txByCategoryPdfBtn')}
           </button>
           {isPremium ? (
             <button
