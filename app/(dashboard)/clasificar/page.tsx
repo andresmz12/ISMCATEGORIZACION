@@ -298,8 +298,6 @@ export default function ClasificarPage() {
     // Summary row
     const income = transactions.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0)
     const expenses = transactions.filter(t => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
-    const deductible = transactions.filter(t => t.deductibility === 'YES').reduce((s, t) => s + t.amount, 0) +
-      transactions.filter(t => t.deductibility === 'FIFTY').reduce((s, t) => s + t.amount * 0.5, 0)
 
     doc.setTextColor(40, 40, 40)
     doc.setFontSize(8)
@@ -308,31 +306,28 @@ export default function ClasificarPage() {
     doc.text(`Ingresos: ${fmt(income)}`, 14, summaryY)
     doc.text(`Gastos: ${fmt(expenses)}`, 80, summaryY)
     doc.text(`Ganancia Neta: ${fmt(income - expenses)}`, 146, summaryY)
-    doc.text(`Total Deducible: ${fmt(deductible)}`, 212, summaryY)
 
     // Transactions table
     autoTable(doc, {
       startY: 36,
-      head: [['Fecha', 'Descripción', 'Monto', 'Tipo', 'Categoría', 'Deducible', 'Confianza']],
+      head: [['Fecha', 'Descripción', 'Monto', 'Tipo', 'Categoría', 'Confianza']],
       body: transactions.map(tx => [
         tx.date ? new Date(tx.date).toLocaleDateString('en-US') : '',
-        tx.description?.substring(0, 50) || '',
+        tx.description?.substring(0, 55) || '',
         fmt(tx.amount),
         tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
         tx.category?.name || tx.aiSuggestion || '—',
-        tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : 'No',
         tx.aiConfidence || '—',
       ]),
       headStyles: { fillColor: [27, 73, 101], fontSize: 7, halign: 'center' },
       bodyStyles: { fontSize: 6.5 },
       columnStyles: {
         0: { cellWidth: 22 },
-        1: { cellWidth: 80 },
+        1: { cellWidth: 90 },
         2: { cellWidth: 24, halign: 'right' },
         3: { cellWidth: 18, halign: 'center' },
-        4: { cellWidth: 60 },
+        4: { cellWidth: 66 },
         5: { cellWidth: 20, halign: 'center' },
-        6: { cellWidth: 20, halign: 'center' },
       },
       didParseCell: (data) => {
         if (data.section === 'body' && data.column.index === 2) {
@@ -358,8 +353,6 @@ export default function ClasificarPage() {
   const autoClassified = transactions.filter(tx => tx.aiConfidence === 'HIGH').length
   const needsReview = transactions.filter(tx => tx.status === 'NEEDS_REVIEW' || tx.aiConfidence === 'LOW' || tx.aiConfidence === 'MEDIUM').length
   const totalExpenses = transactions.filter(tx => tx.type === 'DEBIT').reduce((s, tx) => s + tx.amount, 0)
-  const totalDeductible = transactions.filter(tx => tx.deductibility === 'YES').reduce((s, tx) => s + tx.amount, 0) +
-    transactions.filter(tx => tx.deductibility === 'FIFTY').reduce((s, tx) => s + tx.amount * 0.5, 0)
 
   const mappedCols = new Set(Object.values(mapping).filter(Boolean))
 
@@ -570,13 +563,12 @@ export default function ClasificarPage() {
           )}
 
           {/* Summary cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: 'Total', value: totalTx, type: 'count', color: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-100' },
               { label: 'Auto-clasificadas', value: autoClassified, type: 'count', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-100' },
               { label: 'Para revisar', value: needsReview, type: 'count', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-100' },
               { label: 'Total Gastos', value: totalExpenses, type: 'money', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-100' },
-              { label: 'Total Deducible', value: totalDeductible, type: 'money', color: 'text-[#1B4965]', bg: 'bg-blue-50', border: 'border-blue-100' },
             ].map(card => (
               <div key={card.label} className={`rounded-xl border p-3 ${card.bg} ${card.border}`}>
                 <p className="text-xs text-gray-500 font-medium mb-1">{card.label}</p>
@@ -606,7 +598,6 @@ export default function ClasificarPage() {
                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Descripción</th>
                     <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase w-28">Monto</th>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase w-44">Categoría</th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-24">Deducible</th>
                     <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-24">Confianza</th>
                   </tr>
                 </thead>
@@ -633,11 +624,6 @@ export default function ClasificarPage() {
                             <option value="">Sin categoría</option>
                             {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
-                        </td>
-                        <td className="px-3 py-2.5 text-center">
-                          <span className="text-xs font-medium">
-                            {tx.deductibility === 'YES' ? '✓ 100%' : tx.deductibility === 'FIFTY' ? '~ 50%' : '✗ No'}
-                          </span>
                         </td>
                         <td className="px-3 py-2.5 text-center">
                           {tx.aiConfidence && (
@@ -703,7 +689,7 @@ export default function ClasificarPage() {
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-1">¡Clasificación completa!</h2>
             <p className="text-gray-500">
-              {totalTx} transacciones clasificadas · {fmt(totalDeductible)} en gastos deducibles
+              {totalTx} transacciones clasificadas · {fmt(totalExpenses)} en gastos totales
             </p>
           </div>
           <div className="flex flex-wrap gap-3 justify-center">

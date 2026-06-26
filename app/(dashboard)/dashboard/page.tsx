@@ -106,7 +106,6 @@ export default function DashboardPage() {
   const income = report?.summary.income ?? 0
   const expenses = report?.summary.totalExpenses ?? 0
   const profit = report?.summary.netProfit ?? 0
-  const deductible = report?.summary.totalDeductible ?? 0
 
   const now = new Date()
 
@@ -204,7 +203,7 @@ export default function DashboardPage() {
 
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {[
           {
             label: t('dashboard.income'),
@@ -226,13 +225,6 @@ export default function DashboardPage() {
             color: profit >= 0 ? '#059669' : '#dc2626',
             iconBg: profit >= 0 ? 'rgb(16 185 129 / 0.10)' : 'rgb(239 68 68 / 0.10)',
             icon: <svg className="w-3.5 h-3.5" style={{ color: profit >= 0 ? '#059669' : '#dc2626' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>,
-          },
-          {
-            label: t('dashboard.deductible'),
-            value: deductible,
-            color: '#1B4965',
-            iconBg: 'rgb(27 73 101 / 0.10)',
-            icon: <svg className="w-3.5 h-3.5 text-[#1B4965]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>,
           },
         ].map((card, idx) => (
           <div

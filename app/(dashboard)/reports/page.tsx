@@ -44,7 +44,6 @@ export default function ReportsPage() {
       [t('reports.totalIncome'), String(report.summary.income)],
       [t('reports.totalExpenses'), String(report.summary.totalExpenses)],
       [t('reports.netProfit'), String(report.summary.netProfit)],
-      [t('reports.totalDeductible'), String(report.summary.totalDeductible)],
       [],
       [t('reports.expensesByCategory')],
       [t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')],
@@ -81,7 +80,6 @@ export default function ReportsPage() {
         [t('reports.totalIncome'), fmt(report.summary.income)],
         [t('reports.totalExpenses'), fmt(report.summary.totalExpenses)],
         [t('reports.netProfit'), fmt(report.summary.netProfit)],
-        [t('reports.totalDeductible'), fmt(report.summary.totalDeductible)],
       ],
     })
     const y1 = (doc as any).lastAutoTable.finalY + 10
@@ -114,12 +112,11 @@ export default function ReportsPage() {
       [t('reports.totalIncome'), report.summary.income],
       [t('reports.totalExpenses'), report.summary.totalExpenses],
       [t('reports.netProfit'), report.summary.netProfit],
-      [t('reports.totalDeductible'), report.summary.totalDeductible],
     ])
 
     const ws2 = wb.addWorksheet(t('reports.byCategory'))
-    ws2.addRow([t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')])
-    report.expensesByCategory.forEach((c: any) => ws2.addRow([c.name, c.total, c.deductible, c.count]))
+    ws2.addRow([t('tx.category'), t('reports.total'), t('reports.count')])
+    report.expensesByCategory.forEach((c: any) => ws2.addRow([c.name, c.total, c.count]))
 
     const ws3 = wb.addWorksheet(t('reports.monthly'))
     ws3.addRow([t('reports.month'), t('dashboard.income'), t('dashboard.expenses'), t('reports.net')])
@@ -164,7 +161,6 @@ export default function ReportsPage() {
         { key: 'amount', width: 15 },
         { key: 'type', width: 10 },
         { key: 'status', width: 13 },
-        { key: 'ded', width: 11 },
       ]
 
       // Title
@@ -197,7 +193,7 @@ export default function ReportsPage() {
         catRow.getCell(3).numFmt = '"$"#,##0.00'
 
         // Column sub-headers
-        const hRow = ws.addRow([t('reports.date'), t('reports.description'), t('tx.amount'), t('reports.type'), t('reports.status'), t('tx.deductible')])
+        const hRow = ws.addRow([t('reports.date'), t('reports.description'), t('tx.amount'), t('reports.type'), t('reports.status')])
         hRow.font = { bold: true, size: 9, color: { argb: 'FF1B4965' } }
         hRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE_LIGHT } }
 
@@ -208,7 +204,6 @@ export default function ReportsPage() {
             tx.amount,
             tx.type === 'CREDIT' ? t('reports.inflow') : t('reports.outflow'),
             tx.status === 'CLASSIFIED' ? t('reports.statusClassified') : tx.status === 'PENDING' ? t('reports.statusPending') : t('reports.statusReview'),
-            tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : '-',
           ])
           row.getCell(3).numFmt = '"$"#,##0.00'
           row.getCell(3).font = { color: { argb: tx.type === 'CREDIT' ? 'FF059669' : 'FFDC2626' } }
@@ -308,24 +303,22 @@ export default function ReportsPage() {
         autoTable(doc, {
           startY,
           head: [[
-            { content: catName, colSpan: 4, styles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 9 } },
+            { content: catName, colSpan: 3, styles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 9 } },
             { content: `${t('reports.subtotal')}: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(catTotal)}`, styles: { fillColor: BLUE, textColor: [200, 230, 240] as [number,number,number], fontStyle: 'italic', fontSize: 8, halign: 'right' } },
           ]],
           body: catTxs.map((tx: any) => [
             new Date(tx.date).toLocaleDateString(),
-            tx.description?.substring(0, 45) || '',
+            tx.description?.substring(0, 55) || '',
             new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(tx.amount),
             tx.type === 'CREDIT' ? t('reports.inflow') : t('reports.outflow'),
-            tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : '-',
           ]),
           headStyles: { fontSize: 9 },
           bodyStyles: { fontSize: 7.5 },
           alternateRowStyles: { fillColor: [240, 246, 250] },
           columnStyles: {
             0: { cellWidth: 24 },
-            2: { halign: 'right', cellWidth: 26 },
-            3: { cellWidth: 20 },
-            4: { halign: 'center', cellWidth: 16 },
+            2: { halign: 'right', cellWidth: 28 },
+            3: { cellWidth: 22 },
           },
           didDrawPage: () => {
             pageNum++
@@ -404,7 +397,6 @@ export default function ReportsPage() {
         { label: t('reports.income'), val: fmt(report.summary.income) },
         { label: t('reports.expenses'), val: fmt(report.summary.totalExpenses) },
         { label: t('reports.netProfit'), val: fmt(report.summary.netProfit) },
-        { label: t('reports.totalDeductible'), val: fmt(report.summary.totalDeductible) },
       ]
       const cardY = yPeriod + 28
       const cardW = (W - 48 - 9) / 2
@@ -456,7 +448,6 @@ export default function ReportsPage() {
           [t('reports.totalIncome'), fmt(report.summary.income)],
           [t('reports.totalExpenses'), fmt(report.summary.totalExpenses)],
           [t('reports.netProfit'), fmt(report.summary.netProfit)],
-          [t('reports.totalDeductible'), fmt(report.summary.totalDeductible)],
           [t('reports.pendingClassify'), String(report.summary.pending)],
           [t('reports.classifiedCount'), String(report.summary.classified)],
         ],
@@ -596,12 +587,12 @@ export default function ReportsPage() {
 
       autoTable(doc, {
         startY: 30 + cats.length * rowH + 10,
-        head: [[t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')]],
-        body: cats.map((c: any) => [c.name, fmt(c.total), fmt(c.deductible), c.count]),
+        head: [[t('tx.category'), t('reports.total'), t('reports.count')]],
+        body: cats.map((c: any) => [c.name, fmt(c.total), c.count]),
         headStyles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 8 },
         bodyStyles: { fontSize: 8 },
         alternateRowStyles: { fillColor: [240, 246, 250] },
-        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'center' } },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'center' } },
       })
 
       // Page numbers on all pages
@@ -705,7 +696,6 @@ export default function ReportsPage() {
               { label: t('reports.totalIncome'), val: report.summary.income, color: 'text-emerald-700' },
               { label: t('reports.totalExpenses'), val: report.summary.totalExpenses, color: 'text-red-600' },
               { label: t('reports.netProfit'), val: report.summary.netProfit, color: report.summary.netProfit >= 0 ? 'text-emerald-700' : 'text-red-600' },
-              { label: t('reports.totalDeductible'), val: report.summary.totalDeductible, color: 'text-[#1B4965]' },
             ].map(s => (
               <div key={s.label} className="card p-4">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{s.label}</p>
