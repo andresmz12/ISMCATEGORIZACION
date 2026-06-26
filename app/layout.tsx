@@ -16,8 +16,8 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'ISM Taxes - Expense Categorization',
-  description: 'AI-powered tax expense categorization for small businesses',
+  title: 'My Profit and Loss — P&L for Small Businesses',
+  description: 'AI-powered P&L and tax expense categorization for small US businesses',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
