@@ -147,8 +147,8 @@ function SignInForm() {
 
           {/* Logo */}
           <div className="relative flex items-center gap-3 mb-16">
-            <img src="/logo.svg" alt="MyP&L Logo" className="w-12 h-12" />
-            <span className="text-white font-bold text-xl tracking-tight">MyP&L</span>
+            <img src="/logo.svg" alt="My Profit and Loss" className="w-12 h-12" />
+            <span className="text-white font-bold text-xl tracking-tight">My Profit &amp; Loss</span>
           </div>
 
           {/* Dashboard mockup */}
@@ -185,8 +185,8 @@ function SignInForm() {
           <div className="flex justify-between items-center p-6">
             {/* Mobile logo */}
             <div className="flex lg:hidden items-center gap-2">
-              <img src="/logo.svg" alt="MyP&L Logo" className="w-8 h-8" />
-              <span className="text-[#1B4965] font-bold">MyP&L</span>
+              <img src="/logo.svg" alt="My Profit and Loss" className="w-8 h-8" />
+              <span className="text-[#1B4965] font-bold">My Profit &amp; Loss</span>
             </div>
             <div className="lg:ml-auto">
               <LanguageToggle />

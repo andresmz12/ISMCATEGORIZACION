@@ -1,6 +1,6 @@
 const en = {
   'app.name': 'My Profit and Loss',
-  'app.short': 'MyP&L',
+  'app.short': 'My Profit & Loss',
   'app.tagline': 'Organize your expenses. Simplify your taxes.',
 
   // Nav
