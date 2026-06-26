@@ -134,18 +134,11 @@ Use null for any field you cannot read. Receipt may be in English or Spanish.`,
       },
     })
 
-    const receipt = await prisma.receipt.create({
-      data: {
-        transactionId: transaction.id,
-        filename: file.name,
-        data: base64Data,
-        mimeType: rawMime,
-      },
-    })
+    // Do NOT store the raw image in the DB — keeping only extracted metadata
+    // avoids bloating the database with large base64 blobs.
 
     await logAudit({ userId, businessId, action: 'SCAN_RECEIPT', entity: 'Transaction', entityId: transaction.id, metadata: { merchant: extracted.merchant, amount, confidence, file: file.name } })
     return NextResponse.json({
-      receiptId: receipt.id,
       transactionId: transaction.id,
       status: txStatus,
       extracted,

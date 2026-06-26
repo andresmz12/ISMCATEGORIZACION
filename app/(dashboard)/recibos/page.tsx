@@ -24,7 +24,6 @@ interface ScanJob {
   preview: string
   status: 'scanning' | 'review' | 'confirmed' | 'rejected' | 'error'
   error?: string
-  receiptId?: string
   transactionId?: string
   extracted?: ExtractedData
   mimeType?: string
@@ -181,7 +180,6 @@ export default function RecibosPage() {
       setJobs(prev => prev.map(j => j.id === job.id ? {
         ...j,
         status: 'review',
-        receiptId: data.receiptId,
         transactionId: data.transactionId,
         extracted: ex,
         mimeType: data.mimeType,
@@ -222,7 +220,8 @@ export default function RecibosPage() {
     const patchBody: any = {}
     if (job.form.date) patchBody.date = job.form.date
     // NOTE: amount can't be changed via PATCH without description — we accept the extracted value
-    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'confirmed' } : j))
+    // Clear preview blob to free memory — image was already sent to AI and is not stored in DB
+    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'confirmed', preview: '' } : j))
     toast(t('receipts.confirmed'), 'success')
   }
 
@@ -231,7 +230,7 @@ export default function RecibosPage() {
     if (job.transactionId) {
       await fetch(`/api/transactions/${job.transactionId}`, { method: 'DELETE' })
     }
-    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'rejected' } : j))
+    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'rejected', preview: '' } : j))
     toast(t('receipts.rejected'), 'info')
   }
 
