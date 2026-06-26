@@ -39,11 +39,7 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
   env: {
-    NEXTAUTH_URL:
-      process.env.NEXTAUTH_URL ||
-      (process.env.RAILWAY_PUBLIC_DOMAIN
-        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-        : 'http://localhost:3000'),
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
   },
   webpack: (config) => {
     config.resolve.fallback = { fs: false, net: false, tls: false }

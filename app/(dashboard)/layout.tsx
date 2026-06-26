@@ -170,7 +170,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="w-7 h-7 rounded-full bg-[#2EC4B6] flex items-center justify-center text-white text-xs font-bold" title={session.user?.name || session.user?.email || ''}>
               {initials}
             </div>
-            <button onClick={() => signOut({ callbackUrl: '/signin' })} title={t('auth.signout')}
+            <button onClick={() => signOut({ callbackUrl: `${window.location.origin}/signin` })} title={t('auth.signout')}
               className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             </button>
@@ -185,7 +185,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <p className="text-xs font-semibold text-white truncate">{session.user?.name || session.user?.email}</p>
                 <p className="text-[10px] text-white/40 truncate">{roleLabel}</p>
               </div>
-              <button onClick={() => signOut({ callbackUrl: '/signin' })} title={t('auth.signout')}
+              <button onClick={() => signOut({ callbackUrl: `${window.location.origin}/signin` })} title={t('auth.signout')}
                 className="flex-shrink-0 p-1.5 rounded-lg text-white/35 hover:text-white hover:bg-white/10 transition-colors">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
               </button>

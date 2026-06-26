@@ -75,7 +75,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="mb-3"><LanguageToggle /></div>
           <p className="text-xs text-white/50 truncate mb-2">{session?.user?.email}</p>
           <button
-            onClick={() => signOut({ callbackUrl: '/signin' })}
+            onClick={() => signOut({ callbackUrl: `${window.location.origin}/signin` })}
             className="text-xs text-white/60 hover:text-white transition-colors"
           >
             {t('auth.signout')}
