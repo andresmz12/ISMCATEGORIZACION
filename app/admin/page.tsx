@@ -123,6 +123,8 @@ export default function AdminPage() {
     e.preventDefault()
     if (!resetUser) return
     if (resetPwd.length < 8) { setResetError('Mínimo 8 caracteres'); return }
+    if (!/[A-Z]/.test(resetPwd)) { setResetError('Debe incluir al menos una letra mayúscula'); return }
+    if (!/[0-9]/.test(resetPwd)) { setResetError('Debe incluir al menos un número'); return }
     setResetLoading(true)
     setResetError('')
     const res = await fetch(`/api/admin/users/${resetUser.id}`, {
@@ -138,10 +140,12 @@ export default function AdminPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!form.email || !form.password) { setCreateError('Email y contraseña requeridos'); return }
-    if (form.password.length < 8) { setCreateError('Contraseña mínimo 8 caracteres'); return }
+    if (form.password.length < 8) { setCreateError('Mínimo 8 caracteres'); return }
+    if (!/[A-Z]/.test(form.password)) { setCreateError('La contraseña debe incluir al menos una letra mayúscula'); return }
+    if (!/[0-9]/.test(form.password)) { setCreateError('La contraseña debe incluir al menos un número'); return }
     setCreateLoading(true)
     setCreateError('')
-    const res = await fetch('/api/auth/register', {
+    const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -155,20 +159,8 @@ export default function AdminPage() {
       }),
     })
     const data = await res.json()
-    if (!res.ok) {
-      setCreateError(data.error || 'Error al crear cuenta')
-      setCreateLoading(false)
-      return
-    }
-    // Update plan if not BASIC (register always creates BASIC)
-    if (form.plan !== 'BASIC') {
-      await fetch(`/api/admin/users/${data.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: form.plan }),
-      })
-    }
     setCreateLoading(false)
+    if (!res.ok) { setCreateError(data.error || 'Error al crear cuenta'); return }
     setShowCreate(false)
     setForm(EMPTY_FORM)
     await load()
@@ -381,10 +373,11 @@ export default function AdminPage() {
                   type="password"
                   value={resetPwd}
                   onChange={e => setResetPwd(e.target.value)}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Ej: MiClave123"
                   required
                   autoFocus
                 />
+                <p className="text-xs text-gray-400 mt-1">Mínimo 8 caracteres, una mayúscula y un número</p>
               </div>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setResetUser(null)} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
@@ -519,7 +512,8 @@ export default function AdminPage() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña *</label>
-                <input className={inputCls} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Mínimo 8 caracteres" required />
+                <input className={inputCls} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Ej: MiClave123" required />
+                <p className="text-xs text-gray-400 mt-1">Mínimo 8 caracteres, una mayúscula y un número</p>
               </div>
 
               {form.accountType === 'INDIVIDUAL' && (
