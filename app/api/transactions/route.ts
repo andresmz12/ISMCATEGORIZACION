@@ -19,6 +19,7 @@ export async function GET(req: Request) {
 
   const status = searchParams.get('status')
   const categoryId = searchParams.get('categoryId')
+  const type = searchParams.get('type')
   const from = searchParams.get('from')
   const to = searchParams.get('to')
   const search = searchParams.get('search')
@@ -28,6 +29,7 @@ export async function GET(req: Request) {
   const where: any = { businessId }
   if (status) where.status = status
   if (categoryId) where.categoryId = categoryId
+  if (type === 'CREDIT' || type === 'DEBIT') where.type = type
   if (from || to) {
     where.date = {}
     if (from) where.date.gte = new Date(from)

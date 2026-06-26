@@ -79,63 +79,68 @@ export default function DashboardPage() {
   const { t } = useTranslation()
   const { businesses, activeBizId, loading } = useActiveBiz()
   const activeBiz = businesses.find(b => b.id === activeBizId) || null
+
+  const currentYear = new Date().getFullYear()
+  const [from, setFrom] = useState(`${currentYear}-01-01`)
+  const [to, setTo] = useState(new Date().toISOString().split('T')[0])
+
+  const [report, setReport] = useState<any>(null)
   const [txs, setTxs] = useState<any[]>([])
 
   useEffect(() => {
     if (!activeBizId) return
-    fetch(`/api/transactions?businessId=${activeBizId}&limit=500`)
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
+    fetch(`/api/reports?businessId=${activeBizId}&from=${from}&to=${to}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setReport(d))
+      .catch(() => setReport(null))
+  }, [activeBizId, from, to])
+
+  useEffect(() => {
+    if (!activeBizId) return
+    fetch(`/api/transactions?businessId=${activeBizId}&limit=8&from=${from}&to=${to}`)
+      .then(r => r.ok ? r.json() : { transactions: [] })
       .then(d => setTxs(Array.isArray(d?.transactions) ? d.transactions : []))
-      .catch(err => {
-        console.error('Failed to load transactions:', err)
-        setTxs([])
-      })
-  }, [activeBizId])
+      .catch(() => setTxs([]))
+  }, [activeBizId, from, to])
+
+  const income = report?.summary.income ?? 0
+  const expenses = report?.summary.totalExpenses ?? 0
+  const profit = report?.summary.netProfit ?? 0
+  const deductible = report?.summary.totalDeductible ?? 0
 
   const now = new Date()
-  const ytdTxs = txs
-  const income = ytdTxs.filter(tx => tx.type === 'CREDIT').reduce((s, tx) => s + tx.amount, 0)
-  const expenses = ytdTxs.filter(tx => tx.type === 'DEBIT').reduce((s, tx) => s + tx.amount, 0)
-  const profit = income - expenses
-  const deductible = ytdTxs.filter(tx => tx.deductibility === 'YES').reduce((s, tx) => s + tx.amount, 0)
 
-  // Monthly expenses (last 6 months)
-  const months: { key: string; label: string; val: number }[] = []
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    months.push({
-      key: `${d.getFullYear()}-${d.getMonth()}`,
-      label: d.toLocaleString('default', { month: 'short' }),
-      val: 0,
-    })
-  }
-  const monthMap = new Map(months.map(m => [m.key, m]))
-  ytdTxs.filter(tx => tx.type === 'DEBIT').forEach(tx => {
-    const d = new Date(tx.date)
-    const key = `${d.getFullYear()}-${d.getMonth()}`
-    const m = monthMap.get(key)
-    if (m) m.val += tx.amount
+  // Monthly expenses from report data
+  const reportMonths: { label: string; income: number; expenses: number }[] = report?.byMonth?.slice(-6).map((m: any) => ({
+    label: m.month.substring(5, 7),
+    income: m.income,
+    expenses: m.expenses,
+  })) ?? []
+
+  // Fallback: last 6 month labels if no report yet
+  const months = reportMonths.length > 0 ? reportMonths : Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+    return { label: d.toLocaleString('default', { month: 'short' }), income: 0, expenses: 0 }
   })
-  const maxMonthly = Math.max(...months.map(m => m.val), 1)
+  const maxMonthly = Math.max(...months.map(m => m.expenses), 1)
 
   // By category for donut
-  const byCat: Record<string, { name: string; value: number }> = {}
-  ytdTxs.filter(tx => tx.type === 'DEBIT' && tx.category?.name).forEach(tx => {
-    if (!byCat[tx.categoryId]) byCat[tx.categoryId] = { name: tx.category.name, value: 0 }
-    byCat[tx.categoryId].value += tx.amount
-  })
-  const donutData = Object.values(byCat)
-    .sort((a, b) => b.value - a.value)
+  const donutData = (report?.expensesByCategory ?? [])
     .slice(0, 8)
-    .map((d, i) => ({ ...d, color: CHART_COLORS[i] || '#94a3b8' }))
+    .map((c: any, i: number) => ({ name: c.name, value: c.total, color: CHART_COLORS[i] || '#94a3b8' }))
 
   // Recent transactions
-  const recentTxs = [...txs]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 8)
+  const recentTxs = txs.slice(0, 8)
+
+  const quickRanges = [
+    { label: 'Todo', from: '2020-01-01', to: new Date().toISOString().split('T')[0] },
+    { label: `${currentYear}`, from: `${currentYear}-01-01`, to: new Date().toISOString().split('T')[0] },
+    { label: `${currentYear - 1}`, from: `${currentYear - 1}-01-01`, to: `${currentYear - 1}-12-31` },
+    { label: 'Q1', from: `${currentYear}-01-01`, to: `${currentYear}-03-31` },
+    { label: 'Q2', from: `${currentYear}-04-01`, to: `${currentYear}-06-30` },
+    { label: 'Q3', from: `${currentYear}-07-01`, to: `${currentYear}-09-30` },
+    { label: 'Q4', from: `${currentYear}-10-01`, to: `${currentYear}-12-31` },
+  ]
 
   if (loading) {
     return (
@@ -176,6 +181,24 @@ export default function DashboardPage() {
             </svg>
             {t('nav.classify')}
           </Link>
+        </div>
+      </div>
+
+      {/* Date filter */}
+      <div className="card p-3 flex flex-wrap gap-2 items-center">
+        <input type="date" className="input w-auto text-sm py-1.5" value={from} onChange={e => setFrom(e.target.value)} />
+        <span className="text-gray-400 text-sm">→</span>
+        <input type="date" className="input w-auto text-sm py-1.5" value={to} onChange={e => setTo(e.target.value)} />
+        <div className="flex gap-1.5 flex-wrap ml-1">
+          {quickRanges.map(r => (
+            <button
+              key={r.label}
+              onClick={() => { setFrom(r.from); setTo(r.to) }}
+              className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition-colors ${from === r.from && to === r.to ? 'bg-[#1B4965] text-white border-[#1B4965]' : 'border-gray-200 text-gray-600 hover:border-[#1B4965] hover:text-[#1B4965]'}`}
+            >
+              {r.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -235,7 +258,7 @@ export default function DashboardPage() {
         <div className="card p-5">
           <h3 className="section-title mb-4">{t('dashboard.monthlyExpenses')}</h3>
           <div className="flex items-end gap-2 h-36">
-            {months.map(({ label, val }) => {
+            {months.map(({ label, expenses: val }) => {
               const pct = maxMonthly > 0 ? (val / maxMonthly) * 100 : 0
               return (
                 <div key={label} className="flex-1 flex flex-col items-center gap-1">

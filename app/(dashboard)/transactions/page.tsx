@@ -27,6 +27,7 @@ function TransactionsContent() {
   const [filters, setFilters] = useState({
     status: searchParams.get('status') || '',
     categoryId: '',
+    type: '',
     from: '',
     to: '',
     search: '',
@@ -55,6 +56,7 @@ function TransactionsContent() {
       const params = new URLSearchParams({ businessId: activeBiz, page: String(pageNum), limit: '25' })
       if (filters.status) params.set('status', filters.status)
       if (filters.categoryId) params.set('categoryId', filters.categoryId)
+      if (filters.type) params.set('type', filters.type)
       if (filters.from) params.set('from', filters.from)
       if (filters.to) params.set('to', filters.to)
       if (filters.search) params.set('search', filters.search)
@@ -297,6 +299,11 @@ function TransactionsContent() {
             }}
           />
         </div>
+        <select className="input w-auto text-sm" value={filters.type} onChange={e => { setFilters(f => ({ ...f, type: e.target.value })); setPage(1) }}>
+          <option value="">Ingresos y Gastos</option>
+          <option value="CREDIT">Solo Ingresos</option>
+          <option value="DEBIT">Solo Gastos</option>
+        </select>
         <select className="input w-auto text-sm" value={filters.status} onChange={e => { setFilters(f => ({ ...f, status: e.target.value })); setPage(1) }}>
           <option value="">{t('tx.allStatus')}</option>
           <option value="PENDING">{t('tx.pending')}</option>
@@ -309,7 +316,7 @@ function TransactionsContent() {
         </select>
         <input type="date" className="input w-auto text-sm" value={filters.from} onChange={e => { setFilters(f => ({ ...f, from: e.target.value })); setPage(1) }} />
         <input type="date" className="input w-auto text-sm" value={filters.to} onChange={e => { setFilters(f => ({ ...f, to: e.target.value })); setPage(1) }} />
-        <button onClick={() => { setSearchInput(''); setFilters({ status: '', categoryId: '', from: '', to: '', search: '' }); setPage(1) }} className="btn-secondary text-sm">{t('common.clear')}</button>
+        <button onClick={() => { setSearchInput(''); setFilters({ status: '', categoryId: '', type: '', from: '', to: '', search: '' }); setPage(1) }} className="btn-secondary text-sm">{t('common.clear')}</button>
       </div>
 
       {/* Bulk action bar — appears above table when items are selected */}
