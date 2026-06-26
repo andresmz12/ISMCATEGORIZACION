@@ -139,7 +139,7 @@ const copy = {
     banks: 'Works with exports from any bank',
     pain: {
       title: 'Stop doing your finances in spreadsheets',
-      sub: 'Most small business owners spend 10+ hours a month on bookkeeping. MyP&L cuts that down to minutes.',
+      sub: 'Most small business owners spend 10+ hours a month on bookkeeping. My Profit and Loss cuts that down to minutes.',
       items: [
         { icon: '😓', problem: 'Hours organizing bank statements manually', solution: 'Import any CSV or Excel in one click' },
         { icon: '😰', problem: 'Tax season chaos with receipts everywhere', solution: 'Everything categorized, organized, and ready' },
@@ -180,7 +180,7 @@ const copy = {
     testimonials: {
       title: 'Trusted by business owners and accountants',
       items: [
-        { name: 'Carlos M.', role: 'LLC Owner · Miami, FL', text: 'Before MyP&L I was spending entire weekends sorting receipts before tax season. Now it takes me 20 minutes a month.', stars: 5 },
+        { name: 'Carlos M.', role: 'LLC Owner · Miami, FL', text: 'Before My Profit and Loss I was spending entire weekends sorting receipts before tax season. Now it takes me 20 minutes a month.', stars: 5 },
         { name: 'Sandra R.', role: 'CPA · Dallas, TX', text: 'I manage 12 clients on the platform. The P&L reports come out clean and my clients understand their finances better than ever.', stars: 5 },
         { name: 'James T.', role: 'Freelance Contractor · New York', text: "The IRS Schedule C categories are exactly what I needed. My accountant was impressed — said it was the cleanest file she'd seen.", stars: 5 },
       ],
@@ -198,14 +198,14 @@ const copy = {
       title: 'Frequently asked questions',
       items: [
         { q: 'Does it work with my bank?', a: 'Yes. It works with any bank that lets you export transactions as CSV or Excel — Chase, Bank of America, Wells Fargo, Citi, TD Bank, and more.' },
-        { q: 'Do I need accounting knowledge to use it?', a: 'No. MyP&L is built for business owners, not accountants. The platform guides you step by step and the AI handles the heavy lifting.' },
+        { q: 'Do I need accounting knowledge to use it?', a: 'No. My Profit and Loss is built for business owners, not accountants. The platform guides you step by step and the AI handles the heavy lifting.' },
         { q: 'Is my financial data secure?', a: 'Absolutely. We use TLS encryption in transit, bcrypt-hashed passwords, and strict per-user data isolation. We never sell or share your information.' },
         { q: 'What is AI classification and which plan includes it?', a: "AI classification automatically assigns each imported transaction to the correct IRS category. It's available on Plus and Enterprise plans." },
         { q: 'Can I cancel anytime?', a: 'Yes, with no penalties. If you cancel, your account downgrades to Basic and you keep access to all your historical data.' },
       ],
     },
     finalCta: { title: 'Take control of your business finances today', sub: 'Join hundreds of business owners who know exactly where their money goes — every month.', btn: 'Get started now' },
-    footer: { product: 'Product', account: 'Account', legal: 'Legal', features: 'Features', pricing: 'Pricing', how: 'How it works', login: 'Log in', signup: 'Create account', privacy: 'Privacy policy', terms: 'Terms of use', copy: '© 2026 MyP&L · ISM Categorización. All rights reserved.' },
+    footer: { product: 'Product', account: 'Account', legal: 'Legal', features: 'Features', pricing: 'Pricing', how: 'How it works', login: 'Log in', signup: 'Create account', privacy: 'Privacy policy', terms: 'Terms of use', copy: '© 2026 My Profit and Loss. All rights reserved.' },
   },
   es: {
     nav: { features: 'Funciones', how: 'Cómo funciona', pricing: 'Planes', faq: 'FAQ', login: 'Iniciar sesión', cta: 'Comenzar' },
@@ -221,7 +221,7 @@ const copy = {
     banks: 'Compatible con exportaciones de cualquier banco',
     pain: {
       title: 'Deja de llevar tus finanzas en hojas de cálculo',
-      sub: 'La mayoría de los dueños de negocios gastan más de 10 horas al mes en contabilidad. MyP&L lo reduce a minutos.',
+      sub: 'La mayoría de los dueños de negocios gastan más de 10 horas al mes en contabilidad. My Profit and Loss lo reduce a minutos.',
       items: [
         { icon: '😓', problem: 'Horas organizando estados de cuenta manualmente', solution: 'Importa cualquier CSV o Excel con un clic' },
         { icon: '😰', problem: 'Caos en temporada de impuestos con recibos por todos lados', solution: 'Todo categorizado, organizado y listo' },
@@ -260,9 +260,9 @@ const copy = {
       note: 'La clasificación con IA está disponible en los planes Plus y Enterprise.',
     },
     testimonials: {
-      title: 'Cientos de negocios y contadores confían en MyP&L',
+      title: 'Cientos de negocios y contadores confían en My Profit and Loss',
       items: [
-        { name: 'Carlos M.', role: 'Dueño de LLC · Miami, FL', text: 'Antes de MyP&L pasaba fines de semana enteros ordenando recibos antes de los impuestos. Ahora me toma 20 minutos al mes.', stars: 5 },
+        { name: 'Carlos M.', role: 'Dueño de LLC · Miami, FL', text: 'Antes de My Profit and Loss pasaba fines de semana enteros ordenando recibos antes de los impuestos. Ahora me toma 20 minutos al mes.', stars: 5 },
         { name: 'Sandra R.', role: 'Contadora CPA · Dallas, TX', text: 'Manejo 12 clientes en la plataforma. Los reportes P&L salen limpios y mis clientes entienden sus finanzas mejor que nunca.', stars: 5 },
         { name: 'James T.', role: 'Contratista Freelance · New York', text: 'Las categorías IRS Schedule C son exactamente lo que necesitaba. Mi contadora dijo que era el archivo más ordenado que había visto.', stars: 5 },
       ],
@@ -280,14 +280,14 @@ const copy = {
       title: 'Preguntas frecuentes',
       items: [
         { q: '¿Funciona con mi banco?', a: 'Sí. Funciona con cualquier banco que permita exportar transacciones en CSV o Excel: Chase, Bank of America, Wells Fargo, Citi, TD Bank, y más.' },
-        { q: '¿Necesito conocimiento contable para usarlo?', a: 'No. MyP&L está diseñado para dueños de negocios, no contadores. La plataforma te guía paso a paso y la IA hace el trabajo pesado.' },
+        { q: '¿Necesito conocimiento contable para usarlo?', a: 'No. My Profit and Loss está diseñado para dueños de negocios, no contadores. La plataforma te guía paso a paso y la IA hace el trabajo pesado.' },
         { q: '¿Mis datos financieros están seguros?', a: 'Absolutamente. Usamos encriptación TLS en tránsito, contraseñas hasheadas con bcrypt y aislamiento estricto de datos por usuario. No vendemos ni compartimos tu información.' },
         { q: '¿Qué es la clasificación con IA y qué plan la incluye?', a: 'La clasificación con IA asigna automáticamente cada transacción importada a la categoría IRS correcta. Está disponible en los planes Plus y Enterprise.' },
         { q: '¿Puedo cancelar en cualquier momento?', a: 'Sí, sin penalidades. Si cancelas, tu cuenta baja a Básico y conservas acceso a todos tus datos históricos.' },
       ],
     },
     finalCta: { title: 'Toma el control de tus finanzas hoy', sub: 'Únete a cientos de dueños de negocios que saben exactamente a dónde va su dinero — cada mes.', btn: 'Comenzar ahora' },
-    footer: { product: 'Producto', account: 'Cuenta', legal: 'Legal', features: 'Funciones', pricing: 'Planes', how: 'Cómo funciona', login: 'Iniciar sesión', signup: 'Crear cuenta', privacy: 'Privacidad', terms: 'Términos de uso', copy: '© 2026 MyP&L · ISM Categorización. Todos los derechos reservados.' },
+    footer: { product: 'Producto', account: 'Cuenta', legal: 'Legal', features: 'Funciones', pricing: 'Planes', how: 'Cómo funciona', login: 'Iniciar sesión', signup: 'Crear cuenta', privacy: 'Privacidad', terms: 'Términos de uso', copy: '© 2026 My Profit and Loss. Todos los derechos reservados.' },
   },
 }
 
@@ -334,8 +334,8 @@ export default function LandingClient() {
       >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.svg" alt="MyP&L" className="w-9 h-9" />
-            <span className="font-black text-[#1B4965] text-xl tracking-tight">MyP&amp;L</span>
+            <img src="/logo.svg" alt="My Profit and Loss" className="w-9 h-9" />
+            <span className="font-black text-[#1B4965] text-xl tracking-tight">My Profit &amp; Loss</span>
           </div>
 
           <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-500">
@@ -1085,8 +1085,8 @@ export default function LandingClient() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-2">
               <div className="flex items-center gap-2.5 mb-4">
-                <img src="/logo.svg" alt="MyP&L" className="w-8 h-8" />
-                <span className="font-black text-white text-lg tracking-tight">MyP&amp;L</span>
+                <img src="/logo.svg" alt="My Profit and Loss" className="w-8 h-8" />
+                <span className="font-black text-white text-lg tracking-tight">My Profit &amp; Loss</span>
               </div>
               <p className="text-sm leading-relaxed max-w-xs">
                 {lang === 'es' ? 'Software de P&L y contabilidad fiscal para negocios en Estados Unidos.' : 'P&L and tax accounting software for US small businesses.'}
