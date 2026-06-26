@@ -34,6 +34,7 @@ export default function ClasificarPage() {
   const [previewRows, setPreviewRows] = useState<string[][]>([])
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [bankName, setBankName] = useState('')
+  const [headerRowNum, setHeaderRowNum] = useState(1)
 
   const [step, setStep] = useState<'upload' | 'map' | 'processing' | 'review' | 'done'>('upload')
   const [processingMsg, setProcessingMsg] = useState('')
@@ -63,6 +64,7 @@ export default function ClasificarPage() {
       const lines = text.split('\n').filter(l => l.trim())
       const cols = lines[0].split(',').map(c => c.trim().replace(/^"|"$/g, ''))
       const rows = lines.slice(1, 6).map(line => line.split(',').map(c => c.trim().replace(/^"|"$/g, '')))
+      setHeaderRowNum(1)
       setHeaders(cols); setPreviewRows(rows); autoDetect(cols); setStep('map')
     } else if (ext === 'xlsx' || ext === 'xls') {
       const ExcelJS = await import('exceljs')
@@ -70,16 +72,29 @@ export default function ClasificarPage() {
       const wb = new ExcelJS.Workbook()
       await wb.xlsx.load(buffer)
       const ws = wb.worksheets[0]
+
+      // Auto-detect header row: first row with 3+ non-empty cells
+      let detectedHeaderRow = 1
+      let found = false
+      ws.eachRow((row, rowNum) => {
+        if (!found) {
+          const vals = row.values as any[]
+          const nonEmpty = vals.slice(1).filter(v => v !== null && v !== undefined && String(v).trim() !== '').length
+          if (nonEmpty >= 3) { detectedHeaderRow = rowNum; found = true }
+        }
+      })
+
       const cols: string[] = []
-      ws.getRow(1).eachCell(cell => cols.push(String(cell.value ?? '')))
+      ws.getRow(detectedHeaderRow).eachCell(cell => cols.push(String(cell.value ?? '')))
       const rows: string[][] = []
       ws.eachRow((row, rowNum) => {
-        if (rowNum > 1 && rowNum <= 6) {
+        if (rowNum > detectedHeaderRow && rowNum <= detectedHeaderRow + 5) {
           const cells: string[] = []
           row.eachCell({ includeEmpty: true }, (cell, colNum) => { if (colNum <= cols.length) cells.push(String(cell.value ?? '')) })
           rows.push(cells)
         }
       })
+      setHeaderRowNum(detectedHeaderRow)
       setHeaders(cols); setPreviewRows(rows); autoDetect(cols); setStep('map')
     } else {
       setError('Solo se aceptan archivos CSV, XLSX o XLS.')
@@ -120,6 +135,7 @@ export default function ClasificarPage() {
     fd.append('businessId', activeBiz)
     fd.append('file', file)
     fd.append('mapping', JSON.stringify(mapping))
+    fd.append('headerRow', String(headerRowNum))
     if (bankName) fd.append('bankName', bankName)
 
     const importRes = await fetch('/api/import', { method: 'POST', body: fd })

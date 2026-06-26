@@ -83,7 +83,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!activeBizId) return
-    fetch(`/api/transactions?businessId=${activeBizId}&limit=5000`)
+    fetch(`/api/transactions?businessId=${activeBizId}&limit=500`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
@@ -112,10 +112,11 @@ export default function DashboardPage() {
       val: 0,
     })
   }
+  const monthMap = new Map(months.map(m => [m.key, m]))
   ytdTxs.filter(tx => tx.type === 'DEBIT').forEach(tx => {
     const d = new Date(tx.date)
     const key = `${d.getFullYear()}-${d.getMonth()}`
-    const m = months.find(x => x.key === key)
+    const m = monthMap.get(key)
     if (m) m.val += tx.amount
   })
   const maxMonthly = Math.max(...months.map(m => m.val), 1)

@@ -111,6 +111,7 @@ function SignInForm() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showForgotPw, setShowForgotPw] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const registered = searchParams.get('registered')
@@ -227,7 +228,7 @@ function SignInForm() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-sm font-medium text-gray-700">{t('auth.password')}</label>
-                    <span className="text-xs text-[#1B4965] hover:underline cursor-pointer">¿Olvidaste tu contraseña?</span>
+                    <button type="button" onClick={() => setShowForgotPw(true)} className="text-xs text-[#1B4965] hover:underline">¿Olvidaste tu contraseña?</button>
                   </div>
                   <input
                     className="w-full px-4 py-3 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-300 outline-none focus:border-[#1B4965] focus:ring-2 focus:ring-[#1B4965]/10 transition-all"
@@ -267,6 +268,37 @@ function SignInForm() {
           </div>
         </div>
       </div>
+
+      {showForgotPw && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900">Recuperar contraseña</h3>
+              <button type="button" onClick={() => setShowForgotPw(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-sm text-gray-600">
+              Para restablecer tu contraseña, contacta al administrador de tu cuenta o escribe a:
+            </p>
+            <a
+              href="mailto:support@mypnl.com"
+              className="block text-center text-sm font-semibold text-[#1B4965] hover:underline"
+            >
+              support@mypnl.com
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowForgotPw(false)}
+              className="w-full h-10 rounded-lg text-sm font-semibold text-white bg-[#1B4965] hover:bg-[#143A52] transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }

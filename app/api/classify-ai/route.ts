@@ -83,6 +83,7 @@ export async function POST(req: Request) {
     // Process in batches of 20
     const BATCH = 20
     const results: any[] = []
+    const warnings: string[] = []
 
     for (let i = 0; i < transactions.length; i += BATCH) {
       const batch = transactions.slice(i, i + BATCH)
@@ -115,6 +116,7 @@ export async function POST(req: Request) {
         classifications = JSON.parse(jsonMatch[0])
       } catch (parseErr) {
         console.error(`classify-ai: batch ${i / BATCH} JSON parse failed, skipping batch`, parseErr)
+        warnings.push(`Batch ${Math.floor(i / BATCH) + 1} failed to parse — ${batch.length} transactions were skipped`)
         continue
       }
 
@@ -146,7 +148,7 @@ export async function POST(req: Request) {
     const autoClassified = results.filter(r => r.autoClassified).length
     const needsReview = results.filter(r => !r.autoClassified).length
     await logAudit({ userId, businessId, action: 'CLASSIFY_TRANSACTIONS', entity: 'Transaction', metadata: { total: results.length, autoClassified, needsReview } })
-    return NextResponse.json({ classified: results, autoClassified, needsReview })
+    return NextResponse.json({ classified: results, autoClassified, needsReview, ...(warnings.length ? { warnings } : {}) })
   } catch (e: any) {
     console.error('classify-ai error:', e)
     return NextResponse.json({ error: 'Error al clasificar transacciones' }, { status: 500 })

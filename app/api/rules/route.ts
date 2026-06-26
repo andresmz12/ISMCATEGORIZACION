@@ -33,6 +33,9 @@ export async function POST(req: Request) {
   if (typeof pattern !== 'string' || pattern.trim().length === 0 || pattern.length > 500) {
     return NextResponse.json({ error: 'Invalid pattern' }, { status: 400 })
   }
+  try { new RegExp(pattern.trim()) } catch {
+    return NextResponse.json({ error: 'Pattern is not a valid regular expression' }, { status: 400 })
+  }
   const VALID_DEDUCTIBILITY = ['YES', 'NO', 'FIFTY']
   if (deductibility && !VALID_DEDUCTIBILITY.includes(deductibility)) {
     return NextResponse.json({ error: 'Invalid deductibility value' }, { status: 400 })
