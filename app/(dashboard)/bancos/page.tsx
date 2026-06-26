@@ -9,13 +9,28 @@ export default function BancosPage() {
   const toast = useToast()
   const { activeBizId, loading } = useActiveBiz()
   const [mappings, setMappings] = useState<any[]>([])
+  const [importHistory, setImportHistory] = useState<any[]>([])
+  const [dataLoading, setDataLoading] = useState(false)
+  const [fetchError, setFetchError] = useState('')
 
   useEffect(() => {
     if (!activeBizId) return
+    setDataLoading(true)
+    setFetchError('')
     fetch(`/api/banks?businessId=${activeBizId}`)
-      .then(r => r.ok ? r.json() : [])
-      .then(d => setMappings(Array.isArray(d) ? d : []))
-      .catch(() => setMappings([]))
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then(d => {
+        setMappings(Array.isArray(d?.mappings) ? d.mappings : [])
+        setImportHistory(Array.isArray(d?.importHistory) ? d.importHistory : [])
+      })
+      .catch(err => {
+        console.error('Banks fetch error:', err)
+        setFetchError('No se pudo cargar la información. Intenta recargar la página.')
+      })
+      .finally(() => setDataLoading(false))
   }, [activeBizId])
 
   async function deleteMapping(id: string, bankName: string) {
@@ -41,14 +56,20 @@ export default function BancosPage() {
         <h1 className="text-xl font-bold text-gray-900">{t('banks.title')}</h1>
       </div>
 
+      {fetchError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{fetchError}</div>
+      )}
+
       <div className="card overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-700">{t('banks.savedMappings')}</h2>
         </div>
-        {mappings.length === 0 ? (
+        {dataLoading ? (
+          <div className="px-5 py-8 text-center text-gray-400 text-sm">{t('auth.loading')}</div>
+        ) : mappings.length === 0 ? (
           <div className="px-5 py-8 text-center">
             <p className="text-gray-400 text-sm">{t('banks.noMappings')}</p>
-            <p className="text-xs text-gray-300 mt-1">{t('import.title')} → {t('import.bankName')}</p>
+            <p className="text-xs text-gray-300 mt-1">Sube un estado de cuenta en "Clasificar con IA" e ingresa el nombre del banco para guardarlo aquí.</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
@@ -79,9 +100,40 @@ export default function BancosPage() {
         )}
       </div>
 
-      <div className="card p-5 bg-blue-50 border-blue-100">
-        <p className="text-sm text-blue-800 font-medium">{t('banks.importHistory')}</p>
-        <p className="text-xs text-blue-600 mt-1">{t('banks.noHistory')}</p>
+      {/* Import history */}
+      <div className="card overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">{t('banks.importHistory')}</h2>
+        </div>
+        {dataLoading ? (
+          <div className="px-5 py-8 text-center text-gray-400 text-sm">{t('auth.loading')}</div>
+        ) : importHistory.length === 0 ? (
+          <div className="px-5 py-8 text-center">
+            <p className="text-gray-400 text-sm">{t('banks.noHistory')}</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {importHistory.map((entry: any) => {
+              const meta = entry.metadata || {}
+              return (
+                <div key={entry.id} className="flex items-center gap-3 px-5 py-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{meta.file || 'Archivo importado'}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {meta.imported ?? 0} importadas · {meta.duplicates ?? 0} duplicadas · {meta.total ?? 0} total
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-300 flex-shrink-0">{new Date(entry.createdAt).toLocaleDateString()}</p>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -15,11 +15,18 @@ export async function GET(req: Request) {
   if (!await checkBusinessAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-  const mappings = await prisma.bankFormatMapping.findMany({
-    where: { businessId },
-    orderBy: { createdAt: 'desc' },
-  })
-  return NextResponse.json(mappings)
+  const [mappings, importHistory] = await Promise.all([
+    prisma.bankFormatMapping.findMany({
+      where: { businessId },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.auditLog.findMany({
+      where: { businessId, action: 'IMPORT_TRANSACTIONS' },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    }),
+  ])
+  return NextResponse.json({ mappings, importHistory })
 }
 
 export async function DELETE(req: Request) {
