@@ -296,6 +296,7 @@ export default function ClasificarPage() {
       wsSummary.getRow(4).font = { bold: true }
       const income = transactions.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0)
       const expenses = transactions.filter(t => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
+      const totalDeductible = transactions.filter(t => t.deductibility === 'YES' || t.deductibility === 'FIFTY').reduce((s, t) => s + (t.deductibility === 'FIFTY' ? t.amount * 0.5 : t.amount), 0)
       for (const [label, val] of [['Total Ingresos', income], ['Total Gastos', expenses], ['Ganancia Neta', income - expenses], ['Total Deducible', totalDeductible]]) {
         const r = wsSummary.addRow([label, val])
         if (typeof val === 'number') r.getCell(2).numFmt = '"$"#,##0.00'
