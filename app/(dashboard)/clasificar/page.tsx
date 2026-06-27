@@ -252,17 +252,59 @@ export default function ClasificarPage() {
   async function downloadExcel() {
     try {
       const biz = businesses.find(b => b.id === activeBiz)
-      const res = await fetch('/api/reports/excel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          businessName: biz?.name || 'Negocio',
-          period: new Date().toLocaleDateString('es', { month: 'long', year: 'numeric' }),
-          transactions,
-        }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const blob = await res.blob()
+      const ExcelJS = await import('exceljs')
+      const wb = new ExcelJS.Workbook()
+      wb.created = new Date()
+
+      const ws = wb.addWorksheet('Transacciones')
+      ws.columns = [
+        { header: 'Fecha', key: 'date', width: 14 },
+        { header: 'Descripción', key: 'description', width: 40 },
+        { header: 'Monto', key: 'amount', width: 14 },
+        { header: 'Tipo', key: 'type', width: 10 },
+        { header: 'Categoría', key: 'category', width: 28 },
+        { header: 'Deducible', key: 'deductibility', width: 12 },
+        { header: 'Confianza IA', key: 'confidence', width: 14 },
+      ]
+      const headerRow = ws.getRow(1)
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B4965' } }
+      headerRow.height = 20
+
+      for (const tx of transactions) {
+        const row = ws.addRow({
+          date: tx.date ? new Date(tx.date).toLocaleDateString('en-US') : '',
+          description: tx.description,
+          amount: typeof tx.amount === 'number' ? tx.amount : 0,
+          type: tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
+          category: tx.category?.name || tx.aiSuggestion || 'Sin categoría',
+          deductibility: tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : 'No',
+          confidence: tx.aiConfidence || '',
+        })
+        const amtCell = row.getCell('amount')
+        amtCell.numFmt = '"$"#,##0.00'
+        amtCell.font = { color: { argb: tx.type === 'CREDIT' ? 'FF059669' : 'FFDC2626' } }
+      }
+      ws.autoFilter = { from: 'A1', to: 'G1' }
+
+      const wsSummary = wb.addWorksheet('Resumen')
+      wsSummary.addRow([`Reporte — ${biz?.name || 'Negocio'}`])
+      wsSummary.getRow(1).font = { bold: true, size: 14, color: { argb: 'FF1B4965' } }
+      wsSummary.addRow([new Date().toLocaleDateString('es', { month: 'long', year: 'numeric' })])
+      wsSummary.addRow([])
+      wsSummary.addRow(['Concepto', 'Valor'])
+      wsSummary.getRow(4).font = { bold: true }
+      const income = transactions.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0)
+      const expenses = transactions.filter(t => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
+      for (const [label, val] of [['Total Ingresos', income], ['Total Gastos', expenses], ['Ganancia Neta', income - expenses], ['Total Deducible', totalDeductible]]) {
+        const r = wsSummary.addRow([label, val])
+        if (typeof val === 'number') r.getCell(2).numFmt = '"$"#,##0.00'
+      }
+      wsSummary.getColumn(1).width = 26
+      wsSummary.getColumn(2).width = 18
+
+      const buf = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
