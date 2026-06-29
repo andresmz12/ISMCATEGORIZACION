@@ -34,13 +34,28 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   if (!await requireSuperadmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const category = await prisma.category.findUnique({ where: { id: params.id } })
+  const category = await prisma.category.findUnique({
+    where: { id: params.id },
+    include: { _count: { select: { transactions: true, splits: true } } },
+  })
   if (!category) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  const txCount = (category as any)._count.transactions
+  const splitCount = (category as any)._count.splits
+  if (txCount > 0 || splitCount > 0) {
+    return NextResponse.json(
+      { error: `No se puede eliminar: ${txCount} transacciones y ${splitCount} divisiones la usan` },
+      { status: 400 }
+    )
+  }
+
   try {
-    await prisma.category.delete({ where: { id: params.id } })
+    await prisma.$transaction([
+      prisma.classificationRule.deleteMany({ where: { categoryId: params.id } }),
+      prisma.category.delete({ where: { id: params.id } }),
+    ])
     return NextResponse.json({ ok: true })
   } catch {
-    return NextResponse.json({ error: 'Cannot delete category in use by transactions' }, { status: 400 })
+    return NextResponse.json({ error: 'No se puede eliminar esta categoría' }, { status: 400 })
   }
 }

@@ -8,7 +8,7 @@ interface Category {
   description: string | null
   isSystem: boolean
   businessId: string | null
-  _count?: { transactions: number }
+  _count?: { transactions: number; splits: number }
 }
 
 const EMPTY_FORM = { name: '', irsCode: '', description: '', isSystem: true }
@@ -297,14 +297,14 @@ export default function AdminCategoriasPage() {
             <h2 className="text-lg font-semibold text-gray-900">Eliminar categoría</h2>
             <p className="text-sm text-gray-600">
               ¿Eliminar <strong>{deleteTarget.name}</strong>?
-              {(deleteTarget._count?.transactions ?? 0) > 0
-                ? ` Esta categoría tiene ${deleteTarget._count?.transactions} transacciones asignadas y no puede eliminarse.`
-                : ' Esta acción no se puede deshacer.'}
+              {(deleteTarget._count?.transactions ?? 0) > 0 || (deleteTarget._count?.splits ?? 0) > 0
+                ? ` Esta categoría tiene ${deleteTarget._count?.transactions ?? 0} transacciones y ${deleteTarget._count?.splits ?? 0} divisiones asignadas y no puede eliminarse.`
+                : ' Esta acción no se puede deshacer. Las reglas de clasificación asociadas también serán eliminadas.'}
             </p>
             {deleteError && <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">{deleteError}</div>}
             <div className="flex gap-3">
               <button onClick={() => setDeleteTarget(null)} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">Cancelar</button>
-              {(deleteTarget._count?.transactions ?? 0) === 0 && (
+              {(deleteTarget._count?.transactions ?? 0) === 0 && (deleteTarget._count?.splits ?? 0) === 0 && (
                 <button onClick={handleDelete} disabled={deleteLoading} className="flex-1 h-10 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-60">
                   {deleteLoading ? 'Eliminando...' : 'Eliminar'}
                 </button>
