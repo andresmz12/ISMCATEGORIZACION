@@ -394,51 +394,84 @@ export default function ClasificarPage() {
     doc.setFont('helvetica', 'normal')
     doc.text(now.toLocaleDateString(), 14, 17)
 
-    // Summary row
     const income = transactions.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0)
     const expenses = transactions.filter(t => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
+    const deductible = transactions.filter(t => t.deductibility === 'YES').reduce((s, t) => s + t.amount, 0)
+      + transactions.filter(t => t.deductibility === 'FIFTY').reduce((s, t) => s + t.amount * 0.5, 0)
 
-    doc.setTextColor(40, 40, 40)
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'bold')
-    const summaryY = 30
-    doc.text(`Ingresos: ${fmt(income)}`, 14, summaryY)
-    doc.text(`Gastos: ${fmt(expenses)}`, 80, summaryY)
-    doc.text(`Ganancia Neta: ${fmt(income - expenses)}`, 146, summaryY)
+    // Category totals
+    const catMap = new Map<string, number>()
+    transactions.forEach(tx => {
+      const cat = tx.categoryName || tx.aiSuggestion || 'Sin categoría'
+      catMap.set(cat, (catMap.get(cat) || 0) + tx.amount)
+    })
+    const catRows = Array.from(catMap.entries()).sort((a, b) => b[1] - a[1])
+
+    // Summary table
+    autoTable(doc, {
+      startY: 28,
+      head: [['Resumen General', '']],
+      body: [
+        ['Total Ingresos', fmt(income)],
+        ['Total Gastos', fmt(expenses)],
+        ['Ganancia Neta', fmt(income - expenses)],
+        ['Total Deducible', fmt(deductible)],
+        ['N° Transacciones', String(transactions.length)],
+      ],
+      headStyles: { fillColor: [27, 73, 101], fontSize: 8, halign: 'center' },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 0: { cellWidth: 60, fontStyle: 'bold' }, 1: { cellWidth: 40, halign: 'right' } },
+      tableWidth: 100,
+      margin: { left: 14 },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 1) {
+          const row = data.row.index
+          if (row === 0) data.cell.styles.textColor = [5, 150, 105]
+          else if (row === 1) data.cell.styles.textColor = [220, 38, 38]
+          else if (row === 2) data.cell.styles.textColor = income - expenses >= 0 ? [5, 150, 105] : [220, 38, 38]
+        }
+      },
+    })
+
+    // Category breakdown table
+    autoTable(doc, {
+      startY: 28,
+      head: [['Categoría', 'Total']],
+      body: catRows.map(([cat, total]) => [cat, fmt(total)]),
+      headStyles: { fillColor: [27, 73, 101], fontSize: 8, halign: 'center' },
+      bodyStyles: { fontSize: 7.5 },
+      columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 35, halign: 'right' } },
+      tableWidth: 95,
+      margin: { left: 120 },
+      alternateRowStyles: { fillColor: [249, 250, 251] },
+    })
+
+    const summaryEndY = (doc as any).lastAutoTable.finalY + 8
 
     // Transactions table
     autoTable(doc, {
-      startY: 36,
-      head: [['Fecha', 'Descripción', 'Monto', 'Tipo', 'Categoría', 'Confianza']],
+      startY: summaryEndY,
+      head: [['Fecha', 'Descripción', 'Monto', 'Tipo', 'Categoría']],
       body: transactions.map(tx => [
-        tx.date ? new Date(tx.date).toLocaleDateString('en-US') : '',
+        tx.date ? new Date(tx.date).toLocaleDateString('es') : '',
         tx.description?.substring(0, 55) || '',
         fmt(tx.amount),
         tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
-        tx.category?.name || tx.aiSuggestion || '—',
-        tx.aiConfidence || '—',
+        tx.categoryName || tx.aiSuggestion || '—',
       ]),
       headStyles: { fillColor: [27, 73, 101], fontSize: 7, halign: 'center' },
       bodyStyles: { fontSize: 6.5 },
       columnStyles: {
         0: { cellWidth: 22 },
-        1: { cellWidth: 90 },
-        2: { cellWidth: 24, halign: 'right' },
-        3: { cellWidth: 18, halign: 'center' },
-        4: { cellWidth: 66 },
-        5: { cellWidth: 20, halign: 'center' },
+        1: { cellWidth: 100 },
+        2: { cellWidth: 28, halign: 'right' },
+        3: { cellWidth: 20, halign: 'center' },
+        4: { cellWidth: 70 },
       },
       didParseCell: (data) => {
         if (data.section === 'body' && data.column.index === 2) {
           const tx = transactions[data.row.index]
-          if (tx?.type === 'CREDIT') data.cell.styles.textColor = [5, 150, 105]
-          else data.cell.styles.textColor = [220, 38, 38]
-        }
-        if (data.section === 'body') {
-          const tx = transactions[data.row.index]
-          if (tx?.aiConfidence === 'LOW' || tx?.status === 'NEEDS_REVIEW') {
-            data.cell.styles.fillColor = [254, 249, 195]
-          }
+          data.cell.styles.textColor = tx?.type === 'CREDIT' ? [5, 150, 105] : [220, 38, 38]
         }
       },
       alternateRowStyles: { fillColor: [249, 250, 251] },

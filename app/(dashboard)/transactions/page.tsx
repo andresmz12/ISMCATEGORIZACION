@@ -272,16 +272,62 @@ function TransactionsContent() {
 
       const income = txs.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0)
       const expenses = txs.filter(t => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
-      doc.setTextColor(40, 40, 40)
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'bold')
-      doc.text(`Ingresos: ${fmt(income)}`, 14, 28)
-      doc.text(`Gastos: ${fmt(expenses)}`, 90, 28)
-      doc.text(`Neto: ${fmt(income - expenses)}`, 170, 28)
-      doc.text(`Total: ${txs.length} transacciones`, 230, 28)
+      const deductible = txs.filter(t => t.deductibility === 'YES').reduce((s, t) => s + t.amount, 0)
+        + txs.filter(t => t.deductibility === 'FIFTY').reduce((s, t) => s + t.amount * 0.5, 0)
+
+      // Category totals
+      const catMap = new Map<string, number>()
+      txs.forEach(tx => {
+        const cat = tx.category?.name || 'Sin categoría'
+        catMap.set(cat, (catMap.get(cat) || 0) + tx.amount)
+      })
+      const catRows = Array.from(catMap.entries()).sort((a, b) => b[1] - a[1])
+
+      // Summary table
+      autoTable(doc, {
+        startY: 26,
+        head: [['Resumen General', '']],
+        body: [
+          ['Total Ingresos', fmt(income)],
+          ['Total Gastos', fmt(expenses)],
+          ['Ganancia Neta', fmt(income - expenses)],
+          ['Total Deducible', fmt(deductible)],
+          ['N° Transacciones', String(txs.length)],
+        ],
+        headStyles: { fillColor: [27, 73, 101], fontSize: 8, halign: 'center' },
+        bodyStyles: { fontSize: 8 },
+        columnStyles: { 0: { cellWidth: 60, fontStyle: 'bold' }, 1: { cellWidth: 40, halign: 'right' } },
+        tableWidth: 100,
+        margin: { left: 14 },
+        didParseCell: (data) => {
+          if (data.section === 'body') {
+            const row = data.row.index
+            if (data.column.index === 1) {
+              if (row === 0) data.cell.styles.textColor = [5, 150, 105]
+              else if (row === 1) data.cell.styles.textColor = [220, 38, 38]
+              else if (row === 2) data.cell.styles.textColor = income - expenses >= 0 ? [5, 150, 105] : [220, 38, 38]
+            }
+          }
+        },
+      })
+
+      // Category breakdown table
+      autoTable(doc, {
+        startY: 26,
+        head: [['Categoría', 'Total']],
+        body: catRows.map(([cat, total]) => [cat, fmt(total)]),
+        headStyles: { fillColor: [27, 73, 101], fontSize: 8, halign: 'center' },
+        bodyStyles: { fontSize: 7.5 },
+        columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 35, halign: 'right' } },
+        tableWidth: 95,
+        margin: { left: 120 },
+        alternateRowStyles: { fillColor: [249, 250, 251] },
+      })
+
+      const summaryEndY = (doc as any).lastAutoTable.finalY + 8
 
       autoTable(doc, {
-        startY: 33,
+        startY: summaryEndY,
         head: [['Fecha', 'Descripción', 'Monto', 'Tipo', 'Categoría', 'Estado', 'Deducible']],
         body: txs.map(tx => [
           tx.date ? new Date(tx.date).toLocaleDateString('es') : '',
@@ -296,7 +342,7 @@ function TransactionsContent() {
         bodyStyles: { fontSize: 6.5 },
         columnStyles: {
           0: { cellWidth: 22 },
-          1: { cellWidth: 85 },
+          1: { cellWidth: 90 },
           2: { cellWidth: 25, halign: 'right' },
           3: { cellWidth: 18, halign: 'center' },
           4: { cellWidth: 62 },
