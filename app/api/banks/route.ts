@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -43,5 +44,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   await prisma.bankFormatMapping.delete({ where: { id } })
+  await logAudit({ userId, businessId: mapping.businessId, action: 'DELETE_BANK_MAPPING', entity: 'BankFormatMapping', entityId: id })
   return NextResponse.json({ ok: true })
 }

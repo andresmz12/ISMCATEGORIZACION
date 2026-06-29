@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { logAudit } from '@/lib/audit'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
   const receipt = await prisma.receipt.create({
     data: { transactionId, filename: file.name, data, mimeType: file.type },
   })
+  await logAudit({ userId, businessId: tx.businessId, action: 'UPLOAD_RECEIPT', entity: 'Receipt', entityId: receipt.id, metadata: { filename: file.name, transactionId } })
   return NextResponse.json({ id: receipt.id, filename: receipt.filename })
 }
 
@@ -101,5 +103,6 @@ export async function DELETE(req: Request) {
   }
 
   await prisma.receipt.delete({ where: { id } })
+  await logAudit({ userId, businessId: receipt.transaction.businessId, action: 'DELETE_RECEIPT', entity: 'Receipt', entityId: id })
   return NextResponse.json({ deleted: id })
 }

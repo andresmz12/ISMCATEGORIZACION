@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { logAudit } from '@/lib/audit'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
     data: { businessId, pattern: pattern.trim(), categoryId, priority: safePriority, field: safeField, deductibility: deductibility || null },
     include: { category: true },
   })
+  await logAudit({ userId, businessId, action: 'CREATE_RULE', entity: 'ClassificationRule', entityId: rule.id, metadata: { pattern, categoryId } })
   return NextResponse.json(rule, { status: 201 })
 }
 
@@ -67,5 +69,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   await prisma.classificationRule.delete({ where: { id } })
+  await logAudit({ userId, businessId: rule.businessId, action: 'DELETE_RULE', entity: 'ClassificationRule', entityId: id })
   return NextResponse.json({ deleted: id })
 }
