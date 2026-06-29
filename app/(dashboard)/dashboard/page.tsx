@@ -109,19 +109,21 @@ export default function DashboardPage() {
 
   const now = new Date()
 
-  // Monthly expenses from report data
-  const reportMonths: { label: string; income: number; expenses: number }[] = report?.byMonth?.slice(-6).map((m: any) => ({
-    label: m.month.substring(5, 7),
+  // Monthly expenses from report data — all months
+  const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+  const reportMonths: { label: string; month: string; income: number; expenses: number }[] = report?.byMonth?.map((m: any) => ({
+    label: MONTH_NAMES[parseInt(m.month.substring(5, 7)) - 1],
+    month: m.month,
     income: m.income,
     expenses: m.expenses,
   })) ?? []
 
-  // Fallback: last 6 month labels if no report yet
-  const months = reportMonths.length > 0 ? reportMonths : Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
-    return { label: d.toLocaleString('default', { month: 'short' }), income: 0, expenses: 0 }
+  const months = reportMonths.length > 0 ? reportMonths : Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), i, 1)
+    return { label: MONTH_NAMES[i], month: `${now.getFullYear()}-${String(i+1).padStart(2,'0')}`, income: 0, expenses: 0 }
   })
   const maxMonthly = Math.max(...months.map(m => m.expenses), 1)
+  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null)
 
   // By category for donut
   const donutData = (report?.expensesByCategory ?? [])
@@ -248,20 +250,38 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Monthly bar chart */}
         <div className="card p-5">
-          <h3 className="section-title mb-4">{t('dashboard.monthlyExpenses')}</h3>
-          <div className="flex items-end gap-2 h-36">
-            {months.map(({ label, expenses: val }) => {
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="section-title">{t('dashboard.monthlyExpenses')}</h3>
+            {hoveredMonth !== null && months[hoveredMonth] && (
+              <div className="text-right">
+                <span className="text-xs text-gray-500">{months[hoveredMonth].label} · </span>
+                <span className="text-sm font-bold text-red-600">{fmt(months[hoveredMonth].expenses)}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-end gap-1 mt-3" style={{ height: '130px' }}>
+            {months.map(({ label, expenses: val }, i) => {
               const pct = maxMonthly > 0 ? (val / maxMonthly) * 100 : 0
+              const isHovered = hoveredMonth === i
               return (
-                <div key={label} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full flex items-end justify-center" style={{ height: '112px' }}>
+                <div
+                  key={label + i}
+                  className="flex-1 flex flex-col items-center gap-1 cursor-pointer group"
+                  onMouseEnter={() => setHoveredMonth(i)}
+                  onMouseLeave={() => setHoveredMonth(null)}
+                >
+                  <div className="w-full flex items-end justify-center relative" style={{ height: '104px' }}>
+                    {isHovered && val > 0 && (
+                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap z-10 pointer-events-none">
+                        {fmt(val)}
+                      </div>
+                    )}
                     <div
-                      className="w-full bg-[#1B4965] hover:bg-[#2A6080] transition-colors rounded-t"
-                      style={{ height: `${Math.max(pct, 2)}%` }}
-                      title={fmt(val)}
+                      className={`w-full rounded-t transition-colors ${isHovered ? 'bg-[#2EC4B6]' : 'bg-[#1B4965]'}`}
+                      style={{ height: `${Math.max(pct, val > 0 ? 3 : 1)}%` }}
                     />
                   </div>
-                  <span className="text-xs text-gray-400">{label}</span>
+                  <span className={`text-[10px] ${isHovered ? 'text-[#1B4965] font-semibold' : 'text-gray-400'}`}>{label}</span>
                 </div>
               )
             })}
