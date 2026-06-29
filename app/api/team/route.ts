@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { validatePassword, validateEmail, getClientIp } from '@/lib/validate'
 import { logAudit } from '@/lib/audit'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -100,5 +101,24 @@ export async function POST(req: Request) {
   })
 
   await logAudit({ userId: ownerId, businessId: targetBusinessIds[0], action: 'CREATE_TEAM_MEMBER', entity: 'User', entityId: newUser.id })
+
+  // Send welcome email (non-blocking)
+  try {
+    const [inviter, business] = await Promise.all([
+      prisma.user.findUnique({ where: { id: ownerId }, select: { name: true } }),
+      prisma.business.findUnique({ where: { id: targetBusinessIds[0] }, select: { name: true } }),
+    ])
+    await sendWelcomeEmail({
+      to: newUser.email,
+      name: newUser.name || newUser.email,
+      password,
+      businessName: business?.name || 'tu equipo',
+      inviterName: inviter?.name || 'Tu administrador',
+    })
+  } catch (err: any) {
+    const detail = err?.response?.body || err?.message || err
+    console.error('[email] welcome email failed:', JSON.stringify(detail))
+  }
+
   return NextResponse.json(newUser, { status: 201 })
 }
