@@ -109,6 +109,7 @@ export default function ImportPage() {
   const [savedMappings, setSavedMappings] = useState<any[]>([])
   const [step, setStep] = useState<'upload' | 'map' | 'result'>('upload')
   const [result, setResult] = useState<any>(null)
+  const [importedIds, setImportedIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -243,6 +244,7 @@ export default function ImportPage() {
     setLoading(false)
     if (!res.ok) { setError(data.error || t('import.importFailed')); return }
     setResult(data)
+    setImportedIds(data.importedIds || [])
     setStep('result')
   }
 
@@ -428,8 +430,19 @@ export default function ImportPage() {
             </div>
           )}
           <div className="flex gap-3 justify-center">
-            <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setResult(null) }} className="btn-secondary">{t('import.importAnother')}</button>
-            <button onClick={() => router.push('/transactions?status=PENDING')} className="btn-primary">{t('import.reviewTx')}</button>
+            <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setResult(null); setImportedIds([]) }} className="btn-secondary">{t('import.importAnother')}</button>
+            <button
+              onClick={() => {
+                if (importedIds.length > 0 && importedIds.length <= 200) {
+                  router.push(`/transactions?ids=${importedIds.join(',')}`)
+                } else {
+                  router.push('/transactions?status=PENDING')
+                }
+              }}
+              className="btn-primary"
+            >
+              {t('import.reviewTx')}
+            </button>
           </div>
         </div>
       )}

@@ -24,6 +24,7 @@ function TransactionsContent() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const [idsFilter] = useState<string>(searchParams.get('ids') || '')
   const [filters, setFilters] = useState({
     status: searchParams.get('status') || '',
     categoryId: '',
@@ -32,6 +33,7 @@ function TransactionsContent() {
     to: '',
     search: '',
   })
+  const [pdfLoading, setPdfLoading] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -54,12 +56,16 @@ function TransactionsContent() {
     else setLoading(true)
     try {
       const params = new URLSearchParams({ businessId: activeBiz, page: String(pageNum), limit: '25' })
-      if (filters.status) params.set('status', filters.status)
-      if (filters.categoryId) params.set('categoryId', filters.categoryId)
-      if (filters.type) params.set('type', filters.type)
-      if (filters.from) params.set('from', filters.from)
-      if (filters.to) params.set('to', filters.to)
-      if (filters.search) params.set('search', filters.search)
+      if (idsFilter) {
+        params.set('ids', idsFilter)
+      } else {
+        if (filters.status) params.set('status', filters.status)
+        if (filters.categoryId) params.set('categoryId', filters.categoryId)
+        if (filters.type) params.set('type', filters.type)
+        if (filters.from) params.set('from', filters.from)
+        if (filters.to) params.set('to', filters.to)
+        if (filters.search) params.set('search', filters.search)
+      }
       const res = await fetch(`/api/transactions?${params}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
@@ -229,6 +235,94 @@ function TransactionsContent() {
     }
   }
 
+  async function downloadPDF() {
+    if (!activeBiz) return
+    setPdfLoading(true)
+    try {
+      const params = new URLSearchParams({ businessId: activeBiz, limit: '1000' })
+      if (idsFilter) {
+        params.set('ids', idsFilter)
+      } else {
+        if (filters.status) params.set('status', filters.status)
+        if (filters.categoryId) params.set('categoryId', filters.categoryId)
+        if (filters.type) params.set('type', filters.type)
+        if (filters.from) params.set('from', filters.from)
+        if (filters.to) params.set('to', filters.to)
+        if (filters.search) params.set('search', filters.search)
+      }
+      const res = await fetch(`/api/transactions?${params}`)
+      const data = await res.json()
+      const txs: any[] = data.transactions || []
+      if (!txs.length) { toast('No hay transacciones para exportar', 'error'); return }
+
+      const { default: jsPDF } = await import('jspdf')
+      const { default: autoTable } = await import('jspdf-autotable')
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+
+      doc.setFillColor(27, 73, 101)
+      doc.rect(0, 0, 297, 20, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(13)
+      doc.setFont('helvetica', 'bold')
+      const title = filters.search ? `Transacciones: "${filters.search}"` : 'Transacciones'
+      doc.text(title, 14, 8)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.text(new Date().toLocaleDateString('es'), 14, 15)
+
+      const income = txs.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0)
+      const expenses = txs.filter(t => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
+      doc.setTextColor(40, 40, 40)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`Ingresos: ${fmt(income)}`, 14, 28)
+      doc.text(`Gastos: ${fmt(expenses)}`, 90, 28)
+      doc.text(`Neto: ${fmt(income - expenses)}`, 170, 28)
+      doc.text(`Total: ${txs.length} transacciones`, 230, 28)
+
+      autoTable(doc, {
+        startY: 33,
+        head: [['Fecha', 'Descripción', 'Monto', 'Tipo', 'Categoría', 'Estado', 'Deducible']],
+        body: txs.map(tx => [
+          tx.date ? new Date(tx.date).toLocaleDateString('es') : '',
+          tx.description?.substring(0, 50) || '',
+          fmt(tx.amount),
+          tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
+          tx.category?.name || '—',
+          tx.status === 'CLASSIFIED' ? 'Clasificada' : tx.status === 'PENDING' ? 'Pendiente' : 'Revisar',
+          tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : 'No',
+        ]),
+        headStyles: { fillColor: [27, 73, 101], fontSize: 7 },
+        bodyStyles: { fontSize: 6.5 },
+        columnStyles: {
+          0: { cellWidth: 22 },
+          1: { cellWidth: 85 },
+          2: { cellWidth: 25, halign: 'right' },
+          3: { cellWidth: 18, halign: 'center' },
+          4: { cellWidth: 62 },
+          5: { cellWidth: 22, halign: 'center' },
+          6: { cellWidth: 18, halign: 'center' },
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 2) {
+            const tx = txs[data.row.index]
+            data.cell.styles.textColor = tx?.type === 'CREDIT' ? [5, 150, 105] : [220, 38, 38]
+          }
+        },
+        alternateRowStyles: { fillColor: [249, 250, 251] },
+      })
+
+      const suffix = filters.search ? `-${filters.search.replace(/\s+/g, '_')}` : ''
+      doc.save(`transacciones${suffix}-${new Date().toISOString().split('T')[0]}.pdf`)
+      toast('PDF descargado', 'success')
+    } catch (err) {
+      console.error('PDF download failed:', err)
+      toast('Error al generar PDF', 'error')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
   function toggleSelect(id: string) {
     const next = new Set(selected)
     if (next.has(id)) next.delete(id)
@@ -266,6 +360,12 @@ function TransactionsContent() {
         <h1 className="text-xl font-bold text-gray-900">{t('nav.transactions')}</h1>
         <div className="flex gap-2 flex-wrap items-center">
           <button onClick={selectPending} className="btn-secondary text-sm">{t('tx.selectPending')}</button>
+          <button onClick={downloadPDF} disabled={pdfLoading} className="btn-secondary text-sm flex items-center gap-1.5 disabled:opacity-50">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            {pdfLoading ? 'Generando...' : 'PDF'}
+          </button>
         </div>
       </div>
 
@@ -274,6 +374,14 @@ function TransactionsContent() {
           <p className="text-sm text-emerald-800">
             {t('tx.aiSuccess').replace('{auto}', aiResult.autoClassified).replace('{review}', aiResult.needsReview)}
           </p>
+        </div>
+      )}
+
+      {/* Banner when viewing specific imported batch */}
+      {idsFilter && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 flex items-center justify-between gap-3">
+          <span>Mostrando solo las transacciones recién importadas ({total})</span>
+          <a href="/transactions" className="text-blue-600 font-medium hover:underline text-xs">Ver todas</a>
         </div>
       )}
 

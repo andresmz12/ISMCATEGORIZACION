@@ -23,19 +23,25 @@ export async function GET(req: Request) {
   const from = searchParams.get('from')
   const to = searchParams.get('to')
   const search = searchParams.get('search')
+  const ids = searchParams.get('ids') // comma-separated list of specific IDs
   const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '50')
+  const limit = Math.min(1000, parseInt(searchParams.get('limit') || '50'))
 
   const where: any = { businessId }
-  if (status) where.status = status
-  if (categoryId) where.categoryId = categoryId
-  if (type === 'CREDIT' || type === 'DEBIT') where.type = type
-  if (from || to) {
-    where.date = {}
-    if (from) where.date.gte = new Date(from)
-    if (to) where.date.lte = new Date(to)
+  if (ids) {
+    const idList = ids.split(',').filter(Boolean)
+    where.id = { in: idList }
+  } else {
+    if (status) where.status = status
+    if (categoryId) where.categoryId = categoryId
+    if (type === 'CREDIT' || type === 'DEBIT') where.type = type
+    if (from || to) {
+      where.date = {}
+      if (from) where.date.gte = new Date(from)
+      if (to) where.date.lte = new Date(to)
+    }
+    if (search) where.description = { contains: search, mode: 'insensitive' }
   }
-  if (search) where.description = { contains: search, mode: 'insensitive' }
 
   const [transactions, total] = await Promise.all([
     prisma.transaction.findMany({
