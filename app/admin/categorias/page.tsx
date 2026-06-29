@@ -216,7 +216,7 @@ export default function AdminCategoriasPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Código IRS</label>
-                <input className={inputCls} value={editForm.irsCode} onChange={e => setEditForm(f => ({ ...f, irsCode: e.target.value }))} placeholder="ej. 26-Travel" />
+                <input className={inputCls} value={editForm.irsCode} onChange={e => setEditForm(f => ({ ...f, irsCode: e.target.value }))} placeholder="Código IRS" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
@@ -258,11 +258,11 @@ export default function AdminCategoriasPage() {
               {createError && <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">{createError}</div>}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
-                <input className={inputCls} value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} placeholder="ej. Marketing Digital" required />
+                <input className={inputCls} value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} placeholder="Nombre de categoría" required />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Código IRS</label>
-                <input className={inputCls} value={createForm.irsCode} onChange={e => setCreateForm(f => ({ ...f, irsCode: e.target.value }))} placeholder="ej. 26-Travel" />
+                <input className={inputCls} value={createForm.irsCode} onChange={e => setCreateForm(f => ({ ...f, irsCode: e.target.value }))} placeholder="Código IRS" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>

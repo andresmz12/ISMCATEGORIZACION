@@ -94,7 +94,7 @@ export default function CategoriasPage() {
                 className="input"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="Marketing Digital"
+                placeholder="Nombre de categoría"
                 required
               />
             </div>
@@ -104,7 +104,7 @@ export default function CategoriasPage() {
                 className="input"
                 value={form.irsCode}
                 onChange={e => setForm(f => ({ ...f, irsCode: e.target.value }))}
-                placeholder="Schedule C Line 8"
+                placeholder="Código IRS"
               />
             </div>
           </div>
@@ -145,14 +145,14 @@ export default function CategoriasPage() {
                         className="input text-sm"
                         value={editForm.irsCode}
                         onChange={e => setEditForm(f => ({ ...f, irsCode: e.target.value }))}
-                        placeholder="Código IRS (opcional)"
+                        placeholder="Código IRS"
                       />
                     </div>
                     <input
                       className="input text-sm"
                       value={editForm.description}
                       onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-                      placeholder="Descripción (opcional)"
+                      placeholder="Descripción"
                     />
                     <div className="flex gap-2">
                       <button onClick={() => saveEdit(c.id)} className="btn-primary text-xs py-1 px-3">Guardar</button>

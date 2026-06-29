@@ -423,7 +423,7 @@ export default function AdminPage() {
                   type="email"
                   value={editForm.email}
                   onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
-                  placeholder="usuario@ejemplo.com"
+                  placeholder="Correo electrónico"
                   required
                 />
               </div>
@@ -507,7 +507,7 @@ export default function AdminPage() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Correo electrónico *</label>
-                <input className={inputCls} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="usuario@ejemplo.com" required />
+                <input className={inputCls} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Correo electrónico" required />
               </div>
 
               <div>

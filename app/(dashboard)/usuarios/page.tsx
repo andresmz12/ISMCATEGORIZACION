@@ -133,7 +133,7 @@ export default function UsuariosPage() {
                         />
                         <input
                           className="input text-sm w-48"
-                          placeholder="Nueva contraseña (opcional)"
+                          placeholder="Nueva contraseña"
                           type="password"
                           value={editForm.password}
                           onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
@@ -210,7 +210,7 @@ export default function UsuariosPage() {
                 <input
                   className="input w-full"
                   type="email"
-                  placeholder="correo@empresa.com"
+                  placeholder="Correo electrónico"
                   value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                 />
@@ -220,7 +220,7 @@ export default function UsuariosPage() {
                 <input
                   className="input w-full"
                   type="password"
-                  placeholder="Mín. 8 car., una mayúscula y un número"
+                  placeholder="Contraseña temporal"
                   value={form.password}
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 />
