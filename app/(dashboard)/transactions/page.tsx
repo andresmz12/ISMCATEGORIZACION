@@ -328,26 +328,22 @@ function TransactionsContent() {
 
       autoTable(doc, {
         startY: summaryEndY,
-        head: [['Fecha', 'Descripción', 'Monto', 'Tipo', 'Categoría', 'Estado', 'Deducible']],
+        head: [['Fecha', 'Descripción', 'Monto', 'Tipo', 'Categoría']],
         body: txs.map(tx => [
           tx.date ? new Date(tx.date).toLocaleDateString('es') : '',
           tx.description?.substring(0, 50) || '',
           fmt(tx.amount),
           tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
           tx.category?.name || '—',
-          tx.status === 'CLASSIFIED' ? 'Clasificada' : tx.status === 'PENDING' ? 'Pendiente' : 'Revisar',
-          tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : 'No',
         ]),
         headStyles: { fillColor: [27, 73, 101], fontSize: 7 },
         bodyStyles: { fontSize: 6.5 },
         columnStyles: {
           0: { cellWidth: 22 },
-          1: { cellWidth: 90 },
-          2: { cellWidth: 25, halign: 'right' },
-          3: { cellWidth: 18, halign: 'center' },
-          4: { cellWidth: 62 },
-          5: { cellWidth: 22, halign: 'center' },
-          6: { cellWidth: 18, halign: 'center' },
+          1: { cellWidth: 100 },
+          2: { cellWidth: 28, halign: 'right' },
+          3: { cellWidth: 20, halign: 'center' },
+          4: { cellWidth: 72 },
         },
         didParseCell: (data) => {
           if (data.section === 'body' && data.column.index === 2) {
