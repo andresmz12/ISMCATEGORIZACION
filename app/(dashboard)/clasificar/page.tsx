@@ -147,31 +147,31 @@ export default function ClasificarPage() {
 
     const importedIds: string[] = importData.importedIds || []
 
-    if (!importedIds.length) {
-      // All duplicates - load existing pending transactions
-      setProcessingMsg('Cargando transacciones existentes...')
-      setProcessingPct(80)
-      const txRes = await fetch(`/api/transactions?businessId=${activeBiz}&status=PENDING&limit=200`)
+    // Determine which transaction IDs to classify:
+    // If new ones were imported, use those. Otherwise, classify existing PENDING transactions.
+    let idsToClassify: string[] = importedIds
+
+    if (!idsToClassify.length) {
+      setProcessingMsg('Cargando transacciones pendientes...')
+      setProcessingPct(50)
+      const txRes = await fetch(`/api/transactions?businessId=${activeBiz}&status=PENDING&limit=500`)
       const txData = await txRes.json()
-      const txList = txData.transactions || []
-      if (!txList.length) {
-        setError('No hay transacciones nuevas ni pendientes. Todas eran duplicadas.')
+      const pending = txData.transactions || []
+      if (!pending.length) {
+        setError('No hay transacciones nuevas ni pendientes para clasificar.')
         setStep('map')
         return
       }
-      setTransactions(txList)
-      setProcessingPct(100)
-      setStep('review')
-      return
+      idsToClassify = pending.map((t: any) => t.id)
     }
 
-    setProcessingMsg(`Clasificando ${importedIds.length} transacciones con IA...`)
-    setProcessingPct(55)
+    setProcessingMsg(`Clasificando ${idsToClassify.length} transacciones con IA...`)
+    setProcessingPct(60)
 
     const classifyRes = await fetch('/api/classify-ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ businessId: activeBiz, transactionIds: importedIds }),
+      body: JSON.stringify({ businessId: activeBiz, transactionIds: idsToClassify }),
     })
     const classifyData = await classifyRes.json()
     if (!classifyRes.ok) {
@@ -187,8 +187,8 @@ export default function ClasificarPage() {
     const txRes = await fetch(`/api/transactions?businessId=${activeBiz}&limit=500`)
     const txData = await txRes.json()
     const allTx = txData.transactions || []
-    const importedSet = new Set(importedIds)
-    const classified = allTx.filter((t: any) => importedSet.has(t.id))
+    const classifiedSet = new Set(idsToClassify)
+    const classified = allTx.filter((t: any) => classifiedSet.has(t.id))
 
     setTransactions(classified)
     setProcessingPct(100)
