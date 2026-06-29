@@ -62,6 +62,18 @@ export async function DELETE(req: Request) {
   const accountType = (session.user as any).accountType
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')
+  const businessId = searchParams.get('businessId')
+
+  // Bulk delete all rules for a business
+  if (!id && businessId) {
+    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    const { count } = await prisma.classificationRule.deleteMany({ where: { businessId } })
+    await logAudit({ userId, businessId, action: 'DELETE_RULE', metadata: { bulk: true, count } })
+    return NextResponse.json({ deleted: count })
+  }
+
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
   const rule = await prisma.classificationRule.findUnique({ where: { id } })
   if (!rule) return NextResponse.json({ error: 'Not found' }, { status: 404 })

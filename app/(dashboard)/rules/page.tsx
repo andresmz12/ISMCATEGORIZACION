@@ -22,6 +22,14 @@ function ManualRules({ activeBiz, categories, t, toast }: {
   const [rules, setRules] = useState<any[]>([])
   const [form, setForm] = useState({ pattern: '', categoryId: '', priority: '0', field: 'description', deductibility: '' })
   const [loading, setLoading] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
+
+  async function clearAllRules() {
+    const res = await fetch(`/api/rules?businessId=${activeBiz}`, { method: 'DELETE' })
+    if (res.ok) { setRules([]); toast('Reglas eliminadas', 'success') }
+    else toast(t('common.error'), 'error')
+    setConfirmClear(false)
+  }
 
   useEffect(() => {
     if (!activeBiz) return
@@ -111,8 +119,19 @@ function ManualRules({ activeBiz, categories, t, toast }: {
 
       {/* Rules list */}
       <div className="card overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700">{t('rules.activeRules')}</h3>
+          {rules.length > 0 && (
+            confirmClear ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">¿Eliminar {rules.length} reglas?</span>
+                <button onClick={clearAllRules} className="text-xs bg-red-600 text-white px-2.5 py-1 rounded-lg hover:bg-red-700">Confirmar</button>
+                <button onClick={() => setConfirmClear(false)} className="text-xs text-gray-500 hover:text-gray-700">Cancelar</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmClear(true)} className="text-xs text-red-500 hover:text-red-700 font-medium">Eliminar todas</button>
+            )
+          )}
         </div>
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
@@ -157,6 +176,14 @@ function AILearnedRules({ activeBiz, categories, t, toast }: {
   const [patterns, setPatterns] = useState<LearnedPattern[]>([])
   const [rules, setRules] = useState<any[]>([])
   const [loadingPatterns, setLoadingPatterns] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
+
+  async function clearAllRules() {
+    const res = await fetch(`/api/rules?businessId=${activeBiz}`, { method: 'DELETE' })
+    if (res.ok) { setRules([]); toast('Reglas eliminadas', 'success') }
+    else toast(t('common.error'), 'error')
+    setConfirmClear(false)
+  }
 
   useEffect(() => {
     if (!activeBiz) return
@@ -290,8 +317,17 @@ function AILearnedRules({ activeBiz, categories, t, toast }: {
       {/* Active confirmed rules */}
       {rules.length > 0 && (
         <div className="card overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100">
+          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-700">{t('rules.activeRules')}</h3>
+            {confirmClear ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">¿Eliminar {rules.length} reglas?</span>
+                <button onClick={clearAllRules} className="text-xs bg-red-600 text-white px-2.5 py-1 rounded-lg hover:bg-red-700">Confirmar</button>
+                <button onClick={() => setConfirmClear(false)} className="text-xs text-gray-500 hover:text-gray-700">Cancelar</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmClear(true)} className="text-xs text-red-500 hover:text-red-700 font-medium">Eliminar todas</button>
+            )}
           </div>
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">

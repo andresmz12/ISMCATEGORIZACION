@@ -12,6 +12,8 @@ export default function BancosPage() {
   const [importHistory, setImportHistory] = useState<any[]>([])
   const [dataLoading, setDataLoading] = useState(false)
   const [fetchError, setFetchError] = useState('')
+  const [confirmHistory, setConfirmHistory] = useState(false)
+  const [confirmMappings, setConfirmMappings] = useState(false)
 
   useEffect(() => {
     if (!activeBizId) return
@@ -32,6 +34,20 @@ export default function BancosPage() {
       })
       .finally(() => setDataLoading(false))
   }, [activeBizId])
+
+  async function clearHistory() {
+    const res = await fetch(`/api/banks?businessId=${activeBizId}&target=history`, { method: 'DELETE' })
+    if (res.ok) { setImportHistory([]); toast('Historial eliminado', 'success') }
+    else toast('Error al eliminar', 'error')
+    setConfirmHistory(false)
+  }
+
+  async function clearMappings() {
+    const res = await fetch(`/api/banks?businessId=${activeBizId}&target=mappings`, { method: 'DELETE' })
+    if (res.ok) { setMappings([]); toast('Mapeos eliminados', 'success') }
+    else toast('Error al eliminar', 'error')
+    setConfirmMappings(false)
+  }
 
   async function deleteMapping(id: string, bankName: string) {
     if (!confirm(t('common.confirm'))) return
@@ -61,8 +77,19 @@ export default function BancosPage() {
       )}
 
       <div className="card overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700">{t('banks.savedMappings')}</h2>
+          {mappings.length > 0 && (
+            confirmMappings ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">¿Eliminar {mappings.length} mapeos?</span>
+                <button onClick={clearMappings} className="text-xs bg-red-600 text-white px-2.5 py-1 rounded-lg hover:bg-red-700">Confirmar</button>
+                <button onClick={() => setConfirmMappings(false)} className="text-xs text-gray-500 hover:text-gray-700">Cancelar</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmMappings(true)} className="text-xs text-red-500 hover:text-red-700 font-medium">Eliminar todos</button>
+            )
+          )}
         </div>
         {dataLoading ? (
           <div className="px-5 py-8 text-center text-gray-400 text-sm">{t('auth.loading')}</div>
@@ -102,8 +129,19 @@ export default function BancosPage() {
 
       {/* Import history */}
       <div className="card overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700">{t('banks.importHistory')}</h2>
+          {importHistory.length > 0 && (
+            confirmHistory ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">¿Eliminar {importHistory.length} registros?</span>
+                <button onClick={clearHistory} className="text-xs bg-red-600 text-white px-2.5 py-1 rounded-lg hover:bg-red-700">Confirmar</button>
+                <button onClick={() => setConfirmHistory(false)} className="text-xs text-gray-500 hover:text-gray-700">Cancelar</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmHistory(true)} className="text-xs text-red-500 hover:text-red-700 font-medium">Limpiar historial</button>
+            )
+          )}
         </div>
         {dataLoading ? (
           <div className="px-5 py-8 text-center text-gray-400 text-sm">{t('auth.loading')}</div>

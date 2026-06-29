@@ -37,6 +37,25 @@ export async function DELETE(req: Request) {
   const accountType = (session.user as any).accountType
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')
+  const businessId = searchParams.get('businessId')
+  const target = searchParams.get('target') // 'history' | 'mappings' | 'all'
+
+  // Bulk delete
+  if (!id && businessId) {
+    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    if (target === 'history') {
+      const { count } = await prisma.auditLog.deleteMany({ where: { businessId, action: 'IMPORT_TRANSACTIONS' } })
+      return NextResponse.json({ deleted: count })
+    }
+    if (target === 'mappings') {
+      const { count } = await prisma.bankFormatMapping.deleteMany({ where: { businessId } })
+      return NextResponse.json({ deleted: count })
+    }
+    return NextResponse.json({ error: 'target required (history|mappings)' }, { status: 400 })
+  }
+
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
   const mapping = await prisma.bankFormatMapping.findUnique({ where: { id } })
   if (!mapping) return NextResponse.json({ error: 'Not found' }, { status: 404 })
