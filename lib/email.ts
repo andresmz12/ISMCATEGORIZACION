@@ -23,7 +23,7 @@ export async function sendAssignmentEmail(opts: {
     ? `<p><strong>Fecha límite:</strong> ${new Date(opts.dueDate).toLocaleDateString('es-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
     : ''
 
-  await sgMail.send({
+  const [response] = await sgMail.send({
     from: { email: from, name: 'My Profit & Loss' },
     to: opts.to,
     subject: `Nueva asignación: ${opts.title}`,
@@ -51,4 +51,5 @@ export async function sendAssignmentEmail(opts: {
       </div>
     `,
   })
+  console.log('[email] SendGrid status:', response.statusCode)
 }
