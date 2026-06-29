@@ -333,7 +333,7 @@ export default function ClasificarPage() {
           description: tx.description,
           amount: typeof tx.amount === 'number' ? tx.amount : 0,
           type: tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
-          category: tx.category?.name || tx.aiSuggestion || 'Sin categoría',
+          category: tx.categoryName || tx.aiSuggestion || 'Sin categoría',
           deductibility: tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : 'No',
           confidence: tx.aiConfidence || '',
         })

@@ -91,6 +91,21 @@ export async function POST(req: Request) {
     }
 
     const mapping = JSON.parse(mappingJson)
+
+    // Dry run: only persist the bank format mapping for reuse, do NOT import
+    // any transactions. Used by the "Clasificar con IA" preview-first flow,
+    // where rows are saved later via /api/transactions/batch after user review.
+    if ((formData.get('dryRun') as string) === 'true') {
+      if (bankName) {
+        await prisma.bankFormatMapping.upsert({
+          where: { id: `${businessId}_${bankName.replace(/\s+/g, '_')}` },
+          update: { mapping },
+          create: { id: `${businessId}_${bankName.replace(/\s+/g, '_')}`, businessId, bankName, mapping },
+        })
+      }
+      return NextResponse.json({ ok: true, dryRun: true, mappingSaved: !!bankName })
+    }
+
     const ext = file.name.split('.').pop()?.toLowerCase()
     const buffer = Buffer.from(await file.arrayBuffer())
 

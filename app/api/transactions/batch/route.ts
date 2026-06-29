@@ -85,7 +85,9 @@ export async function POST(req: Request) {
       userId,
       businessId,
       action: 'IMPORT_TRANSACTIONS',
-      metadata: { created, duplicates, errors: errors.length, total: transactions.length, sourceFile },
+      // Use the same metadata keys as /api/import so the bank import history
+      // (bancos page) renders counts and filename consistently for both flows.
+      metadata: { imported: created, duplicates, errors: errors.length, total: transactions.length, file: sourceFile },
     })
 
     return NextResponse.json({ created, duplicates, errors, total: transactions.length, createdIds })
