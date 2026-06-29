@@ -1,16 +1,4 @@
-import nodemailer from 'nodemailer'
-
-function getTransport() {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  })
-}
+import sgMail from '@sendgrid/mail'
 
 export async function sendAssignmentEmail(opts: {
   to: string
@@ -21,20 +9,21 @@ export async function sendAssignmentEmail(opts: {
   description?: string | null
   dueDate?: Date | null
 }) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn('[email] SMTP not configured, skipping assignment email')
+  if (!process.env.SENDGRID_API_KEY) {
+    console.warn('[email] SENDGRID_API_KEY not configured, skipping assignment email')
     return
   }
 
-  const transport = getTransport()
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+
+  const from = process.env.SENDGRID_FROM || 'noreply@myprofitandloss.com'
 
   const dueLine = opts.dueDate
     ? `<p><strong>Fecha límite:</strong> ${new Date(opts.dueDate).toLocaleDateString('es-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
     : ''
 
-  await transport.sendMail({
-    from: `"My Profit & Loss" <${from}>`,
+  await sgMail.send({
+    from: { email: from, name: 'My Profit & Loss' },
     to: opts.to,
     subject: `Nueva asignación: ${opts.title}`,
     html: `
