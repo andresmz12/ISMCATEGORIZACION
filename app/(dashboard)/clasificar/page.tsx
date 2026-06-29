@@ -55,6 +55,38 @@ export default function ClasificarPage() {
     })
   }, [activeBiz])
 
+  // Holds raw parsed rows before saving to DB
+  const [rawRows, setRawRows] = useState<any[]>([])
+
+  function parseAmount(val: string): { amount: number; type: 'DEBIT' | 'CREDIT' } {
+    const clean = String(val).replace(/[$,\s]/g, '')
+    const num = parseFloat(clean)
+    if (isNaN(num)) return { amount: 0, type: 'DEBIT' }
+    return { amount: Math.abs(num), type: num < 0 ? 'DEBIT' : 'CREDIT' }
+  }
+
+  function parseDate(val: unknown): string | null {
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val.toISOString()
+    const s = String(val).trim()
+    if (!s) return null
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), 12).toISOString()
+    const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+    if (slash) {
+      const [, a, b, y] = slash.map(Number)
+      const [day, month] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]
+      return new Date(y, month - 1, day, 12).toISOString()
+    }
+    const dash = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+    if (dash) {
+      const [, a, b, y] = dash.map(Number)
+      const [day, month] = a > 12 ? [a, b] : b > 12 ? [b, a] : [a, b]
+      return new Date(y, month - 1, day, 12).toISOString()
+    }
+    const d = new Date(s)
+    return isNaN(d.getTime()) ? null : d.toISOString()
+  }
+
   async function processFile(f: File) {
     setFile(f)
     setError('')
@@ -62,8 +94,10 @@ export default function ClasificarPage() {
     if (ext === 'csv') {
       const text = await f.text()
       const lines = text.split('\n').filter(l => l.trim())
-      const cols = lines[0].split(',').map(c => c.trim().replace(/^"|"$/g, ''))
-      const rows = lines.slice(1, 6).map(line => line.split(',').map(c => c.trim().replace(/^"|"$/g, '')))
+      const firstLine = lines[0] || ''
+      const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ','
+      const cols = firstLine.split(delimiter).map(c => c.trim().replace(/^"|"$/g, ''))
+      const rows = lines.slice(1, 6).map(line => line.split(delimiter).map(c => c.trim().replace(/^"|"$/g, '')))
       setHeaderRowNum(1)
       setHeaders(cols); setPreviewRows(rows); autoDetect(cols); setStep('map')
     } else if (ext === 'xlsx' || ext === 'xls') {
@@ -73,24 +107,25 @@ export default function ClasificarPage() {
       await wb.xlsx.load(buffer)
       const ws = wb.worksheets[0]
 
-      // Auto-detect header row: first row with 3+ non-empty cells
       let detectedHeaderRow = 1
       let found = false
       ws.eachRow((row, rowNum) => {
         if (!found) {
-          const vals = row.values as any[]
-          const nonEmpty = vals.slice(1).filter(v => v !== null && v !== undefined && String(v).trim() !== '').length
+          let nonEmpty = 0
+          row.eachCell({ includeEmpty: false }, () => { nonEmpty++ })
           if (nonEmpty >= 3) { detectedHeaderRow = rowNum; found = true }
         }
       })
 
       const cols: string[] = []
-      ws.getRow(detectedHeaderRow).eachCell(cell => cols.push(String(cell.value ?? '')))
+      ws.getRow(detectedHeaderRow).eachCell({ includeEmpty: true }, cell => cols.push(String(cell.value ?? '').trim()))
       const rows: string[][] = []
       ws.eachRow((row, rowNum) => {
         if (rowNum > detectedHeaderRow && rowNum <= detectedHeaderRow + 5) {
           const cells: string[] = []
-          row.eachCell({ includeEmpty: true }, (cell, colNum) => { if (colNum <= cols.length) cells.push(String(cell.value ?? '')) })
+          row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+            if (colNum <= cols.length) cells.push(String(cell.value ?? ''))
+          })
           rows.push(cells)
         }
       })
@@ -119,7 +154,73 @@ export default function ClasificarPage() {
     setMapping(saved.mapping as Record<string, string>)
   }
 
-  async function runImportAndClassify() {
+  // Parse the file client-side into raw rows using the column mapping
+  async function extractRows(): Promise<any[] | null> {
+    if (!file) return null
+    const ext = file.name.split('.').pop()?.toLowerCase()
+    let allRows: Record<string, unknown>[] = []
+
+    if (ext === 'csv') {
+      const text = await file.text()
+      const lines = text.split('\n').filter(l => l.trim())
+      const firstLine = lines[0] || ''
+      const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ','
+      const headerCols = firstLine.split(delimiter).map(c => c.trim().replace(/^"|"$/g, ''))
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, ''))
+        const obj: Record<string, unknown> = {}
+        headerCols.forEach((h, idx) => { obj[h] = vals[idx] ?? '' })
+        allRows.push(obj)
+      }
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      const ExcelJS = await import('exceljs')
+      const buffer = await file.arrayBuffer()
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(buffer)
+      const ws = wb.worksheets[0]
+      const hdrs: string[] = []
+      ws.getRow(headerRowNum).eachCell({ includeEmpty: true }, cell => hdrs.push(String(cell.value ?? '').trim()))
+      ws.eachRow((row, rowNum) => {
+        if (rowNum <= headerRowNum) return
+        const obj: Record<string, unknown> = {}
+        row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+          const h = hdrs[colNum - 1]
+          if (h) obj[h] = cell.value instanceof Date ? cell.value : String(cell.value ?? '')
+        })
+        allRows.push(obj)
+      })
+    }
+
+    const dateCol = mapping['date'], descCol = mapping['description']
+    const amtCol = mapping['amount'], debitCol = mapping['debit'], creditCol = mapping['credit']
+    const parsed: any[] = []
+
+    for (const row of allRows) {
+      const dateStr = parseDate(row[dateCol])
+      const desc = String(row[descCol] ?? '').trim()
+      if (!dateStr || !desc) continue
+
+      let amount: number, type: 'DEBIT' | 'CREDIT'
+      if (amtCol && row[amtCol] !== undefined && String(row[amtCol]).trim() !== '') {
+        const p = parseAmount(String(row[amtCol]))
+        amount = p.amount; type = p.type
+      } else if (debitCol || creditCol) {
+        const debit = debitCol ? parseFloat(String(row[debitCol] ?? '').replace(/[$,\s]/g, '')) : NaN
+        const credit = creditCol ? parseFloat(String(row[creditCol] ?? '').replace(/[$,\s]/g, '')) : NaN
+        const dv = isNaN(debit) ? 0 : Math.abs(debit)
+        const cv = isNaN(credit) ? 0 : Math.abs(credit)
+        if (dv > 0) { amount = dv; type = 'DEBIT' }
+        else if (cv > 0) { amount = cv; type = 'CREDIT' }
+        else continue
+      } else continue
+
+      if (amount <= 0) continue
+      parsed.push({ date: dateStr, description: desc, amount, type })
+    }
+    return parsed
+  }
+
+  async function runClassify() {
     if (!file || !activeBiz) return
     const hasAmount = mapping['amount'] || (mapping['debit'] && mapping['credit'])
     if (!mapping['date'] || !mapping['description'] || !hasAmount) {
@@ -128,122 +229,77 @@ export default function ClasificarPage() {
     }
     setError('')
     setStep('processing')
-    setProcessingPct(10)
-    setProcessingMsg('Subiendo archivo...')
+    setProcessingPct(15)
+    setProcessingMsg('Leyendo archivo...')
 
-    const fd = new FormData()
-    fd.append('businessId', activeBiz)
-    fd.append('file', file)
-    fd.append('mapping', JSON.stringify(mapping))
-    fd.append('headerRow', String(headerRowNum))
-    if (bankName) fd.append('bankName', bankName)
-
-    const importRes = await fetch('/api/import', { method: 'POST', body: fd })
-    const importData = await importRes.json()
-    if (!importRes.ok) { setError(importData.error || 'Error al importar'); setStep('map'); return }
-
-    setImportResult({ imported: importData.imported, duplicates: importData.duplicates, total: importData.total })
-    setProcessingPct(40)
-
-    const importedIds: string[] = importData.importedIds || []
-
-    // Determine which transaction IDs to classify:
-    // If new ones were imported, use those. Otherwise, classify existing PENDING transactions.
-    let idsToClassify: string[] = importedIds
-
-    if (!idsToClassify.length) {
-      setProcessingMsg('Cargando transacciones pendientes...')
-      setProcessingPct(50)
-      const txRes = await fetch(`/api/transactions?businessId=${activeBiz}&status=PENDING&limit=500`)
-      const txData = await txRes.json()
-      const pending = txData.transactions || []
-      if (!pending.length) {
-        setError('No hay transacciones nuevas ni pendientes para clasificar.')
-        setStep('map')
-        return
-      }
-      idsToClassify = pending.map((t: any) => t.id)
+    const rows = await extractRows()
+    if (!rows || rows.length === 0) {
+      setError('No se encontraron transacciones válidas en el archivo.')
+      setStep('map'); return
     }
 
-    setProcessingMsg(`Clasificando ${idsToClassify.length} transacciones con IA...`)
-    setProcessingPct(60)
+    // Save mapping for reuse
+    if (bankName) {
+      fetch('/api/import', {
+        method: 'POST',
+        body: (() => { const fd = new FormData(); fd.append('businessId', activeBiz); fd.append('file', file); fd.append('mapping', JSON.stringify(mapping)); fd.append('headerRow', String(headerRowNum)); fd.append('bankName', bankName); fd.append('dryRun', 'true'); return fd })(),
+      }).catch(() => {})
+    }
 
-    const classifyRes = await fetch('/api/classify-ai', {
+    setProcessingPct(35)
+    setProcessingMsg(`Clasificando ${rows.length} transacciones con IA...`)
+
+    const classifyRes = await fetch('/api/classify-preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ businessId: activeBiz, transactionIds: idsToClassify }),
+      body: JSON.stringify({ businessId: activeBiz, rows }),
     })
     const classifyData = await classifyRes.json()
     if (!classifyRes.ok) {
       setError(classifyData.error || 'Error al clasificar con IA')
-      setStep('map')
-      return
+      setStep('map'); return
     }
 
-    setProcessingPct(85)
-    setProcessingMsg('Cargando resultados...')
-
-    // Fetch the classified transactions with their category info
-    const txRes = await fetch(`/api/transactions?businessId=${activeBiz}&limit=500`)
-    const txData = await txRes.json()
-    const allTx = txData.transactions || []
-    const classifiedSet = new Set(idsToClassify)
-    const classified = allTx.filter((t: any) => classifiedSet.has(t.id))
-
-    setTransactions(classified)
+    setRawRows(classifyData.results || [])
+    setTransactions(classifyData.results || [])
+    setImportResult(null)
     setProcessingPct(100)
     setStep('review')
   }
 
-  async function updateTxCategory(txId: string, categoryId: string) {
-    const cat = categories.find(c => c.id === categoryId)
-    const oldTx = transactions.find(tx => tx.id === txId)
-
-    // Optimistic update
-    setTransactions(prev => prev.map(tx => tx.id === txId ? { ...tx, categoryId, category: cat || tx.category, status: 'CLASSIFIED', method: 'MANUAL' } : tx))
-
-    try {
-      const res = await fetch(`/api/transactions/${txId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categoryId: categoryId || null, status: 'CLASSIFIED', method: 'MANUAL' }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    } catch (err) {
-      console.error('Update failed, rolling back:', err)
-      // Rollback on failure
-      if (oldTx) setTransactions(prev => prev.map(tx => tx.id === txId ? oldTx : tx))
-      toast('Error al actualizar categoría', 'error')
-    }
+  // Local-only category update — nothing saved to DB yet
+  function updateTxCategory(idx: number, categoryId: string) {
+    const cat = categories.find((c: any) => c.id === categoryId)
+    setTransactions(prev => prev.map((tx, i) =>
+      i === idx ? { ...tx, categoryId: categoryId || null, categoryName: cat?.name || null } : tx
+    ))
   }
 
-  async function confirmAll() {
+  // Save all reviewed transactions to DB in one batch
+  async function saveToTransactions() {
+    if (!activeBiz) return
     setConfirming(true)
     try {
-      const needsReview = transactions.filter(tx => tx.status === 'NEEDS_REVIEW')
-      if (needsReview.length === 0) {
-        toast('No hay transacciones por confirmar', 'info')
-        setConfirming(false)
+      const res = await fetch('/api/transactions/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: activeBiz,
+          transactions,
+          sourceFile: file?.name,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast(data.error || 'Error al guardar transacciones', 'error')
         return
       }
-      const results = await Promise.all(needsReview.map(tx =>
-        fetch(`/api/transactions/${tx.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'CLASSIFIED' }),
-        })
-      ))
-      const failed = results.filter(r => !r.ok).length
-      if (failed > 0) {
-        toast(`${failed} errores al confirmar`, 'error')
-      } else {
-        setTransactions(prev => prev.map(tx => ({ ...tx, status: 'CLASSIFIED' })))
-        setStep('done')
-        toast('Todas las transacciones confirmadas', 'success')
-      }
+      setImportResult({ imported: data.created, duplicates: data.duplicates, total: data.total })
+      setStep('done')
+      toast(`${data.created} transacciones guardadas`, 'success')
     } catch (err) {
-      console.error('Confirm all failed:', err)
-      toast('Error al confirmar transacciones', 'error')
+      console.error('Save failed:', err)
+      toast('Error al guardar transacciones', 'error')
     } finally {
       setConfirming(false)
     }
@@ -394,7 +450,7 @@ export default function ClasificarPage() {
   // Stats for review step
   const totalTx = transactions.length
   const autoClassified = transactions.filter(tx => tx.aiConfidence === 'HIGH').length
-  const needsReview = transactions.filter(tx => tx.status === 'NEEDS_REVIEW' || tx.aiConfidence === 'LOW' || tx.aiConfidence === 'MEDIUM').length
+  const needsReview = transactions.filter(tx => !tx.categoryId || tx.aiConfidence === 'LOW' || tx.aiConfidence === 'MEDIUM').length
   const totalExpenses = transactions.filter(tx => tx.type === 'DEBIT').reduce((s, tx) => s + tx.amount, 0)
 
   const mappedCols = new Set(Object.values(mapping).filter(Boolean))
@@ -550,7 +606,7 @@ export default function ClasificarPage() {
             </div>
             <div className="flex gap-3">
               <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]) }} className="btn-secondary">← Volver</button>
-              <button onClick={runImportAndClassify} className="btn-primary flex items-center gap-2">
+              <button onClick={runClassify} className="btn-primary flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
@@ -645,10 +701,10 @@ export default function ClasificarPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {transactions.map((tx: any) => {
-                    const isLow = tx.aiConfidence === 'LOW' || tx.aiConfidence === 'MEDIUM' || tx.status === 'NEEDS_REVIEW'
+                  {transactions.map((tx: any, idx: number) => {
+                    const isLow = !tx.categoryId || tx.aiConfidence === 'LOW' || tx.aiConfidence === 'MEDIUM'
                     return (
-                      <tr key={tx.id} className={`hover:bg-gray-50 transition-colors ${isLow ? 'bg-amber-50/60' : ''}`}>
+                      <tr key={idx} className={`hover:bg-gray-50 transition-colors ${isLow ? 'bg-amber-50/60' : ''}`}>
                         <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">
                           {tx.date ? new Date(tx.date).toLocaleDateString() : '—'}
                         </td>
@@ -662,7 +718,7 @@ export default function ClasificarPage() {
                           <select
                             className={`text-xs border rounded px-2 py-1 bg-white w-full ${isLow ? 'border-amber-300' : 'border-gray-200'}`}
                             value={tx.categoryId || ''}
-                            onChange={e => updateTxCategory(tx.id, e.target.value)}
+                            onChange={e => updateTxCategory(idx, e.target.value)}
                           >
                             <option value="">Sin categoría</option>
                             {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -685,15 +741,18 @@ export default function ClasificarPage() {
 
           {/* Action buttons */}
           <div className="space-y-3">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+              Las transacciones <strong>aún no están guardadas</strong>. Revisa las categorías y haz clic en "Guardar en transacciones" cuando estés listo.
+            </div>
             <button
-              onClick={confirmAll}
+              onClick={saveToTransactions}
               disabled={confirming}
               className="w-full btn-primary flex items-center justify-center gap-2 py-3 disabled:opacity-50"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
               </svg>
-              {confirming ? 'Confirmando...' : `Confirmar clasificación (${totalTx})`}
+              {confirming ? 'Guardando...' : `Guardar ${totalTx} transacciones`}
             </button>
             <div className="flex gap-3">
               <button onClick={downloadExcel} className="flex-1 btn-secondary text-sm flex items-center justify-center gap-2">
@@ -709,7 +768,7 @@ export default function ClasificarPage() {
                 PDF
               </button>
               <button
-                onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]) }}
+                onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]); setRawRows([]) }}
                 className="flex-1 btn-secondary text-sm"
               >
                 Otro archivo
@@ -732,7 +791,9 @@ export default function ClasificarPage() {
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-1">¡Clasificación completa!</h2>
             <p className="text-gray-500">
-              {totalTx} transacciones clasificadas · {fmt(totalExpenses)} en gastos totales
+              {importResult?.imported ?? totalTx} transacciones guardadas
+              {importResult?.duplicates ? ` · ${importResult.duplicates} duplicadas omitidas` : ''}
+              {' · '}{fmt(totalExpenses)} en gastos totales
             </p>
           </div>
           <div className="flex flex-wrap gap-3 justify-center">
@@ -755,7 +816,7 @@ export default function ClasificarPage() {
               Ver en Transacciones
             </button>
             <button
-              onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]); setImportResult(null) }}
+              onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]); setRawRows([]); setImportResult(null) }}
               className="btn-primary flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
