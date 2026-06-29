@@ -41,5 +41,8 @@ export function useActiveBiz() {
     setActiveBizIdInner(id)
   }
 
-  return { businesses, activeBizId, setActiveBizId, loading }
+  const activeBiz = businesses.find((b: any) => b.id === activeBizId) || null
+  const activeRole: string | null = activeBiz?.userRole ?? null
+
+  return { businesses, activeBizId, setActiveBizId, loading, activeRole }
 }

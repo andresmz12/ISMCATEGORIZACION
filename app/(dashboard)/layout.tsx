@@ -14,7 +14,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { t } = useTranslation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
-  const { businesses, activeBizId, setActiveBizId } = useActiveBiz()
+  const { businesses, activeBizId, setActiveBizId, activeRole } = useActiveBiz()
   const activeBusiness = businesses.find(b => b.id === activeBizId) || null
   const [pendingAssignments, setPendingAssignments] = useState(0)
 
@@ -85,7 +85,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ? session.user.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
     : session.user?.email?.[0]?.toUpperCase() ?? 'U'
 
-  const roleLabel = accountType === 'SUPERADMIN' ? t('role.superadmin') : accountType === 'ACCOUNTANT' ? t('role.accountant') : t('role.individual')
+  const roleLabel = accountType === 'SUPERADMIN'
+    ? t('role.superadmin')
+    : accountType === 'ACCOUNTANT'
+      ? t('role.accountant')
+      : (activeRole === 'VIEWER' || activeRole === 'MANAGER')
+        ? 'Miembro del equipo'
+        : t('role.individual')
 
   const SidebarContent = ({ isCollapsed = false }: { isCollapsed?: boolean }) => (
     <div className="flex flex-col h-full">
