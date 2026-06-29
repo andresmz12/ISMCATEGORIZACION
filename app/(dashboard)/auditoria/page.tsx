@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { useActiveBiz } from '@/lib/use-active-biz'
+import { useSession } from 'next-auth/react'
 
 function MetaSummary({ action, meta }: { action: string; meta: any }) {
   const parts: string[] = []
@@ -63,13 +64,31 @@ const ACTION_COLORS: Record<string, string> = {
 
 export default function AuditoriaPage() {
   const { t } = useTranslation()
-  const { businesses, activeBizId } = useActiveBiz()
+  const { businesses, activeBizId, activeRole } = useActiveBiz()
+  const { data: session } = useSession()
+  const accountType = (session?.user as any)?.accountType
   const [logs, setLogs] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
   const [businessId, setBusinessId] = useState('')
   const [loading, setLoading] = useState(true)
+  const [clearing, setClearing] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
+
+  const canClear = accountType === 'SUPERADMIN' || accountType === 'ACCOUNTANT' || (accountType === 'INDIVIDUAL' && activeRole === 'OWNER')
+
+  async function clearAudit() {
+    if (!businessId) return
+    setClearing(true)
+    try {
+      const res = await fetch(`/api/audit?businessId=${businessId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (res.ok) { setLogs([]); setTotal(0); setPages(1); setPage(1) }
+    } catch {}
+    setClearing(false)
+    setConfirmClear(false)
+  }
 
   // Pre-select active business when available
   useEffect(() => {
@@ -96,18 +115,35 @@ export default function AuditoriaPage() {
           <h1 className="text-xl font-bold text-gray-900">{t('audit.title')}</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} {t('audit.events')}</p>
         </div>
-        {businesses.length > 1 && (
-          <select
-            className="input w-auto text-sm"
-            value={businessId}
-            onChange={e => { setBusinessId(e.target.value); setPage(1); }}
-          >
-            <option value="">{t('common.all')}</option>
-            {businesses.map((b: any) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-        )}
+        <div className="flex items-center gap-2">
+          {businesses.length > 1 && (
+            <select
+              className="input w-auto text-sm"
+              value={businessId}
+              onChange={e => { setBusinessId(e.target.value); setPage(1); }}
+            >
+              <option value="">{t('common.all')}</option>
+              {businesses.map((b: any) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          )}
+          {canClear && businessId && total > 0 && (
+            confirmClear ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">¿Eliminar {total} eventos?</span>
+                <button onClick={clearAudit} disabled={clearing} className="btn text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 disabled:opacity-50">
+                  {clearing ? 'Eliminando...' : 'Confirmar'}
+                </button>
+                <button onClick={() => setConfirmClear(false)} className="btn-secondary text-sm px-3 py-1.5">Cancelar</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmClear(true)} className="btn-secondary text-sm text-red-600 border-red-200 hover:bg-red-50">
+                Limpiar auditoría
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       <div className="card overflow-hidden">

@@ -2,6 +2,29 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkBusinessAccess } from '@/lib/check-business-access'
+
+export async function DELETE(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
+  const { searchParams } = new URL(req.url)
+  const businessId = searchParams.get('businessId')
+  if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 })
+
+  // Only OWNER-level access (not VIEWER/MANAGER team members)
+  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (accountType === 'INDIVIDUAL') {
+    const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
+    if (bu?.role !== 'OWNER') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { count } = await prisma.auditLog.deleteMany({ where: { businessId } })
+  return NextResponse.json({ deleted: count })
+}
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
