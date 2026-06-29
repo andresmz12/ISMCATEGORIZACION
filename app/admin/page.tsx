@@ -373,7 +373,7 @@ export default function AdminPage() {
                   type="password"
                   value={resetPwd}
                   onChange={e => setResetPwd(e.target.value)}
-                  placeholder="Ej: MiClave123"
+                  placeholder="Contraseña"
                   required
                   autoFocus
                 />
@@ -512,7 +512,7 @@ export default function AdminPage() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña *</label>
-                <input className={inputCls} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Ej: MiClave123" required />
+                <input className={inputCls} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Contraseña" required />
                 <p className="text-xs text-gray-400 mt-1">Mínimo 8 caracteres, una mayúscula y un número</p>
               </div>
 

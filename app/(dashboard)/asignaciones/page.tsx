@@ -251,7 +251,7 @@ export default function AsignacionesPage() {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Título *</label>
-                <input className="input w-full" placeholder="Ej: Contabilidad Q1 - Restaurante Los Arcos" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+                <input className="input w-full" placeholder="Título de la asignación" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Descripción / Notas</label>

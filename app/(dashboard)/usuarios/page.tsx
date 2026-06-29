@@ -200,7 +200,7 @@ export default function UsuariosPage() {
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nombre completo</label>
                 <input
                   className="input w-full"
-                  placeholder="Ej: María García"
+                  placeholder="Nombre completo"
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 />
