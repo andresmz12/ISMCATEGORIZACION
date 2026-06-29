@@ -53,6 +53,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Viewers cannot create assignments
+  const callerBu = await prisma.businessUser.findUnique({
+    where: { userId_businessId: { userId, businessId } },
+  })
+  if (callerBu?.role === 'VIEWER') {
+    return NextResponse.json({ error: 'No tienes permiso para crear asignaciones' }, { status: 403 })
+  }
+
   // Validate assignedToId belongs to the same business
   if (assignedToId) {
     const bu = await prisma.businessUser.findUnique({

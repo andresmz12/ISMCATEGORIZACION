@@ -24,6 +24,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   const body = await req.json()
+
+  // Viewers can only update status of assignments assigned to them
+  if (bu?.role === 'VIEWER') {
+    if (assignment.assignedToId !== userId) {
+      return NextResponse.json({ error: 'No tienes permiso para editar esta asignación' }, { status: 403 })
+    }
+    const allowedKeys = new Set(['status'])
+    const hasOtherKeys = Object.keys(body).some(k => !allowedKeys.has(k))
+    if (hasOtherKeys) {
+      return NextResponse.json({ error: 'Solo puedes cambiar el estado de tus asignaciones' }, { status: 403 })
+    }
+  }
   const data: any = {}
   if (body.title !== undefined) data.title = body.title.trim()
   if (body.description !== undefined) data.description = body.description?.trim() || null
@@ -89,6 +101,10 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   })
   if (!bu && (session.user as any).accountType !== 'SUPERADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  if (bu?.role === 'VIEWER') {
+    return NextResponse.json({ error: 'No tienes permiso para eliminar asignaciones' }, { status: 403 })
   }
 
   await prisma.assignment.delete({ where: { id: params.id } })

@@ -40,7 +40,8 @@ const STATUS_COLORS: Record<Status, string> = {
 
 export default function AsignacionesPage() {
   const { data: session } = useSession()
-  const { activeBizId } = useActiveBiz()
+  const { activeBizId, activeRole } = useActiveBiz()
+  const isViewer = activeRole === 'VIEWER'
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [team, setTeam] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -156,7 +157,7 @@ export default function AsignacionesPage() {
           </div>
           <p className="text-sm text-gray-500 mt-0.5">Asigna y da seguimiento a tareas contables de tu equipo.</p>
         </div>
-        <button onClick={openNew} className="btn-primary">+ Nueva asignación</button>
+        {!isViewer && <button onClick={openNew} className="btn-primary">+ Nueva asignación</button>}
       </div>
 
       {/* Status filter */}
@@ -183,8 +184,8 @@ export default function AsignacionesPage() {
         <div className="card p-10 text-center">
           <div className="text-4xl mb-3">📋</div>
           <p className="text-gray-600 font-medium">Sin asignaciones</p>
-          <p className="text-sm text-gray-400 mt-1">Crea una asignación para empezar a delegar trabajo.</p>
-          <button onClick={openNew} className="btn-primary mt-5">+ Nueva asignación</button>
+          <p className="text-sm text-gray-400 mt-1">{isViewer ? 'No tienes asignaciones pendientes.' : 'Crea una asignación para empezar a delegar trabajo.'}</p>
+          {!isViewer && <button onClick={openNew} className="btn-primary mt-5">+ Nueva asignación</button>}
         </div>
       ) : (
         <div className="space-y-3">
@@ -223,19 +224,27 @@ export default function AsignacionesPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Quick status change */}
-                  {a.status === 'PENDING' && (
-                    <button onClick={() => changeStatus(a.id, 'IN_PROGRESS')} className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2.5 py-1 rounded-lg font-medium transition-colors">
-                      Iniciar
-                    </button>
+                  {/* Quick status change — viewers can only update their own assignments */}
+                  {(!isViewer || a.assignedTo?.id === myId) && (
+                    <>
+                      {a.status === 'PENDING' && (
+                        <button onClick={() => changeStatus(a.id, 'IN_PROGRESS')} className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2.5 py-1 rounded-lg font-medium transition-colors">
+                          Iniciar
+                        </button>
+                      )}
+                      {a.status === 'IN_PROGRESS' && (
+                        <button onClick={() => changeStatus(a.id, 'COMPLETED')} className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-2.5 py-1 rounded-lg font-medium transition-colors">
+                          Completar
+                        </button>
+                      )}
+                    </>
                   )}
-                  {a.status === 'IN_PROGRESS' && (
-                    <button onClick={() => changeStatus(a.id, 'COMPLETED')} className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-2.5 py-1 rounded-lg font-medium transition-colors">
-                      Completar
-                    </button>
+                  {!isViewer && (
+                    <>
+                      <button onClick={() => openEdit(a)} className="text-xs text-[#1B4965] hover:underline font-medium">Editar</button>
+                      <button onClick={() => deleteAssignment(a.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">✕</button>
+                    </>
                   )}
-                  <button onClick={() => openEdit(a)} className="text-xs text-[#1B4965] hover:underline font-medium">Editar</button>
-                  <button onClick={() => deleteAssignment(a.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">✕</button>
                 </div>
               </div>
             </div>
