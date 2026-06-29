@@ -7,15 +7,98 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { validatePassword, validateEmail, getClientIp } from '@/lib/validate'
 import { logAudit } from '@/lib/audit'
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Team management disabled for now
-  return NextResponse.json([])
+  const ownerId = (session.user as any).id
+
+  // Return all users that share at least one business with the current user
+  // where the current user is OWNER or MANAGER of that business
+  const myBusinessIds = await prisma.businessUser.findMany({
+    where: { userId: ownerId, role: { in: ['OWNER', 'MANAGER'] } },
+    select: { businessId: true },
+  })
+
+  if (myBusinessIds.length === 0) return NextResponse.json([])
+
+  const businessIds = myBusinessIds.map(b => b.businessId)
+
+  // Get all users on those businesses, excluding the current user
+  const members = await prisma.businessUser.findMany({
+    where: { businessId: { in: businessIds }, userId: { not: ownerId } },
+    include: { user: { select: { id: true, name: true, email: true, isActive: true, lastLogin: true, createdAt: true } } },
+    distinct: ['userId'],
+  })
+
+  const unique = Array.from(
+    new Map(members.map(m => [m.userId, { ...m.user, role: m.role }])).values()
+  )
+
+  return NextResponse.json(unique)
 }
 
 export async function POST(req: Request) {
-  // Team management disabled for now
-  return NextResponse.json({ error: 'Team features temporarily disabled' }, { status: 503 })
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const ip = getClientIp(req)
+  const rl = rateLimit(`team-create:${ip}`, 10, 60 * 60 * 1000)
+  if (!rl.ok) return rateLimitResponse()
+
+  const body = await req.json()
+  const { name, email, password, businessId } = body
+
+  if (!name?.trim() || !email || !password) {
+    return NextResponse.json({ error: 'Nombre, correo y contraseña son requeridos' }, { status: 400 })
+  }
+  if (!validateEmail(email)) return NextResponse.json({ error: 'Correo inválido' }, { status: 400 })
+  const pwErr = validatePassword(password)
+  if (pwErr) return NextResponse.json({ error: pwErr }, { status: 400 })
+
+  const ownerId = (session.user as any).id
+
+  // Determine which businesses to add the new user to
+  let targetBusinessIds: string[]
+  if (businessId) {
+    // Verify caller is OWNER/MANAGER of this business
+    const bu = await prisma.businessUser.findUnique({
+      where: { userId_businessId: { userId: ownerId, businessId } },
+    })
+    if (!bu || bu.role === 'VIEWER') {
+      return NextResponse.json({ error: 'No tienes permiso para agregar usuarios a este negocio' }, { status: 403 })
+    }
+    targetBusinessIds = [businessId]
+  } else {
+    // Add to ALL businesses where caller is OWNER
+    const myBizs = await prisma.businessUser.findMany({
+      where: { userId: ownerId, role: 'OWNER' },
+      select: { businessId: true },
+    })
+    targetBusinessIds = myBizs.map(b => b.businessId)
+  }
+
+  if (targetBusinessIds.length === 0) {
+    return NextResponse.json({ error: 'No tienes negocios para asignar este usuario' }, { status: 400 })
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } })
+  if (existing) return NextResponse.json({ error: 'Ya existe un usuario con ese correo' }, { status: 409 })
+
+  const passwordHash = await bcrypt.hash(password, 12)
+  const newUser = await prisma.user.create({
+    data: {
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      passwordHash,
+      accountType: 'INDIVIDUAL',
+      businessUsers: {
+        create: targetBusinessIds.map(bId => ({ businessId: bId, role: 'VIEWER' })),
+      },
+    },
+    select: { id: true, name: true, email: true, isActive: true, createdAt: true },
+  })
+
+  await logAudit({ userId: ownerId, businessId: targetBusinessIds[0], action: 'CREATE_TEAM_MEMBER', entity: 'User', entityId: newUser.id })
+  return NextResponse.json(newUser, { status: 201 })
 }

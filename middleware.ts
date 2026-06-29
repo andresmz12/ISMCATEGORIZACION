@@ -47,6 +47,8 @@ export const config = {
     '/usuarios/:path*',
     '/clasificar/:path*',
     '/auditoria/:path*',
+    '/documentos/:path*',
+    '/asignaciones/:path*',
     '/admin/:path*',
   ],
 }
