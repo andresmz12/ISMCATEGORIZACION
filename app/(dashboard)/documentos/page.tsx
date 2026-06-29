@@ -330,11 +330,11 @@ export default function DocumentosPage() {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
-                <input className="input w-full" placeholder="Ej: W-2, 1099, Estado de cuenta..." value={typeForm.name} onChange={e => setTypeForm(f => ({ ...f, name: e.target.value }))} />
+                <input className="input w-full" placeholder="Nombre del tipo de documento" value={typeForm.name} onChange={e => setTypeForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Descripción (opcional)</label>
-                <input className="input w-full" placeholder="Ej: Formulario de salarios del empleado" value={typeForm.description} onChange={e => setTypeForm(f => ({ ...f, description: e.target.value }))} />
+                <input className="input w-full" placeholder="Descripción del documento (opcional)" value={typeForm.description} onChange={e => setTypeForm(f => ({ ...f, description: e.target.value }))} />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={typeForm.required} onChange={e => setTypeForm(f => ({ ...f, required: e.target.checked }))} className="rounded" />
@@ -381,7 +381,7 @@ export default function DocumentosPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Notas (opcional)</label>
-                  <input className="input w-full" placeholder="Ej: Año fiscal 2024" value={uploadForm.notes} onChange={e => setUploadForm(f => ({ ...f, notes: e.target.value }))} />
+                  <input className="input w-full" placeholder="Notas adicionales (opcional)" value={uploadForm.notes} onChange={e => setUploadForm(f => ({ ...f, notes: e.target.value }))} />
                 </div>
                 {uploadError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{uploadError}</p>}
               </div>
