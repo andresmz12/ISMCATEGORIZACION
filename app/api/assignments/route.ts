@@ -89,7 +89,10 @@ export async function POST(req: Request) {
       title: assignment.title,
       description: assignment.description,
       dueDate: assignment.dueDate,
-    }).catch(err => console.error('[email] assignment notification failed:', err))
+    }).catch(err => {
+      const detail = err?.response?.body || err?.message || err
+      console.error('[email] assignment notification failed:', JSON.stringify(detail))
+    })
   }
 
   return NextResponse.json(assignment, { status: 201 })

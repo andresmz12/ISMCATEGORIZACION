@@ -17,6 +17,7 @@ export async function sendAssignmentEmail(opts: {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 
   const from = process.env.SENDGRID_FROM || 'noreply@myprofitandloss.com'
+  console.log('[email] Sending assignment email to:', opts.to, 'from:', from)
 
   const dueLine = opts.dueDate
     ? `<p><strong>Fecha límite:</strong> ${new Date(opts.dueDate).toLocaleDateString('es-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
