@@ -165,18 +165,14 @@ export default function ImportPage() {
       const cols: string[] = []
       ws.eachRow((row, rowNum) => {
         if (cols.length >= 3) return
-        const cells: string[] = []
-        row.eachCell((cell) => {
-          const v = String(cell.value ?? '').trim()
-          if (v) cells.push(v)
-        })
-        if (cells.length >= 3) {
+        // Count non-empty cells to find the header row
+        let nonEmpty = 0
+        row.eachCell({ includeEmpty: false }, () => { nonEmpty++ })
+        if (nonEmpty >= 3) {
           headerRowNum = rowNum
           setHeaderRowNum(rowNum)
-          // Rebuild with includeEmpty to preserve column positions
-          const fullCols: string[] = []
-          row.eachCell({ includeEmpty: true }, (cell) => fullCols.push(String(cell.value ?? '')))
-          cols.push(...fullCols)
+          // Use includeEmpty to preserve column positions (critical for alignment)
+          row.eachCell({ includeEmpty: true }, (cell) => cols.push(String(cell.value ?? '').trim()))
         }
       })
       // Fallback to row 1 if nothing found

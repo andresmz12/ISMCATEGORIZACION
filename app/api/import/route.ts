@@ -103,21 +103,30 @@ export async function POST(req: Request) {
 
     if (ext === 'csv') {
       const { parse } = await import('csv-parse/sync')
-      const parsed = parse(buffer.toString(), { columns: true, skip_empty_lines: true, trim: true })
+      // Auto-detect delimiter: try comma first, fall back to semicolon
+      const csvText = buffer.toString()
+      const firstLine = csvText.split('\n')[0] || ''
+      const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ','
+      const parsed = parse(csvText, { columns: true, skip_empty_lines: true, trim: true, delimiter, relax_quotes: true })
       rows = parsed
     } else if (ext === 'xlsx' || ext === 'xls') {
       const ExcelJS = await import('exceljs')
       const wb = new ExcelJS.Workbook()
       await wb.xlsx.load(buffer as any)
       const ws = wb.worksheets[0]
+      // Use includeEmpty so colNum indices stay aligned with header positions
       const headers: string[] = []
-      ws.getRow(headerRow).eachCell((cell) => headers.push(String(cell.value ?? '')))
+      ws.getRow(headerRow).eachCell({ includeEmpty: true }, (cell) => {
+        headers.push(String(cell.value ?? '').trim())
+      })
       ws.eachRow((row, rowNum) => {
         if (rowNum <= headerRow) return
         const rowObj: Record<string, unknown> = {}
-        row.eachCell((cell, colNum) => {
+        row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+          const header = headers[colNum - 1]
+          if (!header) return
           // Preserve Date objects so parseDate can use them directly
-          rowObj[headers[colNum - 1]] = cell.value instanceof Date ? cell.value : String(cell.value ?? '')
+          rowObj[header] = cell.value instanceof Date ? cell.value : String(cell.value ?? '')
         })
         rows.push(rowObj)
       })
