@@ -46,7 +46,7 @@ export async function GET() {
   const checks: Record<string, any> = {
     timestamp: new Date().toISOString(),
     status: 'starting',
-    app: 'Report System',
+    app: 'My Profit and Loss',
     results: {},
   }
 
