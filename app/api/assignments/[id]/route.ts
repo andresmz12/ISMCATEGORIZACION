@@ -62,6 +62,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       business: { select: { name: true } },
       assignedTo: { select: { name: true, email: true } },
       createdBy: { select: { name: true, email: true } },
+      notes: {
+        include: { user: { select: { id: true, name: true, email: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
     },
   })
 
@@ -82,6 +86,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       title: updated.title,
       description: updated.description,
       dueDate: updated.dueDate,
+      isReassignment: true,
     }).catch(err => console.error('[email] assignment notification failed:', err))
   }
 

@@ -24,6 +24,7 @@ const PLAN_FEATURES = {
       '✗ Escaneo de recibos',
       '✗ Reglas aprendidas por IA',
       '✗ Exportación PDF / Excel',
+      '✗ Conexión bancaria Plaid',
     ],
   },
   PLUS: {
@@ -40,6 +41,7 @@ const PLAN_FEATURES = {
       '✓ Escaneo de recibos (IA)',
       '✓ Reportes completos P&L',
       '✓ Exportación PDF y Excel',
+      '✓ Conexión bancaria Plaid',
       '✗ Negocios ilimitados',
       '✗ Soporte prioritario',
     ],
@@ -58,6 +60,7 @@ const PLAN_FEATURES = {
       '✓ Escaneo de recibos (IA)',
       '✓ Reportes completos P&L',
       '✓ Exportación PDF y Excel',
+      '✓ Conexión bancaria Plaid',
       '✓ Acceso multi-usuario (contador)',
       '✓ Soporte prioritario',
     ],

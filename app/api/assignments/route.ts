@@ -29,6 +29,10 @@ export async function GET(req: Request) {
       business: { select: { name: true } },
       assignedTo: { select: { id: true, name: true, email: true } },
       createdBy: { select: { id: true, name: true, email: true } },
+      notes: {
+        include: { user: { select: { id: true, name: true, email: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
     },
     orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
   })
