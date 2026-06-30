@@ -441,6 +441,31 @@ const es = {
 
   // Common extras II
   'common.operationError': 'Error en la operación',
+
+  // Nav - Plaid
+  'nav.plaid': 'Conexión Bancaria',
+
+  // Plaid
+  'plaid.title': 'Conexión Bancaria',
+  'plaid.subtitle': 'Conecta tus cuentas bancarias de EE.UU. y sincroniza transacciones automáticamente.',
+  'plaid.connect': 'Conectar cuenta bancaria',
+  'plaid.sync': 'Sincronizar',
+  'plaid.syncing': 'Sincronizando...',
+  'plaid.disconnect': 'Desconectar',
+  'plaid.disconnecting': 'Desconectando...',
+  'plaid.noConnections': 'No hay cuentas bancarias conectadas.',
+  'plaid.lastSync': 'Última sincronización: {date}',
+  'plaid.neverSynced': 'Sin sincronizar aún',
+  'plaid.syncDone': 'Sincronizado: {imported} nuevas, {duplicates} duplicadas',
+  'plaid.disconnectConfirm': '¿Desconectar {name}? Las transacciones importadas se conservarán.',
+  'plaid.upgradeTitle': 'Conexión bancaria directa con Plaid',
+  'plaid.upgradeDesc': 'Conecta tus cuentas de banco y sincroniza transacciones sin importar archivos CSV. Disponible en planes PLUS y ENTERPRISE.',
+  'plaid.upgradeBtn': 'Actualizar plan',
+  'plaid.connectError': 'Error al conectar con el banco',
+  'plaid.disconnectError': 'Error al desconectar',
+  'plaid.syncError': 'Error al sincronizar',
+  'plaid.accounts': '{n} cuenta(s)',
+  'plaid.premiumBadge': 'PLUS / ENTERPRISE',
 } as const
 
 export type TranslationKey = keyof typeof es

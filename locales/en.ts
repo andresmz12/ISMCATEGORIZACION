@@ -441,6 +441,31 @@ const en = {
 
   // Common extras II
   'common.operationError': 'Error in operation',
+
+  // Nav - Plaid
+  'nav.plaid': 'Bank Connection',
+
+  // Plaid
+  'plaid.title': 'Bank Connection',
+  'plaid.subtitle': 'Connect your U.S. bank accounts and sync transactions automatically.',
+  'plaid.connect': 'Connect bank account',
+  'plaid.sync': 'Sync',
+  'plaid.syncing': 'Syncing...',
+  'plaid.disconnect': 'Disconnect',
+  'plaid.disconnecting': 'Disconnecting...',
+  'plaid.noConnections': 'No bank accounts connected.',
+  'plaid.lastSync': 'Last sync: {date}',
+  'plaid.neverSynced': 'Never synced',
+  'plaid.syncDone': 'Synced: {imported} new, {duplicates} duplicates',
+  'plaid.disconnectConfirm': 'Disconnect {name}? Imported transactions will be kept.',
+  'plaid.upgradeTitle': 'Direct bank connection with Plaid',
+  'plaid.upgradeDesc': 'Connect your bank accounts and sync transactions without uploading CSV files. Available on PLUS and ENTERPRISE plans.',
+  'plaid.upgradeBtn': 'Upgrade plan',
+  'plaid.connectError': 'Error connecting to bank',
+  'plaid.disconnectError': 'Error disconnecting',
+  'plaid.syncError': 'Error syncing',
+  'plaid.accounts': '{n} account(s)',
+  'plaid.premiumBadge': 'PLUS / ENTERPRISE',
 } as const
 
 export type TranslationKey = keyof typeof en

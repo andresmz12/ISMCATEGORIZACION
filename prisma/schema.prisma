@@ -119,14 +119,15 @@ model Business {
   taxYear      Int?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
-  users          BusinessUser[]
-  transactions   Transaction[]
-  categories     Category[]
-  bankMappings   BankFormatMapping[]
-  rules          ClassificationRule[]
-  documentTypes  DocumentType[]
-  documents      Document[]
-  assignments    Assignment[]
+  users            BusinessUser[]
+  transactions     Transaction[]
+  categories       Category[]
+  bankMappings     BankFormatMapping[]
+  rules            ClassificationRule[]
+  documentTypes    DocumentType[]
+  documents        Document[]
+  assignments      Assignment[]
+  plaidConnections PlaidConnection[]
 }
 
 model BusinessUser {
@@ -154,21 +155,23 @@ model Transaction {
   method        ClassMethod?
   aiConfidence  String?
   aiSuggestion  String?
-  notes         String?
-  sourceFile    String?
-  checksum      String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  business      Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category      Category?         @relation(fields: [categoryId], references: [id])
-  splits        TransactionSplit[]
-  receipts      Receipt[]
+  notes              String?
+  sourceFile         String?
+  checksum           String?
+  plaidTransactionId String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  business           Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category           Category?         @relation(fields: [categoryId], references: [id])
+  splits             TransactionSplit[]
+  receipts           Receipt[]
 
   @@index([businessId, status])
   @@index([businessId, date])
   @@index([businessId, categoryId])
   @@index([categoryId])
   @@index([checksum])
+  @@index([plaidTransactionId])
 }
 
 model TransactionSplit {
@@ -308,4 +311,32 @@ model AuditLog {
   @@index([userId])
   @@index([businessId])
   @@index([createdAt])
+}
+
+model PlaidConnection {
+  id              String        @id @default(cuid())
+  businessId      String
+  accessToken     String
+  itemId          String
+  institutionName String
+  cursor          String?
+  lastSyncAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  accounts        PlaidAccount[]
+
+  @@index([businessId])
+}
+
+model PlaidAccount {
+  id           String          @id @default(cuid())
+  connectionId String
+  plaidId      String
+  name         String
+  mask         String?
+  type         String
+  connection   PlaidConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, plaidId])
 }
