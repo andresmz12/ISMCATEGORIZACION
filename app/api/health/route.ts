@@ -63,8 +63,8 @@ export async function GET() {
     if (elapsedMs > 0) {
       const userDelta = currentSnapshot.user - lastCpuSnapshot.user
       const systemDelta = currentSnapshot.system - lastCpuSnapshot.system
-      const elapsedMicros = elapsedMs * 1000
-      cpuUsage = Math.round(((userDelta + systemDelta) / elapsedMicros) * 1000) / 10
+      const cpuCount = os.cpus().length || 1
+      cpuUsage = Math.round(((userDelta + systemDelta) / (elapsedMs * 1000 * cpuCount)) * 100 * 10) / 10
     }
     lastCpuSnapshot = currentSnapshot
     lastCpuTime = now
