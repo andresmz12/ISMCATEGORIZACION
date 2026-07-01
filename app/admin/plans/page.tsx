@@ -32,14 +32,14 @@ const PLAN_FEATURES = {
     color: 'border-blue-400',
     badge: 'bg-blue-100 text-blue-700',
     features: [
-      '✓ Hasta 3 negocios',
+      '✓ Hasta 5 negocios',
       '✓ Importación CSV y XLSX',
       '✓ Clasificación automática con IA',
       '✓ Escaneo de recibos (OCR)',
       '✓ Reportes y exportación PDF / Excel',
       '✓ Conexión bancaria Plaid',
       '✓ Multi-usuario',
-      '✗ Más de 3 negocios',
+      '✗ Más de 5 negocios',
     ],
   },
   ENTERPRISE: {
