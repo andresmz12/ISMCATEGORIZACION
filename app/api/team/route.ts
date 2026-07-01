@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   // Get all users on those businesses, excluding the current user
   const members = await prisma.businessUser.findMany({
     where: { businessId: { in: businessIds }, userId: { not: ownerId } },
-    include: { user: { select: { id: true, name: true, email: true, isActive: true, lastLogin: true, createdAt: true } } },
+    include: { user: { select: { id: true, name: true, email: true, isActive: true, lastLogin: true, createdAt: true, accountType: true } } },
     distinct: ['userId'],
   })
 

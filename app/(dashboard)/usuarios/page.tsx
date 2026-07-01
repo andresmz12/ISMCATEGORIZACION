@@ -8,6 +8,8 @@ interface TeamMember {
   isActive: boolean
   lastLogin: string | null
   createdAt: string
+  accountType: string
+  role: string
 }
 
 export default function UsuariosPage() {
@@ -113,6 +115,7 @@ export default function UsuariosPage() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Nombre</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Tipo</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Correo</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estado</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Último acceso</th>
@@ -156,6 +159,11 @@ export default function UsuariosPage() {
                   ) : (
                     <>
                       <td className="px-4 py-3 font-medium text-gray-800">{m.name}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.accountType === 'TEAM_MEMBER' ? 'bg-purple-100 text-purple-700' : m.accountType === 'SUPERADMIN' ? 'bg-red-100 text-red-700' : 'bg-[#1B4965]/10 text-[#1B4965]'}`}>
+                          {m.accountType === 'TEAM_MEMBER' ? 'Miembro de equipo' : m.accountType === 'SUPERADMIN' ? 'Superadmin' : 'Contador'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-gray-500">{m.email}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
