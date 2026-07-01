@@ -41,8 +41,6 @@ const es = {
   'register.step1.subtitle': 'Elige el tipo de cuenta que mejor se adapte a ti',
   'register.accountant.label': 'Soy contador / bookkeeper',
   'register.accountant.desc': 'Administra múltiples clientes y negocios desde un solo lugar',
-  'register.individual.label': 'Manejo mi propio negocio',
-  'register.individual.desc': 'Gestiona las finanzas de tu empresa de manera sencilla',
   'register.step2.title': 'Información de tu cuenta',
   'register.step3a.title': 'Configura tu negocio',
   'register.step3b.title': 'Configura tu firma',
@@ -110,7 +108,7 @@ const es = {
   'admin.title': 'Panel de Administración',
   'admin.totalAccounts': 'Total cuentas',
   'admin.totalAccountants': 'Contadores',
-  'admin.totalIndividuals': 'Individuales',
+  'admin.totalTeamMembers': 'Miembros de equipo',
   'admin.totalBusinesses': 'Negocios',
   'admin.totalTx': 'Transacciones',
   'admin.aiUsage': 'Clasificaciones IA',
@@ -139,7 +137,6 @@ const es = {
   'role.superadmin': 'Super Admin',
   'role.accountant': 'Contador',
   'role.team_member': 'Miembro de equipo',
-  'role.individual': 'Independiente',
 
   // Common
   'common.save': 'Guardar',

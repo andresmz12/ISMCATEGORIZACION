@@ -10,17 +10,13 @@ export async function POST(req: Request) {
   if (!rl.ok) return rateLimitResponse()
 
   try {
-    const { email, password, name, accountType, plan, firmName, businessName, industry, entityType } = await req.json()
+    const { email, password, name, plan, firmName } = await req.json()
 
     if (!email || !password) return NextResponse.json({ error: 'Email y contraseña requeridos' }, { status: 400 })
     if (!validateEmail(email)) return NextResponse.json({ error: 'Correo electrónico inválido' }, { status: 400 })
 
     const pwError = validatePassword(password)
     if (pwError) return NextResponse.json({ error: pwError }, { status: 400 })
-
-    if (!accountType || !['ACCOUNTANT', 'INDIVIDUAL'].includes(accountType)) {
-      return NextResponse.json({ error: 'Tipo de cuenta inválido' }, { status: 400 })
-    }
 
     const normalizedEmail = email.toLowerCase().trim()
     const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } })
@@ -33,26 +29,12 @@ export async function POST(req: Request) {
         email: normalizedEmail,
         passwordHash,
         name: (name || email.split('@')[0]).trim().slice(0, 100),
-        accountType: accountType as 'ACCOUNTANT' | 'INDIVIDUAL',
-        firmName: accountType === 'ACCOUNTANT' ? (firmName?.trim()?.slice(0, 100) || null) : null,
-        plan: (['BASIC', 'PLUS', 'ENTERPRISE'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE',
+        accountType: 'ACCOUNTANT',
+        firmName: firmName?.trim()?.slice(0, 100) || null,
+        plan: (['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE' | 'CUSTOM',
         isActive: true,
       },
     })
-
-    if (accountType === 'INDIVIDUAL' && businessName?.trim()) {
-      const biz = await prisma.business.create({
-        data: {
-          name: businessName.trim().slice(0, 100),
-          industry: industry || null,
-          entityType: entityType || null,
-          taxYear: new Date().getFullYear(),
-        },
-      })
-      await prisma.businessUser.create({
-        data: { userId: user.id, businessId: biz.id, role: 'OWNER' },
-      })
-    }
 
     return NextResponse.json({ ok: true, id: user.id, email: user.email })
   } catch (e: any) {

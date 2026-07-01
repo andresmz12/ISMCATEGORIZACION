@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Los miembros del equipo no pueden crear negocios' }, { status: 403 })
     }
 
-    if (accountType === 'INDIVIDUAL') {
+    if (accountType === 'ACCOUNTANT') {
       const limits = getPlanLimits(plan)
       const existing = await prisma.$queryRaw<{ count: number }[]>`
         SELECT COUNT(*)::integer as count FROM "BusinessUser" WHERE "userId" = ${userId}

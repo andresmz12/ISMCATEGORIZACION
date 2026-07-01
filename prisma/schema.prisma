@@ -10,7 +10,6 @@ datasource db {
 enum AccountType {
   SUPERADMIN
   ACCOUNTANT
-  INDIVIDUAL
   TEAM_MEMBER
 }
 
@@ -63,7 +62,7 @@ model User {
   passwordHash  String
   name          String?
   firmName      String?
-  accountType   AccountType    @default(INDIVIDUAL)
+  accountType   AccountType    @default(ACCOUNTANT)
   plan          Plan           @default(BASIC)
   isActive      Boolean        @default(true)
   lastLogin     DateTime?

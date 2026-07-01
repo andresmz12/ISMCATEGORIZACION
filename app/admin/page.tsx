@@ -17,13 +17,13 @@ interface User {
 interface Metrics {
   totalAccounts: number
   totalAccountants: number
-  totalIndividuals: number
+  totalTeamMembers: number
   totalBusinesses: number
   totalTx: number
   aiUsage: number
 }
 
-const EMPTY_FORM = { name: '', email: '', password: '', accountType: 'INDIVIDUAL', plan: 'BASIC', businessName: '', firmName: '' }
+const EMPTY_FORM = { name: '', email: '', password: '', plan: 'BASIC', firmName: '' }
 
 export default function AdminPage() {
   const { t } = useTranslation()
@@ -152,10 +152,8 @@ export default function AdminPage() {
         name: form.name,
         email: form.email,
         password: form.password,
-        accountType: form.accountType,
         plan: form.plan,
-        businessName: form.accountType === 'INDIVIDUAL' ? form.businessName : undefined,
-        firmName: form.accountType === 'ACCOUNTANT' ? form.firmName : undefined,
+        firmName: form.firmName,
       }),
     })
     const data = await res.json()
@@ -178,7 +176,6 @@ export default function AdminPage() {
   const typeBadge: Record<string, string> = {
     SUPERADMIN: 'bg-red-100 text-red-700',
     ACCOUNTANT: 'bg-[#1B4965]/10 text-[#1B4965]',
-    INDIVIDUAL: 'bg-emerald-100 text-emerald-700',
     TEAM_MEMBER: 'bg-purple-100 text-purple-700',
   }
 
@@ -203,7 +200,7 @@ export default function AdminPage() {
           {[
             { label: t('admin.totalAccounts'), value: metrics.totalAccounts },
             { label: t('admin.totalAccountants'), value: metrics.totalAccountants },
-            { label: t('admin.totalIndividuals'), value: metrics.totalIndividuals },
+            { label: t('admin.totalTeamMembers'), value: metrics.totalTeamMembers },
             { label: t('admin.totalBusinesses'), value: metrics.totalBusinesses },
             { label: t('admin.totalTx'), value: metrics.totalTx },
             { label: t('admin.aiUsage'), value: metrics.aiUsage },
@@ -228,7 +225,7 @@ export default function AdminPage() {
           <select className="input text-sm" value={filterType} onChange={e => setFilterType(e.target.value)}>
             <option value="">{t('admin.allTypes')}</option>
             <option value="ACCOUNTANT">{t('role.accountant')}</option>
-            <option value="INDIVIDUAL">{t('role.individual')}</option>
+            <option value="TEAM_MEMBER">{t('role.team_member')}</option>
           </select>
           <select className="input text-sm" value={filterPlan} onChange={e => setFilterPlan(e.target.value)}>
             <option value="">{t('admin.allPlans')}</option>
@@ -272,7 +269,7 @@ export default function AdminPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeBadge[user.accountType] || ''}`}>
-                        {user.accountType === 'SUPERADMIN' ? t('role.superadmin') : user.accountType === 'ACCOUNTANT' ? t('role.accountant') : user.accountType === 'TEAM_MEMBER' ? t('role.team_member') : t('role.individual')}
+                        {user.accountType === 'SUPERADMIN' ? t('role.superadmin') : user.accountType === 'TEAM_MEMBER' ? t('role.team_member') : t('role.accountant')}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -438,8 +435,8 @@ export default function AdminPage() {
                     value={editForm.accountType}
                     onChange={e => setEditForm(f => ({ ...f, accountType: e.target.value }))}
                   >
-                    <option value="INDIVIDUAL">Independiente</option>
                     <option value="ACCOUNTANT">Contador</option>
+                    <option value="TEAM_MEMBER">Miembro de equipo</option>
                     <option value="SUPERADMIN">Superadmin</option>
                   </select>
                 </div>
@@ -486,23 +483,14 @@ export default function AdminPage() {
                 <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">{createError}</div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de cuenta</label>
-                  <select className={inputCls} value={form.accountType} onChange={e => setForm(f => ({ ...f, accountType: e.target.value }))}>
-                    <option value="INDIVIDUAL">Independiente</option>
-                    <option value="ACCOUNTANT">Contador</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Plan</label>
-                  <select className={inputCls} value={form.plan} onChange={e => setForm(f => ({ ...f, plan: e.target.value }))}>
-                    <option value="BASIC">Basic</option>
-                    <option value="PLUS">Plus</option>
-                    <option value="ENTERPRISE">Enterprise</option>
-                    <option value="CUSTOM">Custom</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Plan</label>
+                <select className={inputCls} value={form.plan} onChange={e => setForm(f => ({ ...f, plan: e.target.value }))}>
+                  <option value="BASIC">Basic</option>
+                  <option value="PLUS">Plus</option>
+                  <option value="ENTERPRISE">Enterprise</option>
+                  <option value="CUSTOM">Custom</option>
+                </select>
               </div>
 
               <div>
@@ -521,18 +509,10 @@ export default function AdminPage() {
                 <p className="text-xs text-gray-400 mt-1">Mínimo 8 caracteres, una mayúscula y un número</p>
               </div>
 
-              {form.accountType === 'INDIVIDUAL' && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre del negocio</label>
-                  <input className={inputCls} value={form.businessName} onChange={e => setForm(f => ({ ...f, businessName: e.target.value }))} placeholder="Mi Empresa LLC" />
-                </div>
-              )}
-              {form.accountType === 'ACCOUNTANT' && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Nombre del despacho</label>
-                  <input className={inputCls} value={form.firmName} onChange={e => setForm(f => ({ ...f, firmName: e.target.value }))} placeholder="García & Asociados" />
-                </div>
-              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Nombre del despacho (opcional)</label>
+                <input className={inputCls} value={form.firmName} onChange={e => setForm(f => ({ ...f, firmName: e.target.value }))} placeholder="García & Asociados" />
+              </div>
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowCreate(false)} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">

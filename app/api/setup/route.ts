@@ -129,7 +129,7 @@ export async function GET(req: Request) {
         email: 'usuario@demo.com',
         passwordHash: indHash,
         name: 'Maria Emprendedora',
-        accountType: 'INDIVIDUAL',
+        accountType: 'ACCOUNTANT',
         plan: 'BASIC',
         isActive: true,
       },

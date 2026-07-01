@@ -16,7 +16,8 @@ export default function NegociosPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const accountType = (session?.user as any)?.accountType
-  const isIndividual = accountType === 'INDIVIDUAL'
+  const plan = (session?.user as any)?.plan || 'BASIC'
+  const bizLimit = plan === 'CUSTOM' ? Infinity : plan === 'ENTERPRISE' ? 20 : plan === 'PLUS' ? 5 : 1
 
   const [businesses, setBusinesses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -199,9 +200,15 @@ export default function NegociosPage() {
         </div>
       )}
 
-      {isIndividual && businesses.length >= 1 ? (
+      {accountType === 'ACCOUNTANT' && businesses.length >= bizLimit ? (
         <div className="card p-4 bg-amber-50 border-amber-100">
-          <p className="text-sm text-amber-700">El plan Independiente incluye un solo negocio. Para agregar más, actualiza a <span className="font-semibold">Plus o Enterprise</span>.</p>
+          <p className="text-sm text-amber-700">
+            Tu plan <span className="font-semibold">{plan}</span> permite hasta {bizLimit === Infinity ? 'negocios ilimitados' : `${bizLimit} negocio(s)`}. Para agregar más, actualiza a un plan superior.
+          </p>
+        </div>
+      ) : accountType === 'TEAM_MEMBER' ? (
+        <div className="card p-4 bg-amber-50 border-amber-100">
+          <p className="text-sm text-amber-700">Los miembros del equipo no pueden crear negocios. Contacta al administrador de tu despacho.</p>
         </div>
       ) : (
         <div className="card p-5">

@@ -17,9 +17,9 @@ export async function DELETE(req: Request) {
   if (!await checkBusinessAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-  if (accountType === 'INDIVIDUAL') {
-    const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
-    if (bu?.role !== 'OWNER') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const bu = await prisma.businessUser.findUnique({ where: { userId_businessId: { userId, businessId } } })
+  if (accountType !== 'SUPERADMIN' && bu?.role !== 'OWNER') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const { count } = await prisma.auditLog.deleteMany({ where: { businessId } })

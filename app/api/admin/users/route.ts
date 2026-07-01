@@ -35,12 +35,9 @@ export async function POST(req: Request) {
   if (!await isSuperAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
-    const { email, password, name, accountType, plan, businessName, firmName } = await req.json()
+    const { email, password, name, plan, firmName } = await req.json()
 
     if (!email || !password) return NextResponse.json({ error: 'Email y contraseña requeridos' }, { status: 400 })
-    if (!accountType || !['ACCOUNTANT', 'INDIVIDUAL'].includes(accountType)) {
-      return NextResponse.json({ error: 'Tipo de cuenta inválido' }, { status: 400 })
-    }
     if (password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 })
     if (!/[A-Z]/.test(password)) return NextResponse.json({ error: 'La contraseña debe incluir al menos una letra mayúscula' }, { status: 400 })
     if (!/[0-9]/.test(password)) return NextResponse.json({ error: 'La contraseña debe incluir al menos un número' }, { status: 400 })
@@ -55,19 +52,12 @@ export async function POST(req: Request) {
         email: normalizedEmail,
         passwordHash,
         name: (name || normalizedEmail.split('@')[0]).trim().slice(0, 100),
-        accountType: accountType as 'ACCOUNTANT' | 'INDIVIDUAL',
-        firmName: accountType === 'ACCOUNTANT' ? (firmName?.trim()?.slice(0, 100) || null) : null,
-        plan: (['BASIC', 'PLUS', 'ENTERPRISE'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE',
+        accountType: 'ACCOUNTANT',
+        firmName: firmName?.trim()?.slice(0, 100) || null,
+        plan: (['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE' | 'CUSTOM',
         isActive: true,
       },
     })
-
-    if (accountType === 'INDIVIDUAL' && businessName?.trim()) {
-      const biz = await prisma.business.create({
-        data: { name: businessName.trim().slice(0, 100), taxYear: new Date().getFullYear() },
-      })
-      await prisma.businessUser.create({ data: { userId: user.id, businessId: biz.id, role: 'OWNER' } })
-    }
 
     return NextResponse.json({ ok: true, id: user.id, email: user.email })
   } catch (e: any) {

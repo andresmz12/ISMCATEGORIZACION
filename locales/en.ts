@@ -41,8 +41,6 @@ const en = {
   'register.step1.subtitle': 'Choose the account type that best fits you',
   'register.accountant.label': "I'm an accountant / bookkeeper",
   'register.accountant.desc': 'Manage multiple clients and businesses from one place',
-  'register.individual.label': 'I manage my own business',
-  'register.individual.desc': 'Manage your company finances the easy way',
   'register.step2.title': 'Your account information',
   'register.step3a.title': 'Set up your business',
   'register.step3b.title': 'Set up your firm',
@@ -110,7 +108,7 @@ const en = {
   'admin.title': 'Administration Panel',
   'admin.totalAccounts': 'Total accounts',
   'admin.totalAccountants': 'Accountants',
-  'admin.totalIndividuals': 'Individuals',
+  'admin.totalTeamMembers': 'Team members',
   'admin.totalBusinesses': 'Businesses',
   'admin.totalTx': 'Transactions',
   'admin.aiUsage': 'AI Classifications',
@@ -139,7 +137,6 @@ const en = {
   'role.superadmin': 'Super Admin',
   'role.accountant': 'Accountant',
   'role.team_member': 'Team member',
-  'role.individual': 'Individual',
 
   // Common
   'common.save': 'Save',

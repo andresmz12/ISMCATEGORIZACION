@@ -118,7 +118,7 @@ async function main() {
   })
   console.log('✓ 2 businesses created for contador')
 
-  // USUARIO INDEPENDIENTE demo (plan BASIC, 1 business)
+  // USUARIO demo con plan BASIC y 1 business
   const individualHash = await bcrypt.hash('password123', 12)
   const individual = await prisma.user.upsert({
     where: { email: 'usuario@demo.com' },
@@ -127,12 +127,12 @@ async function main() {
       email: 'usuario@demo.com',
       passwordHash: individualHash,
       name: 'Maria Emprendedora',
-      accountType: AccountType.INDIVIDUAL,
+      accountType: AccountType.ACCOUNTANT,
       plan: Plan.BASIC,
       isActive: true,
     },
   })
-  console.log('✓ Individual: usuario@demo.com / password123')
+  console.log('✓ Usuario demo: usuario@demo.com / password123')
 
   const biz3 = await prisma.business.upsert({
     where: { id: 'biz_boutique_demo' },

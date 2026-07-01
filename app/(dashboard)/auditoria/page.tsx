@@ -76,7 +76,7 @@ export default function AuditoriaPage() {
   const [clearing, setClearing] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
 
-  const canClear = accountType === 'SUPERADMIN' || accountType === 'ACCOUNTANT' || (accountType === 'INDIVIDUAL' && activeRole === 'OWNER')
+  const canClear = accountType === 'SUPERADMIN' || (accountType === 'ACCOUNTANT' && activeRole === 'OWNER')
 
   async function clearAudit() {
     if (!businessId) return

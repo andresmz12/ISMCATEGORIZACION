@@ -14,10 +14,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const data: Record<string, any> = {}
 
   if (typeof body.isActive === 'boolean') data.isActive = body.isActive
-  if (body.plan && ['BASIC', 'PLUS', 'ENTERPRISE'].includes(body.plan)) data.plan = body.plan
+  if (body.plan && ['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(body.plan)) data.plan = body.plan
   if (body.name !== undefined) data.name = body.name
   if (body.email && typeof body.email === 'string') data.email = body.email.toLowerCase().trim()
-  if (body.accountType && ['INDIVIDUAL', 'ACCOUNTANT', 'SUPERADMIN'].includes(body.accountType)) data.accountType = body.accountType
+  if (body.accountType && ['ACCOUNTANT', 'SUPERADMIN', 'TEAM_MEMBER'].includes(body.accountType)) data.accountType = body.accountType
   if (body.password && body.password.length >= 8) {
     data.passwordHash = await bcrypt.hash(body.password, 12)
   }

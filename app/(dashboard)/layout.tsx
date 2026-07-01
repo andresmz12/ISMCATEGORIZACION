@@ -88,11 +88,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const roleLabel = accountType === 'SUPERADMIN'
     ? t('role.superadmin')
-    : accountType === 'ACCOUNTANT'
-      ? t('role.accountant')
-      : (activeRole === 'VIEWER' || activeRole === 'MANAGER')
-        ? 'Miembro del equipo'
-        : t('role.individual')
+    : accountType === 'TEAM_MEMBER'
+      ? t('role.team_member')
+      : t('role.accountant')
 
   const SidebarContent = ({ isCollapsed = false }: { isCollapsed?: boolean }) => (
     <div className="flex flex-col h-full">

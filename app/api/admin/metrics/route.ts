@@ -9,14 +9,14 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const [totalAccounts, totalAccountants, totalIndividuals, totalBusinesses, totalTx, aiUsage] = await Promise.all([
+  const [totalAccounts, totalAccountants, totalTeamMembers, totalBusinesses, totalTx, aiUsage] = await Promise.all([
     prisma.user.count({ where: { accountType: { not: 'SUPERADMIN' } } }),
     prisma.user.count({ where: { accountType: 'ACCOUNTANT' } }),
-    prisma.user.count({ where: { accountType: 'INDIVIDUAL' } }),
+    prisma.user.count({ where: { accountType: 'TEAM_MEMBER' } }),
     prisma.business.count(),
     prisma.transaction.count(),
     prisma.transaction.count({ where: { method: 'AI' } }),
   ])
 
-  return NextResponse.json({ totalAccounts, totalAccountants, totalIndividuals, totalBusinesses, totalTx, aiUsage })
+  return NextResponse.json({ totalAccounts, totalAccountants, totalTeamMembers, totalBusinesses, totalTx, aiUsage })
 }
