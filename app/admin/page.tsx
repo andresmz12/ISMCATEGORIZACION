@@ -234,6 +234,7 @@ export default function AdminPage() {
             <option value="BASIC">{t('plan.basic')}</option>
             <option value="PLUS">{t('plan.plus')}</option>
             <option value="ENTERPRISE">{t('plan.enterprise')}</option>
+            <option value="CUSTOM">{t('plan.custom')}</option>
           </select>
           <select className="input text-sm" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">{t('admin.allStatus')}</option>
@@ -283,6 +284,7 @@ export default function AdminPage() {
                         <option value="BASIC">{t('plan.basic')}</option>
                         <option value="PLUS">{t('plan.plus')}</option>
                         <option value="ENTERPRISE">{t('plan.enterprise')}</option>
+                        <option value="CUSTOM">{t('plan.custom')}</option>
                       </select>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{user._count?.businessUsers ?? 0}</td>
@@ -450,6 +452,7 @@ export default function AdminPage() {
                     <option value="BASIC">Basic</option>
                     <option value="PLUS">Plus</option>
                     <option value="ENTERPRISE">Enterprise</option>
+                    <option value="CUSTOM">Custom</option>
                   </select>
                 </div>
               </div>
@@ -496,6 +499,7 @@ export default function AdminPage() {
                     <option value="BASIC">Basic</option>
                     <option value="PLUS">Plus</option>
                     <option value="ENTERPRISE">Enterprise</option>
+                    <option value="CUSTOM">Custom</option>
                   </select>
                 </div>
               </div>

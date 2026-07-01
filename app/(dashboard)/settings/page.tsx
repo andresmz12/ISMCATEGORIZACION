@@ -67,7 +67,7 @@ export default function SettingsPage() {
     toast(t('settings.passwordChanged'), 'success')
   }
 
-  const planLabels: Record<string, string> = { BASIC: t('plan.basic'), PLUS: t('plan.plus'), ENTERPRISE: t('plan.enterprise') }
+  const planLabels: Record<string, string> = { BASIC: t('plan.basic'), PLUS: t('plan.plus'), ENTERPRISE: t('plan.enterprise'), CUSTOM: t('plan.custom') }
   const accountLabels: Record<string, string> = { INDIVIDUAL: t('role.individual'), ACCOUNTANT: t('role.accountant'), SUPERADMIN: t('role.superadmin') }
 
   return (

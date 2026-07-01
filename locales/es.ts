@@ -133,6 +133,7 @@ const es = {
   'plan.basic': 'Básico',
   'plan.plus': 'Plus',
   'plan.enterprise': 'Enterprise',
+  'plan.custom': 'Custom',
 
   // Role
   'role.superadmin': 'Super Admin',
