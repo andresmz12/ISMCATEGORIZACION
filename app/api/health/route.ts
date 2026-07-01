@@ -1,36 +1,48 @@
 import { NextResponse } from 'next/server'
-import os from 'os'
 import { prisma } from '@/lib/prisma'
 
 export async function GET() {
-  let databaseConnected = true
-  let consecutiveFailures = 0
-
-  try {
-    await prisma.$queryRaw`SELECT 1`
-  } catch {
-    databaseConnected = false
-    consecutiveFailures++
+  const checks: { database: 'ok' | 'error'; calculations: 'ok' | 'error' } = {
+    database: 'ok',
+    calculations: 'ok',
   }
 
-  const totalMem = os.totalmem()
-  const freeMem = os.freemem()
-  const memoryUsage = Math.round(((totalMem - freeMem) / totalMem) * 100 * 10) / 10
+  const metrics = {
+    activeUsers: 0,
+    portfolios: 0,
+    lastCalculation: null as string | null,
+  }
 
-  const loadAvg = os.loadavg()[0]
-  const numCpus = os.cpus().length
-  const cpuUsage = Math.min(Math.round((loadAvg / numCpus) * 100 * 10) / 10, 100)
+  try {
+    const [activeUsers, portfolios] = await Promise.all([
+      prisma.user.count({ where: { isActive: true } }),
+      prisma.business.count(),
+    ])
+    metrics.activeUsers = activeUsers
+    metrics.portfolios = portfolios
+  } catch {
+    checks.database = 'error'
+  }
 
-  const errorRate = Math.round((consecutiveFailures / 1) * 100 * 10) / 10
-  const status = databaseConnected ? 'ok' : 'error'
+  try {
+    const lastTx = await prisma.transaction.findFirst({
+      where: { status: 'CLASSIFIED' },
+      orderBy: { updatedAt: 'desc' },
+      select: { updatedAt: true },
+    })
+    metrics.lastCalculation = lastTx?.updatedAt?.toISOString() ?? null
+  } catch {
+    checks.calculations = 'error'
+  }
+
+  const status = checks.database === 'ok' && checks.calculations === 'ok' ? 'ok' : 'error'
 
   return NextResponse.json({
     status,
-    errorRate,
-    consecutiveFailures,
-    databaseConnected,
-    memoryUsage,
-    cpuUsage,
+    app: 'My Profit',
+    version: '1.0',
     timestamp: new Date().toISOString(),
+    checks,
+    metrics,
   })
 }

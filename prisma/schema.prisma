@@ -251,7 +251,7 @@ model Document {
   businessId     String
   documentTypeId String
   filename       String
-  url            String
+  data           String
   mimeType       String
   uploadedById   String
   notes          String?
