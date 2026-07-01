@@ -11,6 +11,7 @@ enum AccountType {
   SUPERADMIN
   ACCOUNTANT
   INDIVIDUAL
+  TEAM_MEMBER
 }
 
 enum Plan {

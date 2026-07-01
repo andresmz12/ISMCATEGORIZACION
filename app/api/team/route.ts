@@ -90,13 +90,16 @@ export async function POST(req: Request) {
   const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } })
   if (existing) return NextResponse.json({ error: 'Ya existe un usuario con ese correo' }, { status: 409 })
 
+  const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { plan: true } })
+
   const passwordHash = await bcrypt.hash(password, 12)
   const newUser = await prisma.user.create({
     data: {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       passwordHash,
-      accountType: 'INDIVIDUAL',
+      accountType: 'TEAM_MEMBER',
+      plan: owner?.plan ?? 'BASIC',
       businessUsers: {
         create: targetBusinessIds.map(bId => ({ businessId: bId, role: 'VIEWER' })),
       },

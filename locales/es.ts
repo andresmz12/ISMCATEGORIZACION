@@ -138,6 +138,7 @@ const es = {
   // Role
   'role.superadmin': 'Super Admin',
   'role.accountant': 'Contador',
+  'role.team_member': 'Miembro de equipo',
   'role.individual': 'Independiente',
 
   // Common

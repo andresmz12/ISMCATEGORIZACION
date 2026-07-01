@@ -179,6 +179,7 @@ export default function AdminPage() {
     SUPERADMIN: 'bg-red-100 text-red-700',
     ACCOUNTANT: 'bg-[#1B4965]/10 text-[#1B4965]',
     INDIVIDUAL: 'bg-emerald-100 text-emerald-700',
+    TEAM_MEMBER: 'bg-purple-100 text-purple-700',
   }
 
   const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#1B4965] focus:ring-2 focus:ring-[#1B4965]/10 transition-all'
@@ -271,7 +272,7 @@ export default function AdminPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeBadge[user.accountType] || ''}`}>
-                        {user.accountType === 'SUPERADMIN' ? t('role.superadmin') : user.accountType === 'ACCOUNTANT' ? t('role.accountant') : t('role.individual')}
+                        {user.accountType === 'SUPERADMIN' ? t('role.superadmin') : user.accountType === 'ACCOUNTANT' ? t('role.accountant') : user.accountType === 'TEAM_MEMBER' ? t('role.team_member') : t('role.individual')}
                       </span>
                     </td>
                     <td className="px-4 py-3">

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { requirePlanFeature } from '@/lib/plan-limits'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -13,6 +14,10 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const denied = requirePlanFeature(session, 'aiClassify')
+  if (denied) return denied
+
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
 

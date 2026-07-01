@@ -48,6 +48,10 @@ export async function POST(req: Request) {
     const { name, industry, entityType, taxYear } = await req.json()
     if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 })
 
+    if (accountType === 'TEAM_MEMBER') {
+      return NextResponse.json({ error: 'Los miembros del equipo no pueden crear negocios' }, { status: 403 })
+    }
+
     if (accountType === 'INDIVIDUAL') {
       const limits = getPlanLimits(plan)
       const existing = await prisma.$queryRaw<{ count: number }[]>`
