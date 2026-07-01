@@ -58,15 +58,15 @@ export async function GET() {
   // cpuUsage: CPU % consumed since the previous call (0–100)
   let cpuUsage: number | null = null
   try {
-    const currentSnapshot = process.cpuUsage()
-    const elapsedMs = now - lastCpuTime
-    if (elapsedMs > 0) {
-      const userDelta = currentSnapshot.user - lastCpuSnapshot.user
-      const systemDelta = currentSnapshot.system - lastCpuSnapshot.system
-      const cpuCount = os.cpus().length || 1
-      cpuUsage = Math.round(((userDelta + systemDelta) / (elapsedMs * 1000 * cpuCount)) * 100 * 10) / 10
+    const curr = process.cpuUsage()
+    const elapsed = now - lastCpuTime
+    if (elapsed > 0) {
+      const userDelta = curr.user - lastCpuSnapshot.user
+      const sysDelta = curr.system - lastCpuSnapshot.system
+      const raw = ((userDelta + sysDelta) / 1000 / elapsed) * 100
+      cpuUsage = Math.round(Math.min(100, Math.max(0, raw)) * 10) / 10
     }
-    lastCpuSnapshot = currentSnapshot
+    lastCpuSnapshot = curr
     lastCpuTime = now
   } catch {
     cpuUsage = null
