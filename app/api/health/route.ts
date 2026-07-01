@@ -73,7 +73,7 @@ export async function GET() {
   }
 
   return NextResponse.json(
-    { databaseConnected, errorRate, memoryUsage, cpuUsage },
+    { uptime: process.uptime(), databaseConnected, errorRate, memoryUsage, cpuUsage },
     { status: 200 }
   )
 }
