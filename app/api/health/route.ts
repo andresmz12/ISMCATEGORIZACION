@@ -1,53 +1,79 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import os from 'os'
 
-const CHECK_HISTORY_SIZE = 100
-const checkHistory: boolean[] = []
-let consecutiveFailures = 0
+export const dynamic = 'force-dynamic'
+
+const WINDOW_MS = 5 * 60 * 1000
+
+interface RequestRecord {
+  timestamp: number
+  failed: boolean
+}
+
+const requestHistory: RequestRecord[] = []
+let lastCpuSnapshot = process.cpuUsage()
+let lastCpuTime = Date.now()
 
 export async function GET() {
-  let databaseConnected = true
+  const now = Date.now()
+
+  // Prune records outside the 5-minute window
+  const cutoff = now - WINDOW_MS
+  while (requestHistory.length > 0 && requestHistory[0].timestamp < cutoff) {
+    requestHistory.shift()
+  }
+
+  // Database check
+  let databaseConnected: boolean
   try {
     await prisma.$queryRaw`SELECT 1`
+    databaseConnected = true
   } catch {
     databaseConnected = false
   }
 
-  const status = databaseConnected ? 'ok' : 'error'
+  // Record this request: a failed health check = DB unreachable
+  requestHistory.push({ timestamp: now, failed: !databaseConnected })
 
-  if (status === 'ok') {
-    consecutiveFailures = 0
-    checkHistory.push(true)
-  } else {
-    consecutiveFailures++
-    checkHistory.push(false)
-  }
-  if (checkHistory.length > CHECK_HISTORY_SIZE) checkHistory.shift()
-  const errorRate = checkHistory.length
-    ? checkHistory.filter(x => !x).length / checkHistory.length
-    : 0
-
-  const mem = process.memoryUsage()
-  const memoryUsage = {
-    rssMB: Math.round(mem.rss / 1024 / 1024),
-    heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
-    heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+  // errorRate: % of requests that failed in the last 5 minutes (0–100)
+  let errorRate: number | null = 0
+  if (requestHistory.length > 0) {
+    const failed = requestHistory.filter(r => r.failed).length
+    errorRate = Math.round((failed / requestHistory.length) * 1000) / 10
   }
 
-  const uptime = process.uptime()
-  const cpu = process.cpuUsage()
-  const totalMicros = uptime * 1_000_000
-  const cpuUsage = totalMicros > 0
-    ? Math.round((cpu.user + cpu.system) / totalMicros * 100 * 100) / 100
-    : 0
+  // memoryUsage: process RSS as % of total system RAM (0–100)
+  let memoryUsage: number | null = null
+  try {
+    const totalMem = os.totalmem()
+    if (totalMem > 0) {
+      const rss = process.memoryUsage().rss
+      memoryUsage = Math.round((rss / totalMem) * 1000) / 10
+    }
+  } catch {
+    memoryUsage = null
+  }
 
-  return NextResponse.json({
-    status,
-    errorRate,
-    consecutiveFailures,
-    databaseConnected,
-    memoryUsage,
-    cpuUsage,
-    timestamp: new Date().toISOString(),
-  })
+  // cpuUsage: CPU % consumed since the previous call (0–100)
+  let cpuUsage: number | null = null
+  try {
+    const currentSnapshot = process.cpuUsage()
+    const elapsedMs = now - lastCpuTime
+    if (elapsedMs > 0) {
+      const userDelta = currentSnapshot.user - lastCpuSnapshot.user
+      const systemDelta = currentSnapshot.system - lastCpuSnapshot.system
+      const elapsedMicros = elapsedMs * 1000
+      cpuUsage = Math.round(((userDelta + systemDelta) / elapsedMicros) * 1000) / 10
+    }
+    lastCpuSnapshot = currentSnapshot
+    lastCpuTime = now
+  } catch {
+    cpuUsage = null
+  }
+
+  return NextResponse.json(
+    { databaseConnected, errorRate, memoryUsage, cpuUsage },
+    { status: 200 }
+  )
 }
