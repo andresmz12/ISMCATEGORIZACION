@@ -164,7 +164,6 @@ model Transaction {
   business           Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
   category           Category?         @relation(fields: [categoryId], references: [id])
   splits             TransactionSplit[]
-  receipts           Receipt[]
 
   @@index([businessId, status])
   @@index([businessId, date])
@@ -221,16 +220,6 @@ model BankFormatMapping {
   mapping    Json
   createdAt  DateTime @default(now())
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-}
-
-model Receipt {
-  id            String      @id @default(cuid())
-  transactionId String
-  filename      String
-  data          String
-  mimeType      String
-  createdAt     DateTime    @default(now())
-  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 }
 
 model DocumentType {
