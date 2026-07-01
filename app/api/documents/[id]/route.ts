@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { deleteFile } from '@/lib/storage'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -19,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  return NextResponse.json({ data: doc.data, mimeType: doc.mimeType, filename: doc.filename })
+  return NextResponse.json({ url: doc.url, mimeType: doc.mimeType, filename: doc.filename })
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
@@ -37,7 +38,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  await deleteFile(doc.url)
   await prisma.document.delete({ where: { id: params.id } })
-  await logAudit({ userId: userId, businessId: doc.businessId, action: 'DELETE_DOCUMENT', entity: 'Document', entityId: params.id })
+  await logAudit({ userId, businessId: doc.businessId, action: 'DELETE_DOCUMENT', entity: 'Document', entityId: params.id })
   return NextResponse.json({ ok: true })
 }

@@ -110,42 +110,33 @@ export default function DocumentosPage() {
     setUploading(true)
     setUploadError('')
 
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const base64 = (e.target?.result as string).split(',')[1]
-      const res = await fetch('/api/documents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          businessId: activeBizId,
-          documentTypeId: uploadForm.documentTypeId,
-          filename: uploadFile.name,
-          data: base64,
-          mimeType: uploadFile.type || 'application/octet-stream',
-          notes: uploadForm.notes,
-        }),
-      })
-      setUploading(false)
-      if (!res.ok) {
-        const d = await res.json()
-        setUploadError(d.error || 'Error al subir')
-        return
-      }
-      setShowUploadModal(false)
-      setUploadFile(null)
-      setUploadForm({ documentTypeId: '', notes: '' })
-      loadAll()
+    const fd = new FormData()
+    fd.append('businessId', activeBizId!)
+    fd.append('documentTypeId', uploadForm.documentTypeId)
+    fd.append('notes', uploadForm.notes)
+    fd.append('file', uploadFile)
+
+    const res = await fetch('/api/documents', { method: 'POST', body: fd })
+    setUploading(false)
+    if (!res.ok) {
+      const d = await res.json()
+      setUploadError(d.error || 'Error al subir')
+      return
     }
-    reader.readAsDataURL(uploadFile)
+    setShowUploadModal(false)
+    setUploadFile(null)
+    setUploadForm({ documentTypeId: '', notes: '' })
+    loadAll()
   }
 
   async function downloadDoc(id: string, filename: string) {
     const res = await fetch(`/api/documents/${id}`)
     if (!res.ok) return
-    const { data, mimeType } = await res.json()
+    const { url } = await res.json()
     const link = document.createElement('a')
-    link.href = `data:${mimeType};base64,${data}`
+    link.href = url
     link.download = filename
+    link.target = '_blank'
     link.click()
   }
 
