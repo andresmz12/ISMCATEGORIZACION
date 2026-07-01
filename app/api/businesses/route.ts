@@ -48,14 +48,16 @@ export async function POST(req: Request) {
     const { name, industry, entityType, taxYear } = await req.json()
     if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 })
 
-    if (accountType !== 'SUPERADMIN') {
+    if (accountType === 'INDIVIDUAL') {
       const limits = getPlanLimits(plan)
       const existing = await prisma.$queryRaw<{ count: number }[]>`
         SELECT COUNT(*)::integer as count FROM "BusinessUser" WHERE "userId" = ${userId}
       `
       if (existing[0].count >= limits.businesses) {
+        const planLabel = plan ?? 'BASIC'
+        const cap = limits.businesses === Infinity ? 'ilimitados' : limits.businesses
         return NextResponse.json({
-          error: `Tu plan ${plan} permite hasta ${limits.businesses === Infinity ? 'ilimitados' : limits.businesses} negocio(s)`,
+          error: `Tu plan ${planLabel} permite hasta ${cap} negocio(s)`,
         }, { status: 403 })
       }
     }

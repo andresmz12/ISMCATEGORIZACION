@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { plaidClient } from '@/lib/plaid'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
-import { getPlanLimits } from '@/lib/plan-limits'
+import { requirePlanFeature } from '@/lib/plan-limits'
 import crypto from 'crypto'
 
 function makeChecksum(date: string, description: string, amount: number): string {
@@ -16,13 +16,11 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const userId = (session.user as any).id
-  const plan = (session.user as any).plan
-  const accountType = (session.user as any).accountType
+  const denied = requirePlanFeature(session, 'plaid')
+  if (denied) return denied
 
-  if (!getPlanLimits(plan).plaid && accountType !== 'SUPERADMIN') {
-    return NextResponse.json({ error: 'La conexión bancaria requiere plan PLUS, ENTERPRISE o CUSTOM' }, { status: 403 })
-  }
+  const userId = (session.user as any).id
+  const accountType = (session.user as any).accountType
 
   const { connectionId, businessId } = await req.json()
   if (!connectionId || !businessId) {

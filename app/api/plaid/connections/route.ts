@@ -5,19 +5,13 @@ import { prisma } from '@/lib/prisma'
 import { plaidClient } from '@/lib/plaid'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
-import { getPlanLimits } from '@/lib/plan-limits'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId = (session.user as any).id
-  const plan = (session.user as any).plan
   const accountType = (session.user as any).accountType
-
-  if (!getPlanLimits(plan).plaid && accountType !== 'SUPERADMIN') {
-    return NextResponse.json({ error: 'La conexión bancaria requiere plan PLUS, ENTERPRISE o CUSTOM' }, { status: 403 })
-  }
 
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
@@ -51,12 +45,7 @@ export async function DELETE(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId = (session.user as any).id
-  const plan = (session.user as any).plan
   const accountType = (session.user as any).accountType
-
-  if (!getPlanLimits(plan).plaid && accountType !== 'SUPERADMIN') {
-    return NextResponse.json({ error: 'La conexión bancaria requiere plan PLUS, ENTERPRISE o CUSTOM' }, { status: 403 })
-  }
 
   const { searchParams } = new URL(req.url)
   const connectionId = searchParams.get('connectionId')
@@ -76,7 +65,6 @@ export async function DELETE(req: Request) {
   try {
     await plaidClient.itemRemove({ access_token: connection.accessToken })
   } catch (e) {
-    // Proceed with local deletion even if Plaid call fails
     console.warn('plaid itemRemove warning:', e)
   }
 

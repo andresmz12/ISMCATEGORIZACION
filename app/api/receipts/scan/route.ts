@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
-import { getPlanLimits } from '@/lib/plan-limits'
+import { requirePlanFeature } from '@/lib/plan-limits'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -21,13 +21,11 @@ const CATEGORIES = [
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const denied = requirePlanFeature(session, 'receiptScan')
+  if (denied) return denied
+
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
-  const plan = (session.user as any).plan
-
-  if (!getPlanLimits(plan).receiptScan && accountType !== 'SUPERADMIN') {
-    return NextResponse.json({ error: 'El escaneo de recibos requiere plan PLUS, ENTERPRISE o CUSTOM' }, { status: 403 })
-  }
 
   // 30 receipt scans per user per hour to prevent AI API abuse
   const rl = rateLimit(`receipt-scan:${userId}`, 30, 60 * 60 * 1000)

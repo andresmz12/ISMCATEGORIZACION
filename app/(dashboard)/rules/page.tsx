@@ -365,7 +365,7 @@ export default function RulesPage() {
   const [categories, setCategories] = useState<any[]>([])
 
   const plan = (session?.user as any)?.plan || 'BASIC'
-  const isAIPlan = plan === 'PLUS' || plan === 'ENTERPRISE'
+  const isAIPlan = plan === 'PLUS' || plan === 'ENTERPRISE' || plan === 'CUSTOM'
 
   useEffect(() => {
     if (!activeBiz) return

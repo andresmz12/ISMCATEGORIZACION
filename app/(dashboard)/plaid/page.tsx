@@ -44,7 +44,7 @@ export default function PlaidPage() {
 
   const accountType = (session?.user as any)?.accountType
   const plan = (session?.user as any)?.plan || 'BASIC'
-  const isPlaidEnabled = accountType === 'SUPERADMIN' || plan === 'PLUS' || plan === 'ENTERPRISE'
+  const isPlaidEnabled = accountType === 'SUPERADMIN' || plan === 'PLUS' || plan === 'ENTERPRISE' || plan === 'CUSTOM'
 
   const [connections, setConnections] = useState<PlaidConnection[]>([])
   const [loading, setLoading] = useState(false)

@@ -7,7 +7,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { validatePassword, validateEmail, getClientIp } from '@/lib/validate'
 import { logAudit } from '@/lib/audit'
 import { sendWelcomeEmail } from '@/lib/email'
-import { getPlanLimits } from '@/lib/plan-limits'
+import { requirePlanFeature } from '@/lib/plan-limits'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -44,11 +44,8 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const accountType = (session.user as any).accountType
-  const plan = (session.user as any).plan
-  if (!getPlanLimits(plan).team && accountType !== 'SUPERADMIN') {
-    return NextResponse.json({ error: 'La gestión de equipo requiere plan PLUS, ENTERPRISE o CUSTOM' }, { status: 403 })
-  }
+  const denied = requirePlanFeature(session, 'team')
+  if (denied) return denied
 
   const ip = getClientIp(req)
   const rl = rateLimit(`team-create:${ip}`, 10, 60 * 60 * 1000)

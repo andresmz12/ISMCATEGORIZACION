@@ -101,7 +101,7 @@ export default function PlansPage() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {(['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'] as const).map(plan => (
             <div key={plan} className="card p-4 text-center">
               <p className="text-3xl font-bold text-[#1B4965]">{stats[plan]}</p>
@@ -111,7 +111,7 @@ export default function PlansPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {(['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'] as const).map(key => {
           const plan = PLAN_FEATURES[key]
           return (
