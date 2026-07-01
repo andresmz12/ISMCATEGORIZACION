@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { getPlanLimits } from '@/lib/plan-limits'
 
 const round = (n: number) => Math.round(n * 100) / 100
 
@@ -11,6 +12,12 @@ export async function GET(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
+  const plan = (session.user as any).plan
+
+  if (!getPlanLimits(plan).reports && accountType !== 'SUPERADMIN') {
+    return NextResponse.json({ error: 'Los reportes requieren plan PLUS, ENTERPRISE o CUSTOM' }, { status: 403 })
+  }
+
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
   const from = searchParams.get('from')

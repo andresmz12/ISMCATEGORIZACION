@@ -17,6 +17,7 @@ enum Plan {
   BASIC
   PLUS
   ENTERPRISE
+  CUSTOM
 }
 
 enum Role {

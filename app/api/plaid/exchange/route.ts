@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { plaidClient } from '@/lib/plaid'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
+import { getPlanLimits } from '@/lib/plan-limits'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -14,8 +15,8 @@ export async function POST(req: Request) {
   const plan = (session.user as any).plan
   const accountType = (session.user as any).accountType
 
-  if (plan === 'BASIC' && accountType !== 'SUPERADMIN') {
-    return NextResponse.json({ error: 'Requiere plan PLUS o ENTERPRISE' }, { status: 403 })
+  if (!getPlanLimits(plan).plaid && accountType !== 'SUPERADMIN') {
+    return NextResponse.json({ error: 'La conexión bancaria requiere plan PLUS, ENTERPRISE o CUSTOM' }, { status: 403 })
   }
 
   const { public_token, businessId, institutionName, accounts } = await req.json()

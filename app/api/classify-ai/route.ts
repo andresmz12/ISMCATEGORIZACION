@@ -6,6 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
+import { getPlanLimits } from '@/lib/plan-limits'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -15,6 +16,11 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
+  const plan = (session.user as any).plan
+
+  if (!getPlanLimits(plan).aiClassify && accountType !== 'SUPERADMIN') {
+    return NextResponse.json({ error: 'La clasificación con IA requiere plan PLUS, ENTERPRISE o CUSTOM' }, { status: 403 })
+  }
 
   // 20 classification jobs per user per hour to prevent AI API abuse
   const rl = rateLimit(`classify:${userId}`, 20, 60 * 60 * 1000)

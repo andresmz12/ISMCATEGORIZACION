@@ -4,6 +4,7 @@ import { customAlphabet } from 'nanoid'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { getPlanLimits } from '@/lib/plan-limits'
 
 const cuid = customAlphabet('36ghjkmnpqrtvwxyz2468', 24)
 
@@ -41,17 +42,21 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
+  const plan = (session.user as any).plan
 
   try {
     const { name, industry, entityType, taxYear } = await req.json()
     if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 })
 
-    if (accountType === 'INDIVIDUAL') {
+    if (accountType !== 'SUPERADMIN') {
+      const limits = getPlanLimits(plan)
       const existing = await prisma.$queryRaw<{ count: number }[]>`
         SELECT COUNT(*)::integer as count FROM "BusinessUser" WHERE "userId" = ${userId}
       `
-      if (existing[0].count >= 1) {
-        return NextResponse.json({ error: 'El plan Independiente solo permite un negocio' }, { status: 403 })
+      if (existing[0].count >= limits.businesses) {
+        return NextResponse.json({
+          error: `Tu plan ${plan} permite hasta ${limits.businesses === Infinity ? 'ilimitados' : limits.businesses} negocio(s)`,
+        }, { status: 403 })
       }
     }
 

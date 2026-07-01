@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getPlanLimits } from '@/lib/plan-limits'
 
 // Prevent CSV/formula injection: strip leading =, +, -, @ from string cells
 function safe(val: unknown): unknown {
@@ -11,6 +12,12 @@ function safe(val: unknown): unknown {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const accountType = (session.user as any).accountType
+  const plan = (session.user as any).plan
+  if (!getPlanLimits(plan).reports && accountType !== 'SUPERADMIN') {
+    return NextResponse.json({ error: 'La exportación Excel requiere plan PLUS, ENTERPRISE o CUSTOM' }, { status: 403 })
+  }
 
   const { businessName, period, transactions } = await req.json()
   if (!transactions?.length) return NextResponse.json({ error: 'No transactions' }, { status: 400 })

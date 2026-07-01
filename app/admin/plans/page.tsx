@@ -5,64 +5,74 @@ interface PlanStats {
   BASIC: number
   PLUS: number
   ENTERPRISE: number
+  CUSTOM: number
 }
 
 const PLAN_FEATURES = {
   BASIC: {
     name: 'Basic',
-    price: 'Gratis',
+    price: '$20 / mes',
     color: 'border-gray-200',
     badge: 'bg-gray-100 text-gray-700',
     features: [
-      '✓ Hasta 100 transacciones / mes',
       '✓ 1 negocio',
       '✓ Importación CSV y XLSX',
       '✓ Categorización manual',
       '✓ Reglas de palabras clave',
-      '✓ Reportes básicos P&L',
       '✗ Clasificación con IA',
-      '✗ Escaneo de recibos',
-      '✗ Reglas aprendidas por IA',
+      '✗ Escaneo de recibos (OCR)',
       '✗ Exportación PDF / Excel',
       '✗ Conexión bancaria Plaid',
+      '✗ Multi-usuario',
     ],
   },
   PLUS: {
     name: 'Plus',
-    price: '$29 / mes',
+    price: '$45 / mes',
     color: 'border-blue-400',
     badge: 'bg-blue-100 text-blue-700',
     features: [
-      '✓ Transacciones ilimitadas',
       '✓ Hasta 3 negocios',
       '✓ Importación CSV y XLSX',
       '✓ Clasificación automática con IA',
-      '✓ Reglas aprendidas por IA',
-      '✓ Escaneo de recibos (IA)',
-      '✓ Reportes completos P&L',
-      '✓ Exportación PDF y Excel',
+      '✓ Escaneo de recibos (OCR)',
+      '✓ Reportes y exportación PDF / Excel',
       '✓ Conexión bancaria Plaid',
-      '✗ Negocios ilimitados',
-      '✗ Soporte prioritario',
+      '✓ Multi-usuario',
+      '✗ Más de 3 negocios',
     ],
   },
   ENTERPRISE: {
     name: 'Enterprise',
-    price: '$79 / mes',
+    price: '$70 / mes',
     color: 'border-purple-400',
     badge: 'bg-purple-100 text-purple-700',
     features: [
-      '✓ Transacciones ilimitadas',
+      '✓ Hasta 20 negocios',
+      '✓ Importación CSV y XLSX',
+      '✓ Clasificación automática con IA',
+      '✓ Escaneo de recibos (OCR)',
+      '✓ Reportes y exportación PDF / Excel',
+      '✓ Conexión bancaria Plaid',
+      '✓ Multi-usuario',
+      '✓ Soporte prioritario',
+    ],
+  },
+  CUSTOM: {
+    name: 'Custom',
+    price: 'A convenir',
+    color: 'border-yellow-400',
+    badge: 'bg-yellow-100 text-yellow-700',
+    features: [
       '✓ Negocios ilimitados',
       '✓ Importación CSV y XLSX',
       '✓ Clasificación automática con IA',
-      '✓ Reglas aprendidas por IA',
-      '✓ Escaneo de recibos (IA)',
-      '✓ Reportes completos P&L',
-      '✓ Exportación PDF y Excel',
+      '✓ Escaneo de recibos (OCR)',
+      '✓ Reportes y exportación PDF / Excel',
       '✓ Conexión bancaria Plaid',
-      '✓ Acceso multi-usuario (contador)',
+      '✓ Multi-usuario',
       '✓ Soporte prioritario',
+      '✓ Configuración personalizada',
     ],
   },
 }
@@ -75,7 +85,7 @@ export default function PlansPage() {
       .then(r => r.json())
       .then((users: any[]) => {
         if (!Array.isArray(users)) return
-        const s = { BASIC: 0, PLUS: 0, ENTERPRISE: 0 }
+        const s: PlanStats = { BASIC: 0, PLUS: 0, ENTERPRISE: 0, CUSTOM: 0 }
         for (const u of users) {
           if (u.plan in s) s[u.plan as keyof PlanStats]++
         }
@@ -90,10 +100,9 @@ export default function PlansPage() {
         <p className="text-sm text-gray-500 mt-1">Comparativa de planes y usuarios activos por plan</p>
       </div>
 
-      {/* User counts per plan */}
       {stats && (
-        <div className="grid grid-cols-3 gap-4">
-          {(['BASIC', 'PLUS', 'ENTERPRISE'] as const).map(plan => (
+        <div className="grid grid-cols-4 gap-4">
+          {(['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'] as const).map(plan => (
             <div key={plan} className="card p-4 text-center">
               <p className="text-3xl font-bold text-[#1B4965]">{stats[plan]}</p>
               <p className="text-sm text-gray-500 mt-1">usuarios en {PLAN_FEATURES[plan].name}</p>
@@ -102,9 +111,8 @@ export default function PlansPage() {
         </div>
       )}
 
-      {/* Plan cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {(['BASIC', 'PLUS', 'ENTERPRISE'] as const).map(key => {
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {(['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'] as const).map(key => {
           const plan = PLAN_FEATURES[key]
           return (
             <div key={key} className={`card border-2 ${plan.color} overflow-hidden`}>
@@ -128,7 +136,7 @@ export default function PlansPage() {
       </div>
 
       <p className="text-xs text-gray-400">
-        Los precios son de referencia. Para cambiar el plan de un usuario ve a la sección Cuentas y usa el selector de plan en la tabla.
+        Para cambiar el plan de un usuario ve a la sección Cuentas y usa el selector de plan en la tabla.
       </p>
     </div>
   )
