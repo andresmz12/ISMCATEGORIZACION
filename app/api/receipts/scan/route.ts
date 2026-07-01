@@ -8,8 +8,6 @@ import { checkBusinessAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
 const CATEGORIES = [
   'Advertising', 'Car & Truck Expenses', 'Commissions & Fees', 'Contract Labor',
   'Insurance', 'Interest - Other', 'Legal & Professional', 'Office Expenses',
@@ -34,6 +32,7 @@ export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'AI service not configured' }, { status: 503 })
   }
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
   try {
     const formData = await req.formData()
@@ -104,8 +103,8 @@ Use null for any field you cannot read. Receipt may be in English or Spanish.`,
 
     // Resolve category
     const categories = await prisma.category.findMany({ where: { isSystem: true } })
-    const catMap = new Map(categories.map((c: any) => [c.name, c.id]))
-    const categoryId = catMap.get(extracted.category_suggestion) ?? catMap.get('Uncategorized') ?? null
+    const catMap = new Map(categories.map((c: any) => [c.name.toLowerCase().trim(), c.id]))
+    const categoryId = catMap.get(extracted.category_suggestion?.toLowerCase().trim()) ?? catMap.get('uncategorized') ?? null
 
     const confidence: string = extracted.confidence || 'LOW'
     const txStatus = confidence === 'HIGH' && categoryId ? 'CLASSIFIED' : 'PENDING'

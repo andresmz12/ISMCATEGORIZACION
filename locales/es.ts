@@ -409,6 +409,9 @@ const es = {
   'audit.title': 'Auditoría',
   'audit.events': 'eventos',
   'audit.noEvents': 'Sin eventos registrados',
+  'audit.clearBtn': 'Limpiar auditoría',
+  'audit.clearConfirm': '¿Eliminar {total} eventos?',
+  'audit.clearing': 'Eliminando...',
 
   // Reports CSV
   'reports.exportCSV': 'Exportar CSV',

@@ -61,8 +61,6 @@ export default function ClasificarPage() {
     })
   }, [activeBiz])
 
-  // Holds raw parsed rows before saving to DB
-  const [rawRows, setRawRows] = useState<any[]>([])
 
   function parseAmount(val: string): { amount: number; type: 'DEBIT' | 'CREDIT' } {
     const clean = String(val).replace(/[$,\s]/g, '')
@@ -266,7 +264,6 @@ export default function ClasificarPage() {
       setStep('map'); return
     }
 
-    setRawRows(classifyData.results || [])
     setTransactions(classifyData.results || [])
     setImportResult(null)
     setProcessingPct(100)
@@ -837,7 +834,7 @@ export default function ClasificarPage() {
                 PDF
               </button>
               <button
-                onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]); setRawRows([]) }}
+                onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]) }}
                 className="flex-1 btn-secondary text-sm"
               >
                 Otro archivo
@@ -885,7 +882,7 @@ export default function ClasificarPage() {
               Ver en Transacciones
             </button>
             <button
-              onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]); setRawRows([]); setImportResult(null) }}
+              onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]); setImportResult(null) }}
               className="btn-primary flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

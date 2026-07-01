@@ -5,10 +5,13 @@ import { prisma } from '@/lib/prisma'
 import { plaidClient } from '@/lib/plaid'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
+import { requirePlanFeature } from '@/lib/plan-limits'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const denied = requirePlanFeature(session, 'plaid')
+  if (denied) return denied
 
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType

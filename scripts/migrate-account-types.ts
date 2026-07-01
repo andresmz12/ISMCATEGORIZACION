@@ -8,7 +8,8 @@ async function main() {
     )
     console.log(`migrate-account-types: migrated ${count} INDIVIDUAL users to ACCOUNTANT`)
   } catch (e: any) {
-    console.log('migrate-account-types skipped:', e?.message ?? e)
+    console.error('migrate-account-types FAILED:', e?.message ?? e)
+    process.exitCode = 1
   } finally {
     await prisma.$disconnect()
   }

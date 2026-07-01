@@ -131,15 +131,15 @@ export default function AuditoriaPage() {
           {canClear && businessId && total > 0 && (
             confirmClear ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">¿Eliminar {total} eventos?</span>
+                <span className="text-xs text-gray-500">{t('audit.clearConfirm').replace('{total}', String(total))}</span>
                 <button onClick={clearAudit} disabled={clearing} className="btn text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 disabled:opacity-50">
-                  {clearing ? 'Eliminando...' : 'Confirmar'}
+                  {clearing ? t('audit.clearing') : t('common.confirm')}
                 </button>
-                <button onClick={() => setConfirmClear(false)} className="btn-secondary text-sm px-3 py-1.5">Cancelar</button>
+                <button onClick={() => setConfirmClear(false)} className="btn-secondary text-sm px-3 py-1.5">{t('common.cancel')}</button>
               </div>
             ) : (
               <button onClick={() => setConfirmClear(true)} className="btn-secondary text-sm text-red-600 border-red-200 hover:bg-red-50">
-                Limpiar auditoría
+                {t('audit.clearBtn')}
               </button>
             )
           )}

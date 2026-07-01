@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     if (accountType === 'ACCOUNTANT') {
       const limits = getPlanLimits(plan)
       const existing = await prisma.$queryRaw<{ count: number }[]>`
-        SELECT COUNT(*)::integer as count FROM "BusinessUser" WHERE "userId" = ${userId}
+        SELECT COUNT(*)::integer as count FROM "BusinessUser" WHERE "userId" = ${userId} AND role = 'OWNER'
       `
       if (existing[0].count >= limits.businesses) {
         const planLabel = plan ?? 'BASIC'
@@ -68,14 +68,16 @@ export async function POST(req: Request) {
 
     const businessId = cuid()
     const now = new Date()
-    await prisma.$executeRaw`
-      INSERT INTO "Business" (id, name, industry, "entityType", "taxYear", "createdAt", "updatedAt")
-      VALUES (${businessId}, ${name}, ${industry || null}, ${entityType || null}, ${taxYear ? Number(taxYear) : null}, ${now}, ${now})
-    `
-    await prisma.$executeRaw`
-      INSERT INTO "BusinessUser" (id, "userId", "businessId", role, "createdAt")
-      VALUES (${cuid()}, ${userId}, ${businessId}, 'OWNER', ${now})
-    `
+    await prisma.$transaction([
+      prisma.$executeRaw`
+        INSERT INTO "Business" (id, name, industry, "entityType", "taxYear", "createdAt", "updatedAt")
+        VALUES (${businessId}, ${name}, ${industry || null}, ${entityType || null}, ${taxYear ? Number(taxYear) : null}, ${now}, ${now})
+      `,
+      prisma.$executeRaw`
+        INSERT INTO "BusinessUser" (id, "userId", "businessId", role, "createdAt")
+        VALUES (${cuid()}, ${userId}, ${businessId}, 'OWNER', ${now})
+      `,
+    ])
 
     // Team features disabled for now
 

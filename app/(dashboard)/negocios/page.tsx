@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
+import { PLAN_LIMITS } from '@/lib/plan-config'
 
 const INDUSTRIES = [
   'Food Service & Restaurants', 'Retail Trade', 'Professional Services',
@@ -17,7 +18,7 @@ export default function NegociosPage() {
   const toast = useToast()
   const accountType = (session?.user as any)?.accountType
   const plan = (session?.user as any)?.plan || 'BASIC'
-  const bizLimit = plan === 'CUSTOM' ? Infinity : plan === 'ENTERPRISE' ? 20 : plan === 'PLUS' ? 5 : 1
+  const bizLimit = (PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? PLAN_LIMITS.BASIC).businesses
 
   const [businesses, setBusinesses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

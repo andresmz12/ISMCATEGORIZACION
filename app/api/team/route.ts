@@ -12,6 +12,8 @@ import { requirePlanFeature } from '@/lib/plan-limits'
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const denied = requirePlanFeature(session, 'team')
+  if (denied) return denied
 
   const ownerId = (session.user as any).id
 
