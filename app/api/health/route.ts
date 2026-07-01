@@ -5,6 +5,10 @@ import os from 'os'
 export const dynamic = 'force-dynamic'
 
 const WINDOW_MS = 5 * 60 * 1000
+const CPU_SAMPLE_MS = 100
+// Container memory limit isn't reliably exposed on Railway, so use a
+// configurable ceiling instead of os.totalmem() (which reports the host's RAM).
+const MEMORY_LIMIT_MB = Number(process.env.HEALTH_MEMORY_LIMIT_MB) || 512
 
 interface RequestRecord {
   timestamp: number
@@ -12,8 +16,28 @@ interface RequestRecord {
 }
 
 const requestHistory: RequestRecord[] = []
-let lastCpuSnapshot = process.cpuUsage()
-let lastCpuTime = Date.now()
+
+function systemCpuTimes() {
+  let idle = 0
+  let total = 0
+  for (const cpu of os.cpus()) {
+    for (const type of Object.values(cpu.times)) total += type
+    idle += cpu.times.idle
+  }
+  return { idle, total }
+}
+
+// System-wide CPU %, sampled over a short window at request time rather than
+// averaged across the (long, mostly idle) interval between health checks.
+async function sampleCpuUsage(sampleMs: number): Promise<number> {
+  const start = systemCpuTimes()
+  await new Promise(resolve => setTimeout(resolve, sampleMs))
+  const end = systemCpuTimes()
+  const idleDelta = end.idle - start.idle
+  const totalDelta = end.total - start.total
+  if (totalDelta <= 0) return 0
+  return Math.round(Math.min(100, Math.max(0, 100 - (100 * idleDelta) / totalDelta)) * 10) / 10
+}
 
 export async function GET() {
   const now = Date.now()
@@ -43,31 +67,19 @@ export async function GET() {
     errorRate = Math.round((failed / requestHistory.length) * 1000) / 10
   }
 
-  // memoryUsage: process RSS as % of total system RAM (0–100)
+  // memoryUsage: process RSS as % of a configured container memory limit (0–100)
   let memoryUsage: number | null = null
   try {
-    const totalMem = os.totalmem()
-    if (totalMem > 0) {
-      const rss = process.memoryUsage().rss
-      memoryUsage = Math.round((rss / totalMem) * 1000) / 10
-    }
+    const rssMb = process.memoryUsage().rss / 1024 / 1024
+    memoryUsage = Math.round(Math.min(100, (rssMb / MEMORY_LIMIT_MB) * 100) * 10) / 10
   } catch {
     memoryUsage = null
   }
 
-  // cpuUsage: CPU % consumed since the previous call (0–100)
+  // cpuUsage: system CPU % sampled over a short window at request time (0–100)
   let cpuUsage: number | null = null
   try {
-    const curr = process.cpuUsage()
-    const elapsed = now - lastCpuTime
-    if (elapsed > 0) {
-      const userDelta = curr.user - lastCpuSnapshot.user
-      const sysDelta = curr.system - lastCpuSnapshot.system
-      const raw = ((userDelta + sysDelta) / 1000 / elapsed) * 100
-      cpuUsage = Math.round(Math.min(100, Math.max(0, raw)) * 10) / 10
-    }
-    lastCpuSnapshot = curr
-    lastCpuTime = now
+    cpuUsage = await sampleCpuUsage(CPU_SAMPLE_MS)
   } catch {
     cpuUsage = null
   }
