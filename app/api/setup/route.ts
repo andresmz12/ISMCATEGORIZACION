@@ -91,12 +91,14 @@ export async function GET(req: Request) {
 
   // Step 3: Seed users + categories
   try {
-    const superHash = await bcrypt.hash('SuperAdmin123!', 12)
+    const superEmail = process.env.SUPERADMIN_EMAIL || 'superadmin@mypnl.com'
+    const superPassword = process.env.SUPERADMIN_PASSWORD || 'SuperAdmin123!'
+    const superHash = await bcrypt.hash(superPassword, 12)
     await prisma.user.upsert({
-      where: { email: 'superadmin@mypnl.com' },
+      where: { email: superEmail },
       update: { passwordHash: superHash, isActive: true },
       create: {
-        email: 'superadmin@mypnl.com',
+        email: superEmail,
         passwordHash: superHash,
         name: 'Super Admin',
         accountType: 'SUPERADMIN',
@@ -104,37 +106,44 @@ export async function GET(req: Request) {
         isActive: true,
       },
     })
-    results.push('✓ superadmin@mypnl.com / SuperAdmin123!')
+    results.push(`✓ ${superEmail} (superadmin)`)
 
-    const contHash = await bcrypt.hash('password123', 12)
-    await prisma.user.upsert({
-      where: { email: 'contador@demo.com' },
-      update: { passwordHash: contHash, isActive: true },
-      create: {
-        email: 'contador@demo.com',
-        passwordHash: contHash,
-        name: 'Carlos Contable',
-        accountType: 'ACCOUNTANT',
-        plan: 'PLUS',
-        isActive: true,
-      },
-    })
-    results.push('✓ contador@demo.com / password123')
+    // Demo accounts are only seeded when DEMO_PASSWORD is explicitly set.
+    // Leave it unset in production to avoid well-known credentials.
+    const demoPassword = process.env.DEMO_PASSWORD
+    if (demoPassword) {
+      const contHash = await bcrypt.hash(demoPassword, 12)
+      await prisma.user.upsert({
+        where: { email: 'contador@demo.com' },
+        update: { passwordHash: contHash, isActive: true },
+        create: {
+          email: 'contador@demo.com',
+          passwordHash: contHash,
+          name: 'Carlos Contable',
+          accountType: 'ACCOUNTANT',
+          plan: 'PLUS',
+          isActive: true,
+        },
+      })
+      results.push('✓ contador@demo.com (demo)')
 
-    const indHash = await bcrypt.hash('password123', 12)
-    await prisma.user.upsert({
-      where: { email: 'usuario@demo.com' },
-      update: { passwordHash: indHash, isActive: true },
-      create: {
-        email: 'usuario@demo.com',
-        passwordHash: indHash,
-        name: 'Maria Emprendedora',
-        accountType: 'ACCOUNTANT',
-        plan: 'BASIC',
-        isActive: true,
-      },
-    })
-    results.push('✓ usuario@demo.com / password123')
+      const indHash = await bcrypt.hash(demoPassword, 12)
+      await prisma.user.upsert({
+        where: { email: 'usuario@demo.com' },
+        update: { passwordHash: indHash, isActive: true },
+        create: {
+          email: 'usuario@demo.com',
+          passwordHash: indHash,
+          name: 'Maria Emprendedora',
+          accountType: 'ACCOUNTANT',
+          plan: 'BASIC',
+          isActive: true,
+        },
+      })
+      results.push('✓ usuario@demo.com (demo)')
+    } else {
+      results.push('⚠ Demo accounts skipped — set DEMO_PASSWORD env var to seed them')
+    }
 
     const SYSTEM_CATEGORIES = [
       { name: 'Advertising', irsCode: 'Schedule C Line 8' },

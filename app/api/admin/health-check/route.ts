@@ -1,17 +1,14 @@
 import { NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import { customAlphabet } from 'nanoid'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import os from 'os'
-
-const cuid = customAlphabet('36ghjkmnpqrtvwxyz2468', 24)
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// In-memory tracking for error rate and consecutive failures
 const WINDOW_SIZE = 100
-const requestHistory: boolean[] = [] // true = success, false = error
+const requestHistory: boolean[] = []
 let consecutiveFailures = 0
 
 function recordResult(success: boolean) {
@@ -43,6 +40,11 @@ function getCpuUsage(): number {
 }
 
 export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user || (session.user as any).accountType !== 'SUPERADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const checks: Record<string, any> = {
     timestamp: new Date().toISOString(),
     status: 'starting',
@@ -51,22 +53,20 @@ export async function GET() {
   }
 
   let requestSuccess = true
+  let dbConnected = false
 
   try {
-    let dbConnected = false
-
     // 1. Check DB connection
     try {
       await prisma.$queryRaw`SELECT 1`
       dbConnected = true
       checks.results.database = { ok: true, message: 'Database connected' }
     } catch (e: any) {
-      dbConnected = false
       requestSuccess = false
       checks.results.database = { ok: false, error: e.message }
     }
 
-    // 2. Check if User table exists
+    // 2. Check User table and count
     try {
       const count = await prisma.$queryRaw<{ count: number }[]>`
         SELECT COUNT(*)::integer as count FROM "User"
@@ -77,42 +77,13 @@ export async function GET() {
       checks.results.userTable = { ok: false, error: e.message }
     }
 
-    // 3. Check/create superadmin
-    try {
-      const email = process.env.SUPERADMIN_EMAIL || 'superadmin@mypnl.com'
-      const password = process.env.SUPERADMIN_PASSWORD || 'SuperAdmin123!'
-      const hash = await bcrypt.hash(password, 12)
-
-      const existing = await prisma.$queryRaw<{ id: string }[]>`
-        SELECT id FROM "User" WHERE email = ${email}
-      `
-
-      if (existing.length === 0) {
-        await prisma.$executeRaw`
-          INSERT INTO "User" (id, email, "passwordHash", name, "accountType", plan, "isActive", "createdAt", "updatedAt")
-          VALUES (${cuid()}, ${email}, ${hash}, 'Super Admin', 'SUPERADMIN', 'ENTERPRISE', true, NOW(), NOW())
-        `
-        checks.results.superadmin = { ok: true, action: 'created', email }
-      } else {
-        await prisma.$executeRaw`
-          UPDATE "User" SET "passwordHash" = ${hash}, "isActive" = true, "accountType" = 'SUPERADMIN', plan = 'ENTERPRISE'
-          WHERE email = ${email}
-        `
-        checks.results.superadmin = { ok: true, action: 'updated', email }
-      }
-    } catch (e: any) {
-      requestSuccess = false
-      checks.results.superadmin = { ok: false, error: e.message }
-    }
-
-    // 4. Check schema sync
+    // 3. Check schema sync
     try {
       const userColumns = await prisma.$queryRaw<{ column_name: string }[]>`
         SELECT column_name FROM information_schema.columns WHERE table_name = 'User'
       `
       const columnNames = userColumns.map((c: any) => c.column_name)
       const hasBadColumns = columnNames.includes('teamOwnerId')
-
       checks.results.schema = {
         ok: !hasBadColumns,
         totalColumns: columnNames.length,
@@ -124,7 +95,7 @@ export async function GET() {
       checks.results.schema = { ok: false, error: e.message }
     }
 
-    // 5. Check key tables exist
+    // 4. Check key tables exist
     const tables = ['Business', 'BusinessUser', 'Transaction', 'Category']
     for (const table of tables) {
       try {
@@ -136,21 +107,19 @@ export async function GET() {
       }
     }
 
-    // Record result for error tracking
     recordResult(requestSuccess)
 
-    // Overall status
     const allOk = Object.values(checks.results).every((r: any) => r.ok !== false)
     checks.status = allOk ? 'ok' : 'degraded'
-
-    // Add metrics fields
     checks.errorRate = getErrorRate()
     checks.consecutiveFailures = consecutiveFailures
     checks.databaseConnected = dbConnected
     checks.memoryUsage = getMemoryUsage()
     checks.cpuUsage = getCpuUsage()
 
-    return NextResponse.json(JSON.parse(JSON.stringify(checks, (_, v) => typeof v === 'bigint' ? Number(v) : v)))
+    return NextResponse.json(
+      JSON.parse(JSON.stringify(checks, (_, v) => (typeof v === 'bigint' ? Number(v) : v)))
+    )
   } catch (error: any) {
     recordResult(false)
     checks.status = 'error'

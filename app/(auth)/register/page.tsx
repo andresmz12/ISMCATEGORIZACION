@@ -35,8 +35,10 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [firmName, setFirmName] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   async function handleSubmit() {
+    if (!termsAccepted) { setError('Debes aceptar los Términos de Uso para continuar'); return }
     if (password !== confirmPassword) { setError(t('auth.passwordMismatch')); return }
     if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
       setError(t('auth.passwordShort')); return
@@ -47,7 +49,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, firmName }),
+        body: JSON.stringify({ name, email, password, firmName, termsAccepted }),
       })
       if (!res.ok) {
         const d = await res.json()
@@ -172,17 +174,37 @@ export default function RegisterPage() {
                   <input className={inputCls} value={firmName} onChange={e => setFirmName(e.target.value)} placeholder="García & Asociados LLC" />
                 </div>
 
-                <div className="flex gap-3 mt-6">
+                <div className="flex items-start gap-3 mt-6">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    checked={termsAccepted}
+                    onChange={e => setTermsAccepted(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 accent-[#1B4965] cursor-pointer"
+                  />
+                  <label htmlFor="terms" className="text-sm text-gray-600 leading-snug cursor-pointer">
+                    Acepto los{' '}
+                    <Link href="/terms" target="_blank" className="text-[#1B4965] font-medium underline hover:text-[#143A52]">
+                      Términos de Uso
+                    </Link>{' '}
+                    y la{' '}
+                    <Link href="/privacy" target="_blank" className="text-[#1B4965] font-medium underline hover:text-[#143A52]">
+                      Política de Privacidad
+                    </Link>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 mt-4">
                   <button onClick={() => setStep(1)} className="h-11 px-5 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                     ← {t('common.back')}
                   </button>
                   <button
                     onClick={handleSubmit}
-                    disabled={loading}
-                    className="flex-1 h-11 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-60"
+                    disabled={loading || !termsAccepted}
+                    className="flex-1 h-11 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-40"
                     style={{ background: '#1B4965' }}
-                    onMouseEnter={e => { if (!loading) (e.target as HTMLButtonElement).style.background = '#143A52' }}
-                    onMouseLeave={e => { if (!loading) (e.target as HTMLButtonElement).style.background = '#1B4965' }}
+                    onMouseEnter={e => { if (!loading && termsAccepted) (e.target as HTMLButtonElement).style.background = '#143A52' }}
+                    onMouseLeave={e => { if (!loading && termsAccepted) (e.target as HTMLButtonElement).style.background = '#1B4965' }}
                   >
                     {loading ? t('auth.loading') : t('auth.signup')}
                   </button>

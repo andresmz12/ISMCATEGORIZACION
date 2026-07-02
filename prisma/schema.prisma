@@ -57,17 +57,19 @@ enum AssignmentStatus {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  passwordHash  String
-  name          String?
-  firmName      String?
-  accountType   AccountType    @default(ACCOUNTANT)
-  plan          Plan           @default(BASIC)
-  isActive      Boolean        @default(true)
-  lastLogin     DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id              String      @id @default(cuid())
+  email           String      @unique
+  passwordHash    String
+  name            String?
+  firmName        String?
+  accountType     AccountType @default(ACCOUNTANT)
+  plan            Plan        @default(BASIC)
+  isActive        Boolean     @default(true)
+  lastLogin       DateTime?
+  termsAcceptedAt DateTime?
+  termsVersion    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
   businessUsers       BusinessUser[]
   accounts            Account[]
   sessions            Session[]
@@ -94,6 +96,7 @@ model Account {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -102,6 +105,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -141,6 +146,7 @@ model BusinessUser {
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@unique([userId, businessId])
+  @@index([businessId])
 }
 
 model Transaction {
@@ -183,6 +189,9 @@ model TransactionSplit {
   notes         String?
   transaction   Transaction    @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   category      Category       @relation(fields: [categoryId], references: [id])
+
+  @@index([transactionId])
+  @@index([categoryId])
 }
 
 model Category {
@@ -197,6 +206,8 @@ model Category {
   transactions Transaction[]
   splits       TransactionSplit[]
   rules        ClassificationRule[]
+
+  @@index([businessId])
 }
 
 model ClassificationRule {

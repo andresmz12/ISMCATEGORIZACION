@@ -10,8 +10,9 @@ export async function POST(req: Request) {
   if (!rl.ok) return rateLimitResponse()
 
   try {
-    const { email, password, name, plan, firmName } = await req.json()
+    const { email, password, name, plan, firmName, termsAccepted } = await req.json()
 
+    if (!termsAccepted) return NextResponse.json({ error: 'Debes aceptar los Términos de Uso para continuar' }, { status: 400 })
     if (!email || !password) return NextResponse.json({ error: 'Email y contraseña requeridos' }, { status: 400 })
     if (!validateEmail(email)) return NextResponse.json({ error: 'Correo electrónico inválido' }, { status: 400 })
 
@@ -33,6 +34,8 @@ export async function POST(req: Request) {
         firmName: firmName?.trim()?.slice(0, 100) || null,
         plan: (['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE' | 'CUSTOM',
         isActive: true,
+        termsAcceptedAt: new Date(),
+        termsVersion: '2026-07-02',
       },
     })
 
