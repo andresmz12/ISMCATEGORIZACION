@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import {
   motion,
@@ -8,18 +8,21 @@ import {
   useTransform,
   animate,
   AnimatePresence,
-  useScroll,
 } from 'framer-motion'
 
-// ── Animation helpers ──────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const ease = [0.25, 0.4, 0.25, 1] as [number, number, number, number]
+const NAVY = '#1B4965'
+const TEAL = '#2EC4B6'
+const ease = [0.22, 1, 0.36, 1] as [number, number, number, number]
+
+// ── Small helpers ─────────────────────────────────────────────────────────────
 
 function Reveal({
   children,
   delay = 0,
   className = '',
-  y = 40,
+  y = 28,
 }: {
   children: React.ReactNode
   delay?: number
@@ -27,13 +30,13 @@ function Reveal({
   y?: number
 }) {
   const ref = useRef(null)
-  const inView = useInView(ref, { once: true, amount: 0.15 })
+  const inView = useInView(ref, { once: true, amount: 0.2 })
   return (
     <motion.div
       ref={ref}
       initial={{ opacity: 0, y }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay, ease }}
+      transition={{ duration: 0.7, delay, ease }}
       className={className}
     >
       {children}
@@ -41,67 +44,341 @@ function Reveal({
   )
 }
 
-function Counter({ to, prefix = '', suffix = '', className = '' }: { to: number; prefix?: string; suffix?: string; className?: string }) {
+function Counter({ to, prefix = '', suffix = '', decimals = 0 }: { to: number; prefix?: string; suffix?: string; decimals?: number }) {
   const ref = useRef(null)
   const inView = useInView(ref, { once: true })
-  const count = useMotionValue(0)
-  const rounded = useTransform(count, v => Math.round(v))
-  const [display, setDisplay] = useState(0)
+  const mv = useMotionValue(0)
+  const [display, setDisplay] = useState('0')
 
   useEffect(() => {
-    const unsub = rounded.on('change', v => setDisplay(v))
+    const unsub = mv.on('change', v => setDisplay(v.toFixed(decimals)))
     return unsub
-  }, [rounded])
+  }, [mv, decimals])
 
   useEffect(() => {
     if (inView) {
-      const ctrl = animate(count, to, { duration: 1.6, ease: 'easeOut' })
+      const ctrl = animate(mv, to, { duration: 1.8, ease: 'easeOut' })
       return ctrl.stop
     }
-  }, [inView, count, to])
+  }, [inView, mv, to])
 
-  return (
-    <span ref={ref} className={className}>
-      {prefix}{isNaN(display) ? 0 : display}{suffix}
-    </span>
-  )
+  return <span ref={ref}>{prefix}{display}{suffix}</span>
 }
 
-function AnimatedBars({ data, inView }: { data: { h: number; m: string }[]; inView: boolean }) {
+// ── Live ledger (hero) ────────────────────────────────────────────────────────
+
+type LedgerRow = { desc: string; amount: string; cat: { es: string; en: string }; income?: boolean }
+
+const LEDGER_POOL: LedgerRow[] = [
+  { desc: 'HOME DEPOT #4521 ATLANTA GA', amount: '-218.40', cat: { es: 'Suministros', en: 'Supplies' } },
+  { desc: 'ZELLE FROM RODRIGUEZ CONSTR', amount: '+3,500.00', cat: { es: 'Ingreso', en: 'Income' }, income: true },
+  { desc: 'SHELL OIL 57442 MIAMI FL', amount: '-64.12', cat: { es: 'Vehículo', en: 'Car & Truck' } },
+  { desc: 'GOOGLE ADS 88231', amount: '-380.00', cat: { es: 'Publicidad', en: 'Advertising' } },
+  { desc: 'USPS PO 4402 HOUSTON TX', amount: '-27.90', cat: { es: 'Oficina', en: 'Office' } },
+  { desc: 'STRIPE PAYOUT 2201', amount: '+1,842.75', cat: { es: 'Ingreso', en: 'Income' }, income: true },
+  { desc: 'CHIPOTLE 1187 DALLAS TX', amount: '-31.55', cat: { es: 'Comidas 50%', en: 'Meals 50%' } },
+  { desc: 'STATE FARM INSURANCE', amount: '-146.00', cat: { es: 'Seguro', en: 'Insurance' } },
+]
+
+function LiveLedger({ lang }: { lang: 'es' | 'en' }) {
+  const [rows, setRows] = useState<{ row: LedgerRow; id: number; tagged: boolean }[]>([])
+  const idRef = useRef(0)
+  const poolRef = useRef(0)
+
+  useEffect(() => {
+    let cancelled = false
+    const timers: ReturnType<typeof setTimeout>[] = []
+
+    const pushRow = () => {
+      if (cancelled) return
+      const row = LEDGER_POOL[poolRef.current % LEDGER_POOL.length]
+      poolRef.current++
+      const id = idRef.current++
+      setRows(prev => [...prev.slice(-4), { row, id, tagged: false }])
+      timers.push(setTimeout(() => {
+        if (cancelled) return
+        setRows(prev => prev.map(r => (r.id === id ? { ...r, tagged: true } : r)))
+      }, 900))
+      timers.push(setTimeout(pushRow, 2200))
+    }
+
+    timers.push(setTimeout(pushRow, 600))
+    return () => {
+      cancelled = true
+      timers.forEach(clearTimeout)
+    }
+  }, [])
+
   return (
-    <div className="flex items-end gap-2 h-20">
-      {data.map(({ h, m }, i) => (
-        <div key={m} className="flex-1 flex flex-col items-center gap-1">
-          <motion.div
-            className="w-full bg-[#2EC4B6]/70 rounded-t-sm"
-            initial={{ height: 0 }}
-            animate={inView ? { height: `${h}%` } : { height: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 + i * 0.07, ease }}
-          />
-          <span className="text-xs text-white/25">{m}</span>
-        </div>
-      ))}
+    <div className="border border-black/10 bg-white">
+      <div className="flex items-center justify-between border-b border-black/10 px-4 py-2.5">
+        <span className="font-mono text-[11px] uppercase tracking-widest text-black/40">
+          {lang === 'es' ? 'clasificando en vivo' : 'classifying live'}
+        </span>
+        <span className="flex items-center gap-1.5 font-mono text-[11px] text-black/40">
+          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: TEAL }} />
+          chase_export_jan.csv
+        </span>
+      </div>
+      <div className="h-[300px] overflow-hidden px-4 py-3">
+        <AnimatePresence initial={false}>
+          {rows.map(({ row, id, tagged }) => (
+            <motion.div
+              key={id}
+              layout
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.45, ease }}
+              className="flex items-center gap-3 border-b border-black/5 py-2.5"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-mono text-[11px] text-black/70">{row.desc}</p>
+              </div>
+              <div className="w-20 shrink-0 text-right">
+                <span className={`font-mono text-xs ${row.income ? 'text-emerald-600' : 'text-black/60'}`}>{row.amount}</span>
+              </div>
+              <div className="w-24 shrink-0 text-right">
+                <AnimatePresence mode="wait">
+                  {tagged ? (
+                    <motion.span
+                      key="tag"
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.25 }}
+                      className="inline-block px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide"
+                      style={{ backgroundColor: `${TEAL}1a`, color: '#0f766e' }}
+                    >
+                      {row.cat[lang]}
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="dots"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 0.35 }}
+                      exit={{ opacity: 0 }}
+                      className="font-mono text-[10px] text-black"
+                    >
+                      · · ·
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+      <div className="flex items-center justify-between border-t border-black/10 px-4 py-2.5">
+        <span className="font-mono text-[11px] text-black/40">
+          {lang === 'es' ? 'IRS Schedule C · automático' : 'IRS Schedule C · automatic'}
+        </span>
+        <span className="font-mono text-[11px] font-semibold" style={{ color: NAVY }}>
+          ~95% acc.
+        </span>
+      </div>
     </div>
   )
 }
 
-function FaqItem({ q, a }: { q: string; a: string }) {
+// ── Product demo tabs ─────────────────────────────────────────────────────────
+
+function DemoPanel({ tab, lang }: { tab: number; lang: 'es' | 'en' }) {
+  const es = lang === 'es'
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={tab}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.35, ease }}
+        className="p-5 sm:p-8"
+      >
+        {tab === 0 && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              { l: es ? 'Ingresos YTD' : 'YTD Income', v: '$48,200', d: '+12.4%' },
+              { l: es ? 'Gastos YTD' : 'YTD Expenses', v: '$31,540', d: '−3.1%' },
+              { l: es ? 'Ganancia neta' : 'Net profit', v: '$16,660', d: '+8.9%' },
+              { l: es ? 'Total deducible' : 'Deductible total', v: '$22,180', d: 'Sched. C' },
+            ].map((s, i) => (
+              <motion.div
+                key={s.l}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07, duration: 0.4, ease }}
+                className="border border-black/10 bg-white p-5"
+              >
+                <p className="font-mono text-[11px] uppercase tracking-widest text-black/40">{s.l}</p>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <p className="text-2xl font-semibold tracking-tight" style={{ color: NAVY }}>{s.v}</p>
+                  <span className="font-mono text-[11px] text-black/40">{s.d}</span>
+                </div>
+              </motion.div>
+            ))}
+            <div className="border border-black/10 bg-white p-5 sm:col-span-2">
+              <p className="mb-4 font-mono text-[11px] uppercase tracking-widest text-black/40">
+                {es ? 'Gastos por mes' : 'Expenses by month'}
+              </p>
+              <div className="flex h-24 items-end gap-1.5">
+                {[38, 52, 41, 66, 58, 84, 61, 74, 47, 69, 55, 90].map((h, i) => (
+                  <motion.div
+                    key={i}
+                    className="flex-1"
+                    style={{ backgroundColor: i === 11 ? TEAL : `${NAVY}26` }}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${h}%` }}
+                    transition={{ delay: 0.15 + i * 0.04, duration: 0.5, ease }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 1 && (
+          <div className="space-y-3">
+            <p className="font-mono text-[11px] uppercase tracking-widest text-black/40">
+              {es ? 'Mapeo automático de columnas' : 'Automatic column mapping'}
+            </p>
+            {[
+              { from: 'Transaction Date', to: es ? 'Fecha' : 'Date' },
+              { from: 'Merchant Name', to: es ? 'Descripción' : 'Description' },
+              { from: 'Debit Amount', to: es ? 'Monto' : 'Amount' },
+            ].map((m, i) => (
+              <motion.div
+                key={m.from}
+                initial={{ opacity: 0, x: -14 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.1, duration: 0.4, ease }}
+                className="flex items-center gap-3"
+              >
+                <span className="flex-1 border border-black/10 bg-white px-3 py-2 font-mono text-xs text-black/60">{m.from}</span>
+                <span className="font-mono text-sm" style={{ color: TEAL }}>→</span>
+                <span className="flex-1 border px-3 py-2 font-mono text-xs font-semibold" style={{ borderColor: `${TEAL}66`, backgroundColor: `${TEAL}0d`, color: '#0f766e' }}>{m.to}</span>
+              </motion.div>
+            ))}
+            <div className="grid grid-cols-3 gap-3 pt-3">
+              {[
+                { v: 1247, l: es ? 'filas leídas' : 'rows read', s: '' },
+                { v: 3, l: es ? 'duplicados fuera' : 'dupes removed', s: '' },
+                { v: 100, l: es ? 'mapeadas' : 'mapped', s: '%' },
+              ].map(s => (
+                <div key={s.l} className="border border-black/10 bg-white p-4 text-center">
+                  <p className="text-xl font-semibold tracking-tight" style={{ color: NAVY }}>
+                    <Counter to={s.v} suffix={s.s} />
+                  </p>
+                  <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-black/40">{s.l}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === 2 && (
+          <div className="space-y-2.5">
+            <p className="font-mono text-[11px] uppercase tracking-widest text-black/40">
+              {es ? 'Revisión de confianza' : 'Confidence review'}
+            </p>
+            {[
+              { d: 'AMAZON BUSINESS PRIME', c: es ? 'Oficina · Línea 18' : 'Office · Line 18', conf: 'HIGH', clr: '#059669' },
+              { d: 'DELTA AIR 0062341', c: es ? 'Viajes · Línea 24a' : 'Travel · Line 24a', conf: 'HIGH', clr: '#059669' },
+              { d: 'RESTAURANT LUNA 44', c: es ? 'Comidas 50% · 24b' : 'Meals 50% · 24b', conf: 'MED', clr: '#d97706' },
+              { d: 'MISC TRANSFER 9821', c: es ? 'Revisar manualmente' : 'Needs review', conf: 'LOW', clr: '#dc2626' },
+            ].map((r, i) => (
+              <motion.div
+                key={r.d}
+                initial={{ opacity: 0, x: -14 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.09, duration: 0.4, ease }}
+                className="flex items-center gap-3 border border-black/10 bg-white px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-mono text-xs text-black/70">{r.d}</p>
+                  <p className="mt-0.5 text-xs text-black/40">{r.c}</p>
+                </div>
+                <span className="shrink-0 font-mono text-[10px] font-bold tracking-wider" style={{ color: r.clr }}>{r.conf}</span>
+              </motion.div>
+            ))}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.45 }}
+              className="flex items-center justify-between border px-4 py-3"
+              style={{ borderColor: `${TEAL}66`, backgroundColor: `${TEAL}0d` }}
+            >
+              <span className="font-mono text-xs" style={{ color: '#0f766e' }}>
+                342 {es ? 'listas para confirmar' : 'ready to confirm'}
+              </span>
+              <span className="px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wider text-white" style={{ backgroundColor: NAVY }}>
+                {es ? 'Confirmar todo' : 'Confirm all'}
+              </span>
+            </motion.div>
+          </div>
+        )}
+
+        {tab === 3 && (
+          <div className="border border-black/10 bg-white">
+            <div className="flex items-center justify-between border-b border-black/10 px-5 py-3">
+              <p className="font-mono text-xs font-semibold" style={{ color: NAVY }}>P&L 2025 — {es ? 'Resumen anual' : 'Annual summary'}</p>
+              <div className="flex gap-2 font-mono text-[10px]">
+                <span className="border border-black/15 px-2 py-0.5 text-black/50">PDF</span>
+                <span className="border border-black/15 px-2 py-0.5 text-black/50">XLSX</span>
+              </div>
+            </div>
+            <div className="px-5 py-3">
+              {[
+                { cat: es ? 'Publicidad' : 'Advertising', line: 'Line 8', val: '$4,200' },
+                { cat: es ? 'Vehículo' : 'Car & truck', line: 'Line 9', val: '$3,120' },
+                { cat: es ? 'Legal y profesional' : 'Legal & professional', line: 'Line 17', val: '$3,600' },
+                { cat: es ? 'Oficina' : 'Office expense', line: 'Line 18', val: '$2,100' },
+                { cat: es ? 'Comidas (50%)' : 'Meals (50%)', line: 'Line 24b', val: '$1,890' },
+              ].map((r, i) => (
+                <motion.div
+                  key={r.cat}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.08 }}
+                  className="flex items-center justify-between border-b border-black/5 py-2 text-xs last:border-0"
+                >
+                  <span className="text-black/70">{r.cat}</span>
+                  <span className="mx-3 font-mono text-[10px] text-black/30">{r.line}</span>
+                  <span className="font-mono text-black/70">{r.val}</span>
+                </motion.div>
+              ))}
+              <div className="mt-2 flex items-center justify-between border-t border-black/10 pt-3">
+                <span className="font-mono text-[11px] font-bold uppercase tracking-wider" style={{ color: NAVY }}>
+                  {es ? 'Total deducible' : 'Total deductible'}
+                </span>
+                <span className="font-mono text-sm font-bold" style={{ color: NAVY }}>$14,910</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
+// ── FAQ ───────────────────────────────────────────────────────────────────────
+
+function FaqItem({ n, q, a }: { n: string; q: string; a: string }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+    <div className="border-b border-black/10">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-6 py-5 font-bold text-gray-800 hover:text-[#1B4965] transition-colors text-sm text-left"
+        className="flex w-full items-baseline gap-4 py-5 text-left transition-colors hover:bg-black/[0.02] sm:gap-6"
       >
-        {q}
-        <motion.svg
-          className="w-5 h-5 text-gray-300 flex-shrink-0 ml-4"
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ duration: 0.3, ease }}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        <span className="font-mono text-xs text-black/30">{n}</span>
+        <span className="flex-1 text-base font-medium text-black/85 sm:text-lg">{q}</span>
+        <motion.span
+          animate={{ rotate: open ? 45 : 0 }}
+          transition={{ duration: 0.25 }}
+          className="font-mono text-lg text-black/40"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-        </motion.svg>
+          +
+        </motion.span>
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -112,9 +389,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
             transition={{ duration: 0.35, ease }}
             className="overflow-hidden"
           >
-            <div className="px-6 pb-5 text-sm text-gray-500 leading-relaxed border-t border-gray-50 pt-4">
-              {a}
-            </div>
+            <p className="pb-6 pl-10 pr-6 text-sm leading-relaxed text-black/50 sm:pl-14">{a}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -125,999 +400,567 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 // ── Copy ──────────────────────────────────────────────────────────────────────
 
 const copy = {
-  en: {
-    nav: { features: 'Features', how: 'How it works', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', cta: 'Get started' },
-    hero: {
-      badge: 'P&L Software for US Businesses',
-      h1a: 'Your finances,',
-      h1b: 'always under control.',
-      sub: 'Track income and expenses, categorize by IRS Schedule C, and generate your P&L report in seconds. Built for small business owners and accountants.',
-      cta1: 'Get started',
-      cta2: 'Log in',
-      sub2: 'From $9/mo · Cancel anytime',
-    },
-    banks: 'Works with exports from any bank',
-    pain: {
-      title: 'Stop doing your finances in spreadsheets',
-      sub: 'Most small business owners spend 10+ hours a month on bookkeeping. My Profit and Loss cuts that down to minutes.',
-      items: [
-        { icon: '😓', problem: 'Hours organizing bank statements manually', solution: 'Import any CSV or Excel in one click' },
-        { icon: '😰', problem: 'Tax season chaos with receipts everywhere', solution: 'Everything categorized, organized, and ready' },
-        { icon: '😤', problem: 'Paying your accountant to do basic sorting', solution: 'Deliver a clean P&L — they just review' },
-      ],
-    },
-    features: {
-      title: 'Everything you need to stay on top of your books',
-      sub: 'From bank import to tax-ready report — all in one place.',
-      items: [
-        {
-          tag: 'Dashboard',
-          title: 'Your P&L at a glance',
-          desc: 'See your total income, expenses, net profit and deductible total for the year — updated in real time as you categorize.',
-          bullets: ['YTD income vs expenses', 'Monthly expense chart', 'Category breakdown donut chart', 'Recent transactions feed'],
-        },
-        {
-          tag: 'Import',
-          title: 'Any bank. Any format.',
-          desc: 'Download the CSV or Excel from your bank and drag it in. We auto-detect columns for date, description, and amount — no manual setup.',
-          bullets: ['Chase, BofA, Wells Fargo, Citi & more', 'CSV and Excel (.xlsx, .xls)', 'Auto column mapping', 'Duplicate detection'],
-        },
-        {
-          tag: 'Reports',
-          title: 'Tax-ready reports in one click',
-          desc: 'Generate a detailed PDF or Excel report with your full P&L, expense breakdown by IRS category, and deductible totals. Hand it straight to your accountant.',
-          bullets: ['PDF and Excel export', 'IRS Schedule C categories', 'Deductibility breakdown', 'Multi-year comparison'],
-        },
-      ],
-    },
-    aiFeature: {
-      tag: 'Plus feature',
-      title: 'AI classification — a powerful extra',
-      desc: 'Upload your bank statement and our AI automatically assigns each transaction to the correct IRS category. Review, adjust, and confirm in minutes instead of hours.',
-      bullets: ['~95% classification accuracy', 'HIGH / MEDIUM / LOW confidence badges', 'One-click bulk confirm', 'Learns from your corrections via rules'],
-      note: 'AI classification is available on the Plus and Enterprise plans.',
-    },
-    testimonials: {
-      title: 'Trusted by business owners and accountants',
-      items: [
-        { name: 'Carlos M.', role: 'LLC Owner · Miami, FL', text: 'Before My Profit and Loss I was spending entire weekends sorting receipts before tax season. Now it takes me 20 minutes a month.', stars: 5 },
-        { name: 'Sandra R.', role: 'CPA · Dallas, TX', text: 'I manage 12 clients on the platform. The P&L reports come out clean and my clients understand their finances better than ever.', stars: 5 },
-        { name: 'James T.', role: 'Freelance Contractor · New York', text: "The IRS Schedule C categories are exactly what I needed. My accountant was impressed — said it was the cleanest file she'd seen.", stars: 5 },
-      ],
-    },
-    pricing: {
-      title: 'Simple, transparent pricing',
-      sub: 'No hidden fees. Cancel anytime.',
-      plans: [
-        { name: 'Basic', price: '$9', per: '/mo', desc: 'For solo owners with one business', features: ['1 business', 'Up to 200 transactions/mo', 'IRS Schedule C categories', 'PDF export', 'Email support'], cta: 'Get started', highlight: false },
-        { name: 'Plus', price: '$29', per: '/mo', desc: 'For growing businesses', features: ['Up to 5 businesses', 'Unlimited transactions', 'AI auto-classification', 'PDF + Excel export', '3 team members', 'Automatic rules', 'Priority support'], cta: 'Get Plus', highlight: true },
-        { name: 'Enterprise', price: '$79', per: '/mo', desc: 'For accountants and firms', features: ['Unlimited businesses', 'Unlimited transactions', 'Advanced AI classification', 'Custom reports', 'Unlimited team members', 'Dedicated support 24/7'], cta: 'Contact sales', highlight: false },
-      ],
-    },
-    faq: {
-      title: 'Frequently asked questions',
-      items: [
-        { q: 'Does it work with my bank?', a: 'Yes. It works with any bank that lets you export transactions as CSV or Excel — Chase, Bank of America, Wells Fargo, Citi, TD Bank, and more.' },
-        { q: 'Do I need accounting knowledge to use it?', a: 'No. My Profit and Loss is built for business owners, not accountants. The platform guides you step by step and the AI handles the heavy lifting.' },
-        { q: 'Is my financial data secure?', a: 'Absolutely. We use TLS encryption in transit, bcrypt-hashed passwords, and strict per-user data isolation. We never sell or share your information.' },
-        { q: 'What is AI classification and which plan includes it?', a: "AI classification automatically assigns each imported transaction to the correct IRS category. It's available on Plus and Enterprise plans." },
-        { q: 'Can I cancel anytime?', a: 'Yes, with no penalties. If you cancel, your account downgrades to Basic and you keep access to all your historical data.' },
-      ],
-    },
-    finalCta: { title: 'Take control of your business finances today', sub: 'Join hundreds of business owners who know exactly where their money goes — every month.', btn: 'Get started now' },
-    footer: { product: 'Product', account: 'Account', legal: 'Legal', features: 'Features', pricing: 'Pricing', how: 'How it works', login: 'Log in', signup: 'Create account', privacy: 'Privacy policy', terms: 'Terms of use', copy: '© 2026 My Profit and Loss. All rights reserved.' },
-  },
   es: {
-    nav: { features: 'Funciones', how: 'Cómo funciona', pricing: 'Planes', faq: 'FAQ', login: 'Iniciar sesión', cta: 'Comenzar' },
+    nav: { product: 'Producto', pricing: 'Planes', faq: 'Preguntas', login: 'Entrar', cta: 'Crear cuenta' },
     hero: {
-      badge: 'Software de P&L para negocios en USA',
-      h1a: 'Tus finanzas,',
-      h1b: 'siempre bajo control.',
-      sub: 'Registra ingresos y gastos, categoriza según el IRS Schedule C y genera tu reporte P&L en segundos. Diseñado para dueños de negocios y contadores.',
-      cta1: 'Comenzar ahora',
-      cta2: 'Iniciar sesión',
-      sub2: 'Desde $9/mes · Cancela cuando quieras',
+      kicker: 'P&L y Schedule C para negocios en USA',
+      h1: ['Tu contabilidad,', 'sin contabilidad.'],
+      sub: 'Importa el estado de cuenta de tu banco, deja que la IA clasifique cada transacción según el IRS Schedule C, y entrega a tu contador un P&L limpio. Eso es todo.',
+      cta1: 'Crear cuenta',
+      cta2: 'Ver planes',
+      note: 'Desde $20/mes · Sin permanencia',
     },
-    banks: 'Compatible con exportaciones de cualquier banco',
-    pain: {
-      title: 'Deja de llevar tus finanzas en hojas de cálculo',
-      sub: 'La mayoría de los dueños de negocios gastan más de 10 horas al mes en contabilidad. My Profit and Loss lo reduce a minutos.',
+    ticker: ['CHASE', 'BANK OF AMERICA', 'WELLS FARGO', 'CITI', 'TD BANK', 'CAPITAL ONE', 'CSV', 'XLSX', 'IRS SCHEDULE C', 'PDF', 'EXCEL', 'PLAID'],
+    steps: {
+      kicker: 'Cómo funciona',
+      title: 'Tres pasos. Minutos, no fines de semana.',
       items: [
-        { icon: '😓', problem: 'Horas organizando estados de cuenta manualmente', solution: 'Importa cualquier CSV o Excel con un clic' },
-        { icon: '😰', problem: 'Caos en temporada de impuestos con recibos por todos lados', solution: 'Todo categorizado, organizado y listo' },
-        { icon: '😤', problem: 'Pagarle al contador por clasificar lo que tú podías hacer', solution: 'Entrégale un P&L limpio — él solo revisa' },
+        { n: '01', title: 'Importa tu banco', desc: 'Descarga el CSV o Excel de cualquier banco y arrástralo. Detectamos fecha, descripción y monto automáticamente, y filtramos duplicados.' },
+        { n: '02', title: 'Clasifica con IA', desc: 'Cada transacción recibe su categoría IRS Schedule C con un nivel de confianza. Tú revisas las dudosas y confirmas el resto con un clic.' },
+        { n: '03', title: 'Entrega el reporte', desc: 'Genera el P&L en PDF o Excel con desglose por línea del Schedule C y totales deducibles. Tu contador solo revisa y presenta.' },
       ],
     },
-    features: {
-      title: 'Todo lo que necesitas para mantener tus libros al día',
-      sub: 'Desde importar tu banco hasta el reporte listo para impuestos — todo en un solo lugar.',
-      items: [
-        {
-          tag: 'Panel',
-          title: 'Tu P&L de un vistazo',
-          desc: 'Ve tus ingresos, gastos, ganancia neta y total deducible del año en curso — actualizado en tiempo real mientras categorizas.',
-          bullets: ['Ingresos vs gastos anuales', 'Gráfica de gastos por mes', 'Donut de gastos por categoría', 'Transacciones recientes'],
-        },
-        {
-          tag: 'Importar',
-          title: 'Cualquier banco. Cualquier formato.',
-          desc: 'Descarga el CSV o Excel de tu banco y arrástralo. Detectamos automáticamente las columnas de fecha, descripción y monto.',
-          bullets: ['Chase, BofA, Wells Fargo, Citi y más', 'CSV y Excel (.xlsx, .xls)', 'Mapeo automático de columnas', 'Detección de duplicados'],
-        },
-        {
-          tag: 'Reportes',
-          title: 'Reportes listos para impuestos con un clic',
-          desc: 'Genera un PDF o Excel con tu P&L completo, desglose por categoría IRS y totales deducibles. Entrégaselo directo a tu contador.',
-          bullets: ['Exportar en PDF y Excel', 'Categorías IRS Schedule C', 'Desglose de deducibles', 'Comparación multi-año'],
-        },
-      ],
+    demo: {
+      kicker: 'El producto',
+      title: 'Así se ve por dentro',
+      tabs: ['Panel', 'Importar', 'IA', 'Reportes'],
     },
-    aiFeature: {
-      tag: 'Función Plus',
-      title: 'Clasificación con IA — un extra poderoso',
-      desc: 'Sube tu estado de cuenta y nuestra IA asigna automáticamente cada transacción a la categoría IRS correcta. Revisa, ajusta y confirma en minutos.',
-      bullets: ['~95% de precisión en la clasificación', 'Badges de confianza ALTA / MEDIA / BAJA', 'Confirmar todo con un clic', 'Aprende de tus correcciones mediante reglas'],
-      note: 'La clasificación con IA está disponible en los planes Plus y Enterprise.',
-    },
-    testimonials: {
-      title: 'Cientos de negocios y contadores confían en My Profit and Loss',
-      items: [
-        { name: 'Carlos M.', role: 'Dueño de LLC · Miami, FL', text: 'Antes de My Profit and Loss pasaba fines de semana enteros ordenando recibos antes de los impuestos. Ahora me toma 20 minutos al mes.', stars: 5 },
-        { name: 'Sandra R.', role: 'Contadora CPA · Dallas, TX', text: 'Manejo 12 clientes en la plataforma. Los reportes P&L salen limpios y mis clientes entienden sus finanzas mejor que nunca.', stars: 5 },
-        { name: 'James T.', role: 'Contratista Freelance · New York', text: 'Las categorías IRS Schedule C son exactamente lo que necesitaba. Mi contadora dijo que era el archivo más ordenado que había visto.', stars: 5 },
-      ],
-    },
+    stats: [
+      { v: 500, s: '+', l: 'negocios activos' },
+      { v: 95, s: '%', l: 'precisión de la IA' },
+      { v: 5, s: ' min', l: 'para 500 transacciones', p: '<' },
+      { v: 27, s: '', l: 'categorías Schedule C' },
+    ],
     pricing: {
-      title: 'Precios simples y transparentes',
-      sub: 'Sin costos ocultos. Cancela cuando quieras.',
+      kicker: 'Planes',
+      title: 'Precios claros. Sin sorpresas.',
+      sub: 'Cancela cuando quieras. Si bajas de plan conservas todos tus datos.',
+      monthly: '/mes',
+      custom: 'A convenir',
+      popular: 'Recomendado',
       plans: [
-        { name: 'Básico', price: '$9', per: '/mes', desc: 'Para dueños independientes', features: ['1 negocio', 'Hasta 200 transacciones/mes', 'Categorías IRS Schedule C', 'Exportar PDF', 'Soporte por email'], cta: 'Comenzar', highlight: false },
-        { name: 'Plus', price: '$29', per: '/mes', desc: 'Para negocios en crecimiento', features: ['Hasta 5 negocios', 'Transacciones ilimitadas', 'Clasificación automática con IA', 'Exportar PDF + Excel', '3 usuarios de equipo', 'Reglas automáticas', 'Soporte prioritario'], cta: 'Obtener Plus', highlight: true },
-        { name: 'Enterprise', price: '$79', per: '/mes', desc: 'Para contadores y firmas', features: ['Negocios ilimitados', 'Transacciones ilimitadas', 'Clasificación IA avanzada', 'Reportes personalizados', 'Usuarios ilimitados', 'Soporte dedicado 24/7'], cta: 'Contactar ventas', highlight: false },
+        {
+          name: 'Basic', price: '$20', desc: 'Para empezar con un negocio',
+          features: ['1 negocio', 'Importación CSV y XLSX', 'Categorización manual', 'Reglas de palabras clave'],
+          missing: ['Clasificación con IA', 'Escaneo de recibos (OCR)', 'Exportación PDF / Excel', 'Conexión bancaria Plaid', 'Multi-usuario'],
+          cta: 'Empezar con Basic', highlight: false,
+        },
+        {
+          name: 'Plus', price: '$45', desc: 'El plan completo para la mayoría',
+          features: ['Hasta 5 negocios', 'Importación CSV y XLSX', 'Clasificación automática con IA', 'Escaneo de recibos (OCR)', 'Reportes y exportación PDF / Excel', 'Conexión bancaria Plaid', 'Multi-usuario'],
+          missing: [],
+          cta: 'Empezar con Plus', highlight: true,
+        },
+        {
+          name: 'Enterprise', price: '$70', desc: 'Para contadores y firmas',
+          features: ['Hasta 20 negocios', 'Todo lo de Plus', 'Clasificación automática con IA', 'Escaneo de recibos (OCR)', 'Reportes PDF / Excel', 'Conexión bancaria Plaid', 'Multi-usuario', 'Soporte prioritario'],
+          missing: [],
+          cta: 'Empezar con Enterprise', highlight: false,
+        },
+        {
+          name: 'Custom', price: null, desc: 'Volumen alto o necesidades especiales',
+          features: ['Negocios ilimitados', 'Todo lo de Enterprise', 'Configuración personalizada', 'Soporte prioritario'],
+          missing: [],
+          cta: 'Hablemos', highlight: false,
+        },
       ],
     },
     faq: {
-      title: 'Preguntas frecuentes',
+      kicker: 'Preguntas frecuentes',
       items: [
-        { q: '¿Funciona con mi banco?', a: 'Sí. Funciona con cualquier banco que permita exportar transacciones en CSV o Excel: Chase, Bank of America, Wells Fargo, Citi, TD Bank, y más.' },
-        { q: '¿Necesito conocimiento contable para usarlo?', a: 'No. My Profit and Loss está diseñado para dueños de negocios, no contadores. La plataforma te guía paso a paso y la IA hace el trabajo pesado.' },
-        { q: '¿Mis datos financieros están seguros?', a: 'Absolutamente. Usamos encriptación TLS en tránsito, contraseñas hasheadas con bcrypt y aislamiento estricto de datos por usuario. No vendemos ni compartimos tu información.' },
-        { q: '¿Qué es la clasificación con IA y qué plan la incluye?', a: 'La clasificación con IA asigna automáticamente cada transacción importada a la categoría IRS correcta. Está disponible en los planes Plus y Enterprise.' },
-        { q: '¿Puedo cancelar en cualquier momento?', a: 'Sí, sin penalidades. Si cancelas, tu cuenta baja a Básico y conservas acceso a todos tus datos históricos.' },
+        { q: '¿Funciona con mi banco?', a: 'Sí. Funciona con cualquier banco que permita exportar transacciones en CSV o Excel: Chase, Bank of America, Wells Fargo, Citi, TD Bank y más. En los planes Plus en adelante también puedes conectar tu banco directamente vía Plaid.' },
+        { q: '¿Necesito saber de contabilidad?', a: 'No. La plataforma está diseñada para dueños de negocio. Las categorías siguen el IRS Schedule C y la IA hace el trabajo pesado; tú solo revisas y confirmas.' },
+        { q: '¿Qué plan incluye la clasificación con IA?', a: 'Plus, Enterprise y Custom. El plan Basic incluye categorización manual y reglas por palabras clave, que ya ahorran bastante tiempo.' },
+        { q: '¿Mis datos están seguros?', a: 'Sí. Encriptación TLS en tránsito, contraseñas con bcrypt y aislamiento estricto de datos por usuario. Nunca vendemos ni compartimos tu información.' },
+        { q: '¿Puedo cancelar cuando quiera?', a: 'Sí, sin penalidades. Si cancelas conservas acceso a tus datos históricos.' },
       ],
     },
-    finalCta: { title: 'Toma el control de tus finanzas hoy', sub: 'Únete a cientos de dueños de negocios que saben exactamente a dónde va su dinero — cada mes.', btn: 'Comenzar ahora' },
-    footer: { product: 'Producto', account: 'Cuenta', legal: 'Legal', features: 'Funciones', pricing: 'Planes', how: 'Cómo funciona', login: 'Iniciar sesión', signup: 'Crear cuenta', privacy: 'Privacidad', terms: 'Términos de uso', copy: '© 2026 My Profit and Loss. Todos los derechos reservados.' },
+    finalCta: {
+      title: 'Deja de perder fines de semana en la contabilidad.',
+      sub: 'Importa tu primer estado de cuenta hoy y mira tu P&L en minutos.',
+      btn: 'Crear cuenta',
+    },
+    footer: {
+      blurb: 'Software de P&L y contabilidad fiscal para negocios en Estados Unidos.',
+      product: 'Producto', account: 'Cuenta', legal: 'Legal',
+      links: { product: 'Producto', pricing: 'Planes', faq: 'Preguntas' },
+      login: 'Iniciar sesión', signup: 'Crear cuenta', privacy: 'Privacidad', terms: 'Términos de uso',
+      copy: '© 2026 My Profit and Loss. Todos los derechos reservados.',
+      made: 'Hecho para negocios en USA',
+    },
+  },
+  en: {
+    nav: { product: 'Product', pricing: 'Pricing', faq: 'FAQ', login: 'Log in', cta: 'Create account' },
+    hero: {
+      kicker: 'P&L and Schedule C for US businesses',
+      h1: ['Your bookkeeping,', 'without the bookkeeping.'],
+      sub: "Import your bank statement, let AI classify every transaction to the IRS Schedule C, and hand your accountant a clean P&L. That's it.",
+      cta1: 'Create account',
+      cta2: 'See pricing',
+      note: 'From $20/mo · Cancel anytime',
+    },
+    ticker: ['CHASE', 'BANK OF AMERICA', 'WELLS FARGO', 'CITI', 'TD BANK', 'CAPITAL ONE', 'CSV', 'XLSX', 'IRS SCHEDULE C', 'PDF', 'EXCEL', 'PLAID'],
+    steps: {
+      kicker: 'How it works',
+      title: 'Three steps. Minutes, not weekends.',
+      items: [
+        { n: '01', title: 'Import your bank', desc: 'Download the CSV or Excel from any bank and drop it in. We auto-detect date, description and amount, and filter duplicates.' },
+        { n: '02', title: 'Classify with AI', desc: 'Every transaction gets its IRS Schedule C category with a confidence level. You review the doubtful ones and confirm the rest in one click.' },
+        { n: '03', title: 'Deliver the report', desc: 'Generate the P&L as PDF or Excel with a per-line Schedule C breakdown and deductible totals. Your accountant just reviews and files.' },
+      ],
+    },
+    demo: {
+      kicker: 'The product',
+      title: 'What it looks like inside',
+      tabs: ['Dashboard', 'Import', 'AI', 'Reports'],
+    },
+    stats: [
+      { v: 500, s: '+', l: 'active businesses' },
+      { v: 95, s: '%', l: 'AI accuracy' },
+      { v: 5, s: ' min', l: 'for 500 transactions', p: '<' },
+      { v: 27, s: '', l: 'Schedule C categories' },
+    ],
+    pricing: {
+      kicker: 'Pricing',
+      title: 'Clear prices. No surprises.',
+      sub: 'Cancel anytime. If you downgrade you keep all your data.',
+      monthly: '/mo',
+      custom: "Let's talk",
+      popular: 'Recommended',
+      plans: [
+        {
+          name: 'Basic', price: '$20', desc: 'To get started with one business',
+          features: ['1 business', 'CSV & XLSX import', 'Manual categorization', 'Keyword rules'],
+          missing: ['AI classification', 'Receipt scanning (OCR)', 'PDF / Excel export', 'Plaid bank connection', 'Multi-user'],
+          cta: 'Start with Basic', highlight: false,
+        },
+        {
+          name: 'Plus', price: '$45', desc: 'The complete plan for most',
+          features: ['Up to 5 businesses', 'CSV & XLSX import', 'Automatic AI classification', 'Receipt scanning (OCR)', 'Reports & PDF / Excel export', 'Plaid bank connection', 'Multi-user'],
+          missing: [],
+          cta: 'Start with Plus', highlight: true,
+        },
+        {
+          name: 'Enterprise', price: '$70', desc: 'For accountants and firms',
+          features: ['Up to 20 businesses', 'Everything in Plus', 'Automatic AI classification', 'Receipt scanning (OCR)', 'PDF / Excel reports', 'Plaid bank connection', 'Multi-user', 'Priority support'],
+          missing: [],
+          cta: 'Start with Enterprise', highlight: false,
+        },
+        {
+          name: 'Custom', price: null, desc: 'High volume or special needs',
+          features: ['Unlimited businesses', 'Everything in Enterprise', 'Custom configuration', 'Priority support'],
+          missing: [],
+          cta: "Let's talk", highlight: false,
+        },
+      ],
+    },
+    faq: {
+      kicker: 'Frequently asked questions',
+      items: [
+        { q: 'Does it work with my bank?', a: 'Yes. It works with any bank that exports transactions as CSV or Excel — Chase, Bank of America, Wells Fargo, Citi, TD Bank and more. On Plus and above you can also connect your bank directly via Plaid.' },
+        { q: 'Do I need accounting knowledge?', a: 'No. The platform is built for business owners. Categories follow the IRS Schedule C and the AI does the heavy lifting; you just review and confirm.' },
+        { q: 'Which plan includes AI classification?', a: 'Plus, Enterprise and Custom. The Basic plan includes manual categorization and keyword rules, which already save plenty of time.' },
+        { q: 'Is my data secure?', a: 'Yes. TLS encryption in transit, bcrypt-hashed passwords and strict per-user data isolation. We never sell or share your information.' },
+        { q: 'Can I cancel anytime?', a: 'Yes, no penalties. If you cancel you keep access to your historical data.' },
+      ],
+    },
+    finalCta: {
+      title: 'Stop losing weekends to bookkeeping.',
+      sub: 'Import your first bank statement today and see your P&L in minutes.',
+      btn: 'Create account',
+    },
+    footer: {
+      blurb: 'P&L and tax accounting software for US small businesses.',
+      product: 'Product', account: 'Account', legal: 'Legal',
+      links: { product: 'Product', pricing: 'Pricing', faq: 'FAQ' },
+      login: 'Log in', signup: 'Create account', privacy: 'Privacy policy', terms: 'Terms of use',
+      copy: '© 2026 My Profit and Loss. All rights reserved.',
+      made: 'Made for US businesses',
+    },
   },
 }
 
-const BANK_LOGOS = ['Chase', 'Bank of America', 'Wells Fargo', 'Citi', 'TD Bank', 'Capital One']
-
-const BARS = [
-  { h: 35, m: 'Jan' }, { h: 55, m: 'Feb' }, { h: 42, m: 'Mar' },
-  { h: 68, m: 'Apr' }, { h: 58, m: 'May' }, { h: 90, m: 'Jun' },
-]
-
-const stagger = {
-  container: { hidden: {}, show: { transition: { staggerChildren: 0.1 } } },
-  item: { hidden: { opacity: 0, y: 30 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease } } },
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LandingClient() {
-  const [lang, setLang] = useState<'en' | 'es'>('es')
+  const [lang, setLang] = useState<'es' | 'en'>('es')
+  const [tab, setTab] = useState(0)
+  const [scrolled, setScrolled] = useState(false)
   const t = copy[lang]
 
-  // scroll-based nav shadow
-  const { scrollY } = useScroll()
-  const navShadow = useTransform(scrollY, [0, 60], ['0 0 0 0 transparent', '0 4px 24px rgba(0,0,0,0.08)'])
-
-  // chart in-view ref
-  const chartRef = useRef(null)
-  const chartInView = useInView(chartRef, { once: true, amount: 0.5 })
-
-  // AI rows in-view
-  const aiRef = useRef(null)
-  const aiInView = useInView(aiRef, { once: true, amount: 0.3 })
+  const onScroll = useCallback(() => setScrolled(window.scrollY > 24), [])
+  useEffect(() => {
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [onScroll])
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-[#FAFAF7] text-black antialiased">
+      <style>{`
+        @keyframes lp-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .lp-marquee { animation: lp-marquee 36s linear infinite; }
+        .lp-marquee:hover { animation-play-state: paused; }
+      `}</style>
 
       {/* ── NAV ── */}
-      <motion.nav
-        className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100"
-        style={{ boxShadow: navShadow }}
-        initial={{ y: -64, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, ease }}
+      <header
+        className={`sticky top-0 z-50 border-b bg-[#FAFAF7]/90 backdrop-blur transition-shadow ${scrolled ? 'border-black/10 shadow-[0_1px_0_rgba(0,0,0,0.04)]' : 'border-transparent'}`}
       >
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/logo.svg" alt="My Profit and Loss" className="w-9 h-9" />
-            <span className="font-black text-[#1B4965] text-xl tracking-tight">My Profit &amp; Loss</span>
-          </div>
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+          <Link href="/" className="flex items-center gap-2.5">
+            <img src="/logo.svg" alt="My Profit and Loss" className="h-8 w-8" />
+            <span className="text-[15px] font-bold tracking-tight" style={{ color: NAVY }}>
+              My Profit &amp; Loss
+            </span>
+          </Link>
 
-          <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-500">
-            {(['features', 'how', 'pricing', 'faq'] as const).map((k, i) => (
-              <motion.a
-                key={k}
-                href={`#${k}`}
-                className="hover:text-[#1B4965] transition-colors"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 + i * 0.05, duration: 0.4, ease }}
-              >
-                {t.nav[k]}
-              </motion.a>
-            ))}
-          </div>
+          <nav className="hidden items-center gap-7 font-mono text-[12px] uppercase tracking-widest text-black/50 md:flex">
+            <a href="#product" className="transition-colors hover:text-black">{t.nav.product}</a>
+            <a href="#pricing" className="transition-colors hover:text-black">{t.nav.pricing}</a>
+            <a href="#faq" className="transition-colors hover:text-black">{t.nav.faq}</a>
+          </nav>
 
-          <div className="flex items-center gap-3">
-            <motion.button
-              onClick={() => setLang(l => l === 'es' ? 'en' : 'es')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setLang(l => (l === 'es' ? 'en' : 'es'))}
+              className="border border-black/15 px-2.5 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-black/60 transition-colors hover:border-black/40"
             >
-              <span>{lang === 'es' ? '🇺🇸' : '🇲🇽'}</span>
-              <span>{lang === 'es' ? 'EN' : 'ES'}</span>
-            </motion.button>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }} className="hidden sm:block">
-              <Link href="/signin" className="text-sm font-medium text-gray-600 hover:text-[#1B4965] transition-colors px-3 py-2">
-                {t.nav.login}
-              </Link>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5, ease }}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
+              {lang === 'es' ? 'EN' : 'ES'}
+            </button>
+            <Link
+              href="/signin"
+              className="hidden px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-black/60 transition-colors hover:text-black sm:block"
             >
-              <Link href="/signup" className="text-sm font-bold bg-[#1B4965] hover:bg-[#143A52] text-white px-5 py-2.5 rounded-xl transition-colors shadow-sm">
-                {t.nav.cta} →
-              </Link>
-            </motion.div>
+              {t.nav.login}
+            </Link>
+            <Link
+              href="/signup"
+              className="px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: NAVY }}
+            >
+              {t.nav.cta}
+            </Link>
           </div>
         </div>
-      </motion.nav>
+      </header>
 
       {/* ── HERO ── */}
-      <section className="relative bg-gradient-to-br from-[#0d2233] via-[#1B4965] to-[#1a5276] overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute inset-0 overflow-hidden">
-          <motion.div
-            className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-[#2EC4B6]/10 blur-3xl"
-            animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <motion.div
-            className="absolute top-1/2 -left-20 w-72 h-72 rounded-full bg-blue-500/10 blur-3xl"
-            animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.7, 0.4] }}
-            transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-          />
-          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-0 lg:pt-28">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-
-            {/* Left: text */}
-            <div>
-              <motion.div
-                className="inline-flex items-center gap-2 bg-[#2EC4B6]/15 border border-[#2EC4B6]/25 text-[#2EC4B6] text-xs font-bold px-4 py-2 rounded-full mb-6 uppercase tracking-wider"
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.1, ease }}
-              >
-                <span className="w-1.5 h-1.5 bg-[#2EC4B6] rounded-full animate-pulse" />
-                {t.hero.badge}
-              </motion.div>
-
-              <div className="overflow-hidden mb-2">
-                <motion.h1
-                  className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-[1.05] tracking-tight"
-                  initial={{ y: 80, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.65, delay: 0.2, ease }}
-                >
-                  {t.hero.h1a}
-                </motion.h1>
-              </div>
-              <div className="overflow-hidden mb-6">
-                <motion.h1
-                  className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black leading-[1.05] tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#2EC4B6] to-[#5dddd5]"
-                  initial={{ y: 80, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.65, delay: 0.32, ease }}
-                >
-                  {t.hero.h1b}
-                </motion.h1>
-              </div>
-
-              <motion.p
-                className="text-lg text-white/65 leading-relaxed mb-8 max-w-lg"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.55, delay: 0.45, ease }}
-              >
-                {t.hero.sub}
-              </motion.p>
-
-              <motion.div
-                className="flex flex-col sm:flex-row gap-3 mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.55, delay: 0.55, ease }}
-              >
-                <motion.div whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}>
-                  <Link href="/signup" className="inline-flex items-center justify-center gap-2 bg-[#2EC4B6] hover:bg-[#26a89b] text-white font-bold px-7 py-4 rounded-xl text-base transition-all shadow-lg shadow-[#2EC4B6]/25">
-                    {t.hero.cta1}
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-                  </Link>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
-                  <Link href="/signin" className="inline-flex items-center justify-center gap-2 bg-white/8 hover:bg-white/15 border border-white/15 text-white font-semibold px-7 py-4 rounded-xl text-base transition-colors">
-                    {t.hero.cta2}
-                  </Link>
-                </motion.div>
-              </motion.div>
-
-              <motion.p
-                className="text-sm text-white/35"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.65 }}
-              >
-                {t.hero.sub2}
-              </motion.p>
-
-              {/* Mini stats */}
-              <motion.div
-                className="flex flex-wrap gap-x-8 gap-y-4 mt-10 pt-8 border-t border-white/10"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.75 }}
-              >
-                {[
-                  { val: 500, suffix: '+', label: lang === 'es' ? 'negocios activos' : 'active businesses' },
-                  { val: 95, suffix: '%', label: lang === 'es' ? 'precisión IA' : 'AI accuracy' },
-                  { val: 5, prefix: '<', suffix: 'min', label: lang === 'es' ? 'para 500 transacciones' : 'for 500 transactions' },
-                ].map((s, i) => (
-                  <motion.div
-                    key={s.label}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 + i * 0.1 }}
-                  >
-                    <p className="text-2xl font-black text-white">
-                      <Counter to={s.val} prefix={s.prefix} suffix={s.suffix} />
-                    </p>
-                    <p className="text-xs text-white/40 mt-0.5">{s.label}</p>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </div>
-
-            {/* Right: dashboard mockup */}
-            <div className="relative lg:mt-0 mt-8 pb-0">
-              {/* Floating cards — desktop only */}
-              <motion.div
-                className="hidden md:flex absolute -left-6 top-12 z-10 bg-white rounded-2xl shadow-xl px-4 py-3 items-center gap-3 border border-gray-100"
-                initial={{ x: -40, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.9, duration: 0.6, type: 'spring', stiffness: 120 }}
-              >
-                <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
-                  <span className="text-lg">📈</span>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">{lang === 'es' ? 'Ingresos YTD' : 'YTD Income'}</p>
-                  <p className="text-base font-black text-emerald-600">+$48,200</p>
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="hidden md:flex absolute -right-4 top-1/3 z-10 bg-white rounded-2xl shadow-xl px-4 py-3 items-center gap-3 border border-gray-100"
-                initial={{ x: 40, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 1.05, duration: 0.6, type: 'spring', stiffness: 120 }}
-              >
-                <div className="w-9 h-9 bg-[#2EC4B6]/10 rounded-xl flex items-center justify-center">
-                  <span className="text-lg">✅</span>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">{lang === 'es' ? 'Clasificadas' : 'Classified'}</p>
-                  <p className="text-base font-black text-[#1B4965]">347</p>
-                </div>
-              </motion.div>
-
-              {/* Browser mockup */}
-              <motion.div
-                className="bg-[#1a2f3f] rounded-2xl overflow-hidden shadow-2xl border border-white/10"
-                initial={{ opacity: 0, x: 60, y: 20 }}
-                animate={{ opacity: 1, x: 0, y: 0 }}
-                transition={{ delay: 0.35, duration: 0.7, ease }}
-              >
-                <div className="flex items-center gap-1.5 px-4 py-3 bg-[#152534] border-b border-white/5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
-                  <div className="flex-1 mx-4 bg-white/8 rounded-md px-3 py-1 text-center">
-                    <span className="text-xs text-white/30">mypnl.app/dashboard</span>
-                  </div>
-                </div>
-                <div className="p-5 space-y-4" ref={chartRef}>
-                  {/* Stats row */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { l: lang === 'es' ? 'Ingresos' : 'Income', v: '$48,200', c: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-                      { l: lang === 'es' ? 'Gastos' : 'Expenses', v: '$31,540', c: 'text-red-400', bg: 'bg-red-500/10' },
-                      { l: lang === 'es' ? 'Ganancia Neta' : 'Net Profit', v: '$16,660', c: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-                      { l: lang === 'es' ? 'Deducible' : 'Deductible', v: '$22,180', c: 'text-[#2EC4B6]', bg: 'bg-[#2EC4B6]/10' },
-                    ].map((s, i) => (
-                      <motion.div
-                        key={s.l}
-                        className={`${s.bg} rounded-xl p-3`}
-                        initial={{ opacity: 0, scale: 0.92 }}
-                        animate={chartInView ? { opacity: 1, scale: 1 } : {}}
-                        transition={{ delay: 0.5 + i * 0.08, duration: 0.4, ease }}
-                      >
-                        <p className="text-xs text-white/40 mb-0.5">{s.l}</p>
-                        <p className={`text-lg font-black ${s.c}`}>{s.v}</p>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {/* Bar chart */}
-                  <div className="bg-white/5 rounded-xl p-4">
-                    <p className="text-xs text-white/40 mb-3">{lang === 'es' ? 'Gastos por Mes' : 'Monthly Expenses'}</p>
-                    <AnimatedBars data={BARS} inView={chartInView} />
-                  </div>
-
-                  {/* Recent transactions */}
-                  <div className="space-y-2">
-                    {[
-                      { d: 'Office Supplies · Staples', a: '-$142', cat: 'Office' },
-                      { d: 'Google Ads', a: '-$380', cat: 'Advertising' },
-                      { d: 'Client Payment', a: '+$3,500', cat: 'Income' },
-                    ].map((tx, i) => (
-                      <motion.div
-                        key={i}
-                        className="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5"
-                        initial={{ opacity: 0, x: -12 }}
-                        animate={chartInView ? { opacity: 1, x: 0 } : {}}
-                        transition={{ delay: 0.9 + i * 0.1, duration: 0.4, ease }}
-                      >
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${tx.a.startsWith('+') ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {tx.a.startsWith('+') ? '+' : '−'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-white/70 truncate">{tx.d}</p>
-                          <p className="text-xs text-white/30">{tx.cat}</p>
-                        </div>
-                        <p className={`text-sm font-bold flex-shrink-0 ${tx.a.startsWith('+') ? 'text-emerald-400' : 'text-red-400'}`}>{tx.a}</p>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── BANK LOGOS ── */}
-      <section className="bg-gray-50 border-y border-gray-100 py-6">
-        <div className="max-w-7xl mx-auto px-6">
-          <Reveal>
-            <p className="text-center text-xs font-semibold text-gray-400 uppercase tracking-widest mb-5">{t.banks}</p>
-          </Reveal>
-          <motion.div
-            className="flex flex-wrap justify-center items-center gap-x-10 gap-y-3"
-            variants={stagger.container}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.5 }}
-          >
-            {BANK_LOGOS.map(b => (
-              <motion.span key={b} variants={stagger.item} className="text-sm font-bold text-gray-300 tracking-tight">
-                {b}
-              </motion.span>
-            ))}
-            <motion.span variants={stagger.item} className="text-sm text-gray-300">
-              & {lang === 'es' ? 'más' : 'more'}
-            </motion.span>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── PAIN POINTS ── */}
-      <section className="py-16 md:py-24 max-w-7xl mx-auto px-4 sm:px-6">
-        <Reveal className="text-center mb-10 md:mb-14">
-          <h2 className="text-2xl md:text-4xl font-black text-gray-900 mb-4">{t.pain.title}</h2>
-          <p className="text-lg text-gray-500 max-w-xl mx-auto">{t.pain.sub}</p>
-        </Reveal>
-        <motion.div
-          className="grid md:grid-cols-3 gap-6"
-          variants={stagger.container}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.2 }}
-        >
-          {t.pain.items.map((item, i) => (
-            <motion.div
-              key={i}
-              variants={stagger.item}
-              whileHover={{ y: -6, boxShadow: '0 12px 32px rgba(0,0,0,0.08)' }}
-              className="relative bg-white rounded-2xl border border-gray-100 p-7 shadow-sm transition-shadow"
+      <section className="border-b border-black/10">
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 pb-16 pt-14 lg:grid-cols-[1.15fr_1fr] lg:gap-14 lg:pb-24 lg:pt-24">
+          <div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6 }}
+              className="mb-6 font-mono text-[11px] uppercase tracking-[0.2em] text-black/40"
             >
-              <motion.div
-                className="text-4xl mb-5"
-                initial={{ rotate: -10, scale: 0.8 }}
-                whileInView={{ rotate: 0, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }}
-              >
-                {item.icon}
-              </motion.div>
-              <div className="mb-4 pb-4 border-b border-gray-100">
-                <p className="text-sm text-gray-400 line-through">{item.problem}</p>
-              </div>
-              <p className="text-base font-bold text-[#1B4965] flex items-start gap-2">
-                <span className="text-[#2EC4B6] mt-0.5 flex-shrink-0">✓</span>
-                {item.solution}
-              </p>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
+              — {t.hero.kicker}
+            </motion.p>
 
-      {/* ── FEATURES ── */}
-      <section id="features" className="py-10 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-6 pt-16 pb-20">
-          <Reveal className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">{t.features.title}</h2>
-            <p className="text-lg text-gray-500 max-w-xl mx-auto">{t.features.sub}</p>
-          </Reveal>
-
-          <div className="space-y-20">
-            {t.features.items.map((f, i) => (
-              <div key={i} className={`grid lg:grid-cols-2 gap-12 items-center ${i % 2 === 1 ? 'lg:grid-flow-col-dense' : ''}`}>
-                {/* Text */}
-                <Reveal delay={0.1} className={i % 2 === 1 ? 'lg:col-start-2' : ''}>
-                  <span className="inline-block text-xs font-black uppercase tracking-widest text-[#2EC4B6] bg-[#2EC4B6]/10 px-3 py-1.5 rounded-full mb-4">{f.tag}</span>
-                  <h3 className="text-3xl font-black text-gray-900 mb-4 leading-tight">{f.title}</h3>
-                  <p className="text-gray-500 leading-relaxed mb-6">{f.desc}</p>
-                  <motion.ul
-                    className="space-y-2.5"
-                    variants={stagger.container}
-                    initial="hidden"
-                    whileInView="show"
-                    viewport={{ once: true }}
+            <h1 className="text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.03em] sm:text-6xl lg:text-[4.2rem]">
+              {t.hero.h1.map((line, i) => (
+                <span key={line} className="block overflow-hidden">
+                  <motion.span
+                    className="block"
+                    style={i === 1 ? { color: NAVY } : undefined}
+                    initial={{ y: '110%' }}
+                    animate={{ y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.1 + i * 0.12, ease }}
                   >
-                    {f.bullets.map((b, j) => (
-                      <motion.li key={j} variants={stagger.item} className="flex items-center gap-2.5 text-sm text-gray-600">
-                        <span className="w-5 h-5 bg-[#1B4965] rounded-full flex items-center justify-center flex-shrink-0">
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                        </span>
-                        {b}
-                      </motion.li>
-                    ))}
-                  </motion.ul>
-                </Reveal>
-
-                {/* Visual mockup */}
-                <Reveal delay={0.2} className={i % 2 === 1 ? 'lg:col-start-1' : ''} y={i % 2 === 0 ? 30 : -30}>
-                  <div className="bg-[#1B4965] rounded-2xl p-5 shadow-xl">
-                    {i === 0 && (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { l: lang === 'es' ? 'Ingresos' : 'Income', v: '$48,200', c: 'text-emerald-400' },
-                            { l: lang === 'es' ? 'Gastos' : 'Expenses', v: '$31,540', c: 'text-red-400' },
-                            { l: lang === 'es' ? 'Ganancia' : 'Net Profit', v: '$16,660', c: 'text-emerald-400' },
-                            { l: lang === 'es' ? 'Deducible' : 'Deductible', v: '$22,180', c: 'text-[#2EC4B6]' },
-                          ].map(s => (
-                            <div key={s.l} className="bg-white/10 rounded-xl p-3">
-                              <p className="text-xs text-white/40">{s.l}</p>
-                              <p className={`text-xl font-black mt-0.5 ${s.c}`}>{s.v}</p>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="bg-white/10 rounded-xl p-4">
-                          <p className="text-xs text-white/40 mb-3">{lang === 'es' ? 'Gastos por Mes' : 'Monthly Expenses'}</p>
-                          <div className="flex items-end gap-1.5 h-24">
-                            {[30, 50, 38, 70, 55, 90, 65, 80, 45, 72, 60, 88].map((h, j) => (
-                              <motion.div
-                                key={j}
-                                className="flex-1 bg-[#2EC4B6]/60 rounded-t-sm"
-                                initial={{ height: 0 }}
-                                whileInView={{ height: `${h}%` }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.6, delay: 0.3 + j * 0.04, ease }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {i === 1 && (
-                      <div className="space-y-3">
-                        <div className="bg-white/10 rounded-xl p-4">
-                          <p className="text-xs text-white/40 mb-3">{lang === 'es' ? 'Mapeo de columnas' : 'Column mapping'}</p>
-                          <div className="space-y-2">
-                            {[
-                              { from: 'Transaction Date', to: lang === 'es' ? 'Fecha' : 'Date' },
-                              { from: 'Merchant Name', to: lang === 'es' ? 'Descripción' : 'Description' },
-                              { from: 'Debit Amount', to: lang === 'es' ? 'Monto' : 'Amount' },
-                            ].map((m, j) => (
-                              <motion.div
-                                key={j}
-                                className="flex items-center gap-2 text-xs"
-                                initial={{ opacity: 0, x: -10 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: 0.3 + j * 0.1 }}
-                              >
-                                <span className="bg-white/10 text-white/60 px-2 py-1 rounded flex-1">{m.from}</span>
-                                <span className="text-[#2EC4B6]">→</span>
-                                <span className="bg-[#2EC4B6]/20 text-[#2EC4B6] px-2 py-1 rounded flex-1 font-semibold">{m.to}</span>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          {[
-                            { val: 1247, label: lang === 'es' ? 'Filas' : 'Rows', suffix: '' },
-                            { val: 0, label: lang === 'es' ? 'Duplicados' : 'Dupes', suffix: '' },
-                            { val: 100, label: lang === 'es' ? 'Mapeadas' : 'Mapped', suffix: '%' },
-                          ].map(s => (
-                            <div key={s.label} className="bg-white/10 rounded-xl p-3">
-                              <p className="text-lg font-black text-white">
-                                <Counter to={s.val} suffix={s.suffix} />
-                              </p>
-                              <p className="text-xs text-white/40">{s.label}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {i === 2 && (
-                      <div className="space-y-3">
-                        <div className="bg-white/10 rounded-xl p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-bold text-white">P&amp;L {lang === 'es' ? 'Resumen' : 'Summary'} 2025</p>
-                            <div className="flex gap-1.5">
-                              <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded font-medium">PDF</span>
-                              <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-medium">Excel</span>
-                            </div>
-                          </div>
-                          <div className="space-y-1.5">
-                            {[
-                              { cat: lang === 'es' ? 'Publicidad' : 'Advertising', val: '$4,200', irs: 'Line 8' },
-                              { cat: 'Meals (50%)', val: '$1,890', irs: 'Line 24b' },
-                              { cat: lang === 'es' ? 'Legal y Profesional' : 'Legal & Professional', val: '$3,600', irs: 'Line 17' },
-                              { cat: lang === 'es' ? 'Oficina' : 'Office Expenses', val: '$2,100', irs: 'Line 18' },
-                            ].map((r, j) => (
-                              <motion.div
-                                key={j}
-                                className="flex items-center justify-between text-xs py-1 border-b border-white/5"
-                                initial={{ opacity: 0 }}
-                                whileInView={{ opacity: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: 0.3 + j * 0.08 }}
-                              >
-                                <span className="text-white/60">{r.cat}</span>
-                                <span className="text-white/30 mx-2">{r.irs}</span>
-                                <span className="text-red-400 font-semibold">{r.val}</span>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Reveal>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── AI FEATURE ── */}
-      <section id="how" className="py-24 max-w-7xl mx-auto px-6">
-        <div className="grid lg:grid-cols-2 gap-14 items-center">
-          {/* Visual */}
-          <Reveal y={20}>
-            <div className="bg-gradient-to-br from-[#1B4965] to-[#0d2233] rounded-2xl p-6 shadow-xl" ref={aiRef}>
-              <div className="space-y-3">
-                <motion.div
-                  className="flex items-center gap-3 mb-4"
-                  initial={{ opacity: 0 }}
-                  animate={aiInView ? { opacity: 1 } : {}}
-                  transition={{ delay: 0.2 }}
-                >
-                  <div className="w-8 h-8 bg-[#2EC4B6]/20 rounded-lg flex items-center justify-center">
-                    <span className="text-sm">⚡</span>
-                  </div>
-                  <p className="text-sm font-bold text-white">{lang === 'es' ? 'Clasificación IA en progreso...' : 'AI classification in progress...'}</p>
-                </motion.div>
-                {[
-                  { desc: 'Amazon Business Prime', cat: 'Office Expenses', conf: 'HIGH', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-                  { desc: 'Delta Airlines #DL4821', cat: 'Travel', conf: 'HIGH', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-                  { desc: 'Restaurant XYZ', cat: 'Meals (50%)', conf: 'MEDIUM', color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-                  { desc: 'MISC TRANSFER 9821', cat: lang === 'es' ? 'Revisar' : 'Needs Review', conf: 'LOW', color: 'text-red-400', bg: 'bg-red-500/10' },
-                ].map((row, i) => (
-                  <motion.div
-                    key={i}
-                    className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={aiInView ? { opacity: 1, x: 0 } : {}}
-                    transition={{ delay: 0.35 + i * 0.12, duration: 0.45, ease }}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-white/70 truncate">{row.desc}</p>
-                      <p className="text-xs text-white/40 mt-0.5">{row.cat}</p>
-                    </div>
-                    <motion.span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${row.bg} ${row.color} flex-shrink-0`}
-                      initial={{ scale: 0 }}
-                      animate={aiInView ? { scale: 1 } : {}}
-                      transition={{ delay: 0.5 + i * 0.12, type: 'spring', stiffness: 250 }}
-                    >
-                      {row.conf}
-                    </motion.span>
-                  </motion.div>
-                ))}
-                <motion.div
-                  className="bg-[#2EC4B6]/10 border border-[#2EC4B6]/20 rounded-xl p-3 flex items-center justify-between mt-2"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={aiInView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ delay: 0.9 }}
-                >
-                  <span className="text-xs text-[#2EC4B6] font-semibold">342 {lang === 'es' ? 'transacciones clasificadas' : 'transactions classified'}</span>
-                  <motion.button
-                    className="text-xs bg-[#2EC4B6] text-white font-bold px-3 py-1.5 rounded-lg"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {lang === 'es' ? 'Confirmar todo' : 'Confirm all'}
-                  </motion.button>
-                </motion.div>
-              </div>
-            </div>
-          </Reveal>
-
-          {/* Text */}
-          <Reveal delay={0.15}>
-            <span className="inline-block text-xs font-black uppercase tracking-widest text-[#2EC4B6] bg-[#2EC4B6]/10 px-3 py-1.5 rounded-full mb-4">{t.aiFeature.tag}</span>
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 leading-tight">{t.aiFeature.title}</h2>
-            <p className="text-gray-500 leading-relaxed mb-6">{t.aiFeature.desc}</p>
-            <motion.ul
-              className="space-y-2.5 mb-6"
-              variants={stagger.container}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-            >
-              {t.aiFeature.bullets.map((b, j) => (
-                <motion.li key={j} variants={stagger.item} className="flex items-center gap-2.5 text-sm text-gray-600">
-                  <span className="w-5 h-5 bg-[#2EC4B6] rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                  </span>
-                  {b}
-                </motion.li>
+                    {i === 1 ? <em className="not-italic" style={{ fontStyle: 'italic' }}>{line}</em> : line}
+                  </motion.span>
+                </span>
               ))}
-            </motion.ul>
-            <p className="text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-4 py-3">
-              ⓘ {t.aiFeature.note}
-            </p>
+            </h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.45, ease }}
+              className="mt-7 max-w-md text-[15px] leading-relaxed text-black/55"
+            >
+              {t.hero.sub}
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.58, ease }}
+              className="mt-9 flex flex-wrap items-center gap-3"
+            >
+              <Link
+                href="/signup"
+                className="group inline-flex items-center gap-2 px-6 py-3.5 font-mono text-xs font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: NAVY }}
+              >
+                {t.hero.cta1}
+                <span className="transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+              <a
+                href="#pricing"
+                className="inline-flex items-center border border-black/20 px-6 py-3.5 font-mono text-xs font-bold uppercase tracking-wider text-black/70 transition-colors hover:border-black/50"
+              >
+                {t.hero.cta2}
+              </a>
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.75 }}
+              className="mt-5 font-mono text-[11px] text-black/35"
+            >
+              {t.hero.note}
+            </motion.p>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.35, ease }}
+            className="self-center"
+          >
+            <LiveLedger lang={lang} />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── TICKER ── */}
+      <div className="overflow-hidden border-b border-black/10 bg-white py-3">
+        <div className="lp-marquee flex w-max items-center">
+          {[0, 1].map(dup => (
+            <div key={dup} className="flex items-center" aria-hidden={dup === 1}>
+              {t.ticker.map(item => (
+                <span key={`${dup}-${item}`} className="flex items-center">
+                  <span className="px-6 font-mono text-[11px] tracking-[0.25em] text-black/35">{item}</span>
+                  <span className="text-black/20">·</span>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── STEPS ── */}
+      <section id="product" className="border-b border-black/10">
+        <div className="mx-auto max-w-6xl px-5 py-20 lg:py-28">
+          <Reveal>
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-black/40">— {t.steps.kicker}</p>
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">{t.steps.title}</h2>
+          </Reveal>
+
+          <div className="mt-14 grid gap-px overflow-hidden border border-black/10 bg-black/10 md:grid-cols-3">
+            {t.steps.items.map((s, i) => (
+              <Reveal key={s.n} delay={i * 0.12} className="bg-[#FAFAF7]">
+                <div className="group flex h-full flex-col p-8 transition-colors hover:bg-white">
+                  <span className="font-mono text-4xl font-light text-black/15 transition-colors group-hover:text-[#2EC4B6]">{s.n}</span>
+                  <h3 className="mt-6 text-lg font-semibold tracking-tight" style={{ color: NAVY }}>{s.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-black/50">{s.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── DEMO ── */}
+      <section className="border-b border-black/10 bg-white">
+        <div className="mx-auto max-w-6xl px-5 py-20 lg:py-28">
+          <Reveal>
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-black/40">— {t.demo.kicker}</p>
+            <h2 className="text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">{t.demo.title}</h2>
+          </Reveal>
+
+          <Reveal delay={0.15} className="mt-10">
+            <div className="border border-black/10 bg-[#FAFAF7]">
+              <div className="flex flex-wrap border-b border-black/10">
+                {t.demo.tabs.map((label, i) => (
+                  <button
+                    key={label}
+                    onClick={() => setTab(i)}
+                    className={`relative px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors sm:px-7 ${tab === i ? 'text-white' : 'text-black/45 hover:text-black'}`}
+                    style={tab === i ? { backgroundColor: NAVY } : undefined}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <DemoPanel tab={tab} lang={lang} />
+            </div>
           </Reveal>
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ── */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-6">
-          <Reveal className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">{t.testimonials.title}</h2>
-          </Reveal>
-          <motion.div
-            className="grid md:grid-cols-3 gap-6"
-            variants={stagger.container}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.2 }}
-          >
-            {t.testimonials.items.map((item, i) => (
-              <motion.div
-                key={i}
-                variants={stagger.item}
-                whileHover={{ y: -6, boxShadow: '0 16px 40px rgba(0,0,0,0.09)' }}
-                className="bg-white rounded-2xl border border-gray-100 p-7 shadow-sm flex flex-col transition-shadow"
-              >
-                <div className="flex gap-0.5 mb-4">
-                  {Array(item.stars).fill(0).map((_, j) => (
-                    <motion.svg
-                      key={j}
-                      className="w-4 h-4 text-amber-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                      initial={{ opacity: 0, scale: 0 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.1 + i * 0.1 + j * 0.05, type: 'spring', stiffness: 300 }}
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </motion.svg>
-                  ))}
-                </div>
-                <p className="text-gray-600 text-sm leading-relaxed flex-1 mb-6">"{item.text}"</p>
-                <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1B4965] to-[#2EC4B6] flex items-center justify-center text-white text-sm font-black flex-shrink-0">
-                    {item.name[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{item.name}</p>
-                    <p className="text-xs text-gray-400">{item.role}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+      {/* ── STATS ── */}
+      <section className="border-b border-black/10">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 md:grid-cols-4">
+          {t.stats.map((s, i) => (
+            <div
+              key={s.l}
+              className={`px-5 py-10 text-center ${i > 0 ? 'border-l border-black/10' : ''} ${i >= 2 ? 'max-md:border-t max-md:border-black/10' : ''} ${i === 2 ? 'max-md:border-l-0' : ''}`}
+            >
+              <p className="text-3xl font-semibold tracking-tight sm:text-4xl" style={{ color: NAVY }}>
+                <Counter to={s.v} prefix={(s as any).p ?? ''} suffix={s.s} />
+              </p>
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-black/40">{s.l}</p>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* ── PRICING ── */}
-      <section id="pricing" className="py-24 max-w-7xl mx-auto px-6">
-        <Reveal className="text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">{t.pricing.title}</h2>
-          <p className="text-lg text-gray-500">{t.pricing.sub}</p>
-        </Reveal>
-        <motion.div
-          className="grid md:grid-cols-3 gap-6 items-start max-w-5xl mx-auto"
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.12 } } }}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true, amount: 0.2 }}
-        >
-          {t.pricing.plans.map((p, i) => (
-            <motion.div
-              key={i}
-              variants={{ hidden: { opacity: 0, y: 50 }, show: { opacity: 1, y: 0, transition: { duration: 0.55, ease } } }}
-              whileHover={{ y: -8, boxShadow: p.highlight ? '0 24px 60px rgba(27,73,101,0.3)' : '0 12px 40px rgba(0,0,0,0.1)' }}
-              className={`rounded-2xl p-8 border relative transition-shadow ${p.highlight ? 'bg-[#1B4965] border-[#1B4965] shadow-2xl shadow-[#1B4965]/20 scale-[1.03]' : 'bg-white border-gray-200 shadow-sm'}`}
-            >
-              {p.highlight && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#2EC4B6] text-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-wide shadow-lg">
-                  {lang === 'es' ? '⭐ Más popular' : '⭐ Most popular'}
-                </div>
-              )}
-              <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${p.highlight ? 'text-[#2EC4B6]' : 'text-gray-400'}`}>{p.name}</p>
-              <div className="flex items-end gap-1 mb-1">
-                <span className={`text-5xl font-black ${p.highlight ? 'text-white' : 'text-gray-900'}`}>{p.price}</span>
-                <span className={`text-sm mb-2 ${p.highlight ? 'text-white/50' : 'text-gray-400'}`}>{p.per}</span>
-              </div>
-              <p className={`text-sm mb-6 ${p.highlight ? 'text-white/50' : 'text-gray-400'}`}>{p.desc}</p>
-              <div className={`h-px mb-6 ${p.highlight ? 'bg-white/10' : 'bg-gray-100'}`} />
-              <ul className="space-y-3 mb-8">
-                {p.features.map((f, j) => (
-                  <motion.li
-                    key={j}
-                    className={`flex items-center gap-2.5 text-sm ${p.highlight ? 'text-white/80' : 'text-gray-600'}`}
-                    initial={{ opacity: 0, x: -8 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 + j * 0.05 }}
+      <section id="pricing" className="border-b border-black/10 bg-white">
+        <div className="mx-auto max-w-6xl px-5 py-20 lg:py-28">
+          <Reveal>
+            <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-black/40">— {t.pricing.kicker}</p>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <h2 className="text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">{t.pricing.title}</h2>
+              <p className="max-w-xs text-sm text-black/45">{t.pricing.sub}</p>
+            </div>
+          </Reveal>
+
+          <div className="mt-12 grid gap-px overflow-hidden border border-black/10 bg-black/10 md:grid-cols-2 xl:grid-cols-4">
+            {t.pricing.plans.map((p, i) => (
+              <Reveal key={p.name} delay={i * 0.08} className={p.highlight ? '' : 'bg-white'}>
+                <div
+                  className="relative flex h-full flex-col p-7"
+                  style={p.highlight ? { backgroundColor: NAVY } : undefined}
+                >
+                  <div className="flex items-baseline justify-between">
+                    <h3
+                      className={`font-mono text-xs font-bold uppercase tracking-[0.2em] ${p.highlight ? 'text-white' : 'text-black/60'}`}
+                    >
+                      {p.name}
+                    </h3>
+                    {p.highlight && (
+                      <span className="px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-black" style={{ backgroundColor: TEAL }}>
+                        {t.pricing.popular}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-6 flex items-baseline gap-1">
+                    {p.price ? (
+                      <>
+                        <span className={`text-4xl font-semibold tracking-tight ${p.highlight ? 'text-white' : ''}`} style={!p.highlight ? { color: NAVY } : undefined}>
+                          {p.price}
+                        </span>
+                        <span className={`font-mono text-xs ${p.highlight ? 'text-white/50' : 'text-black/35'}`}>{t.pricing.monthly}</span>
+                      </>
+                    ) : (
+                      <span className={`text-2xl font-semibold tracking-tight ${p.highlight ? 'text-white' : ''}`} style={!p.highlight ? { color: NAVY } : undefined}>
+                        {t.pricing.custom}
+                      </span>
+                    )}
+                  </div>
+                  <p className={`mt-2 text-xs ${p.highlight ? 'text-white/50' : 'text-black/40'}`}>{p.desc}</p>
+
+                  <ul className="mt-7 flex-1 space-y-2.5 border-t pt-6" style={{ borderColor: p.highlight ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }}>
+                    {p.features.map(f => (
+                      <li key={f} className={`flex items-start gap-2.5 text-[13px] ${p.highlight ? 'text-white/85' : 'text-black/65'}`}>
+                        <span className="mt-px font-mono text-xs" style={{ color: TEAL }}>✓</span>
+                        {f}
+                      </li>
+                    ))}
+                    {p.missing.map(f => (
+                      <li key={f} className={`flex items-start gap-2.5 text-[13px] line-through ${p.highlight ? 'text-white/30' : 'text-black/25'}`}>
+                        <span className="mt-px font-mono text-xs no-underline">—</span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    href="/signup"
+                    className={`mt-8 block py-3 text-center font-mono text-[11px] font-bold uppercase tracking-wider transition-opacity hover:opacity-85 ${p.highlight ? 'text-black' : 'text-white'}`}
+                    style={{ backgroundColor: p.highlight ? TEAL : NAVY }}
                   >
-                    <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${p.highlight ? 'bg-[#2EC4B6]/20 text-[#2EC4B6]' : 'bg-[#1B4965]/10 text-[#1B4965]'}`}>
-                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                    </span>
-                    {f}
-                  </motion.li>
-                ))}
-              </ul>
-              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                <Link href="/signup" className={`block w-full text-center font-bold py-3.5 rounded-xl transition-all ${p.highlight ? 'bg-[#2EC4B6] hover:bg-[#26a89b] text-white shadow-lg shadow-[#2EC4B6]/30' : 'bg-[#1B4965] hover:bg-[#143A52] text-white'}`}>
-                  {p.cta}
-                </Link>
-              </motion.div>
-            </motion.div>
-          ))}
-        </motion.div>
+                    {p.cta}
+                  </Link>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ── FAQ ── */}
-      <section id="faq" className="py-24 bg-gray-50">
-        <div className="max-w-3xl mx-auto px-6">
-          <Reveal className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900">{t.faq.title}</h2>
+      <section id="faq" className="border-b border-black/10">
+        <div className="mx-auto max-w-3xl px-5 py-20 lg:py-28">
+          <Reveal>
+            <p className="mb-10 font-mono text-[11px] uppercase tracking-[0.2em] text-black/40">— {t.faq.kicker}</p>
           </Reveal>
-          <motion.div
-            className="space-y-3"
-            variants={stagger.container}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.1 }}
-          >
-            {t.faq.items.map((item, i) => (
-              <motion.div key={i} variants={stagger.item}>
-                <FaqItem q={item.q} a={item.a} />
-              </motion.div>
-            ))}
-          </motion.div>
+          <Reveal delay={0.1}>
+            <div className="border-t border-black/10">
+              {t.faq.items.map((item, i) => (
+                <FaqItem key={i} n={String(i + 1).padStart(2, '0')} q={item.q} a={item.a} />
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ── FINAL CTA ── */}
-      <section className="relative py-28 overflow-hidden bg-gradient-to-br from-[#0d2233] via-[#1B4965] to-[#1a5276] text-white text-center">
-        <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-        <motion.div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 bg-[#2EC4B6]/10 blur-3xl rounded-full"
-          animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.9, 0.5] }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <Reveal className="relative max-w-3xl mx-auto px-6">
-          <h2 className="text-4xl md:text-5xl font-black mb-5 leading-tight">{t.finalCta.title}</h2>
-          <p className="text-lg text-white/55 mb-10 max-w-xl mx-auto">{t.finalCta.sub}</p>
-          <motion.div
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.97 }}
-            className="inline-block"
-          >
-            <Link href="/signup" className="inline-flex items-center gap-2 bg-[#2EC4B6] hover:bg-[#26a89b] text-white font-black px-10 py-4 rounded-2xl text-lg transition-all shadow-xl shadow-[#2EC4B6]/30">
-              {t.finalCta.btn}
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-            </Link>
-          </motion.div>
-          <p className="mt-5 text-sm text-white/25">{t.hero.sub2}</p>
-        </Reveal>
+      <section style={{ backgroundColor: NAVY }}>
+        <div className="mx-auto max-w-6xl px-5 py-24 lg:py-32">
+          <Reveal>
+            <h2 className="max-w-3xl text-3xl font-semibold leading-tight tracking-[-0.02em] text-white sm:text-5xl">
+              {t.finalCta.title}
+            </h2>
+            <p className="mt-5 max-w-md text-[15px] leading-relaxed text-white/50">{t.finalCta.sub}</p>
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              <Link
+                href="/signup"
+                className="group inline-flex items-center gap-2 px-7 py-4 font-mono text-xs font-bold uppercase tracking-wider text-black transition-opacity hover:opacity-90"
+                style={{ backgroundColor: TEAL }}
+              >
+                {t.finalCta.btn}
+                <span className="transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+              <span className="font-mono text-[11px] text-white/35">{t.hero.note}</span>
+            </div>
+          </Reveal>
+        </div>
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="bg-[#08161f] text-white/40 py-14">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
-            <div className="col-span-2">
-              <div className="flex items-center gap-2.5 mb-4">
-                <img src="/logo.svg" alt="My Profit and Loss" className="w-8 h-8" />
-                <span className="font-black text-white text-lg tracking-tight">My Profit &amp; Loss</span>
+      <footer className="bg-[#0d2233] py-14 text-white/40">
+        <div className="mx-auto max-w-6xl px-5">
+          <div className="grid gap-10 md:grid-cols-[2fr_1fr_1fr_1fr]">
+            <div>
+              <div className="mb-4 flex items-center gap-2.5">
+                <img src="/logo.svg" alt="My Profit and Loss" className="h-7 w-7" />
+                <span className="text-sm font-bold tracking-tight text-white">My Profit &amp; Loss</span>
               </div>
-              <p className="text-sm leading-relaxed max-w-xs">
-                {lang === 'es' ? 'Software de P&L y contabilidad fiscal para negocios en Estados Unidos.' : 'P&L and tax accounting software for US small businesses.'}
-              </p>
+              <p className="max-w-xs text-xs leading-relaxed">{t.footer.blurb}</p>
             </div>
             <div>
-              <p className="text-white font-bold text-sm mb-4">{t.footer.product}</p>
-              <ul className="space-y-2.5 text-sm">
-                <li><a href="#features" className="hover:text-white transition-colors">{t.footer.features}</a></li>
-                <li><a href="#pricing" className="hover:text-white transition-colors">{t.footer.pricing}</a></li>
-                <li><a href="#how" className="hover:text-white transition-colors">{t.footer.how}</a></li>
+              <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">{t.footer.product}</p>
+              <ul className="space-y-2.5 text-xs">
+                <li><a href="#product" className="transition-colors hover:text-white">{t.footer.links.product}</a></li>
+                <li><a href="#pricing" className="transition-colors hover:text-white">{t.footer.links.pricing}</a></li>
+                <li><a href="#faq" className="transition-colors hover:text-white">{t.footer.links.faq}</a></li>
               </ul>
             </div>
             <div>
-              <p className="text-white font-bold text-sm mb-4">{t.footer.account}</p>
-              <ul className="space-y-2.5 text-sm">
-                <li><Link href="/signin" className="hover:text-white transition-colors">{t.footer.login}</Link></li>
-                <li><Link href="/signup" className="hover:text-white transition-colors">{t.footer.signup}</Link></li>
+              <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">{t.footer.account}</p>
+              <ul className="space-y-2.5 text-xs">
+                <li><Link href="/signin" className="transition-colors hover:text-white">{t.footer.login}</Link></li>
+                <li><Link href="/signup" className="transition-colors hover:text-white">{t.footer.signup}</Link></li>
               </ul>
             </div>
             <div>
-              <p className="text-white font-bold text-sm mb-4">{t.footer.legal}</p>
-              <ul className="space-y-2.5 text-sm">
-                <li><Link href="/privacy" className="hover:text-white transition-colors">{t.footer.privacy}</Link></li>
-                <li><Link href="/terms" className="hover:text-white transition-colors">{t.footer.terms}</Link></li>
+              <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">{t.footer.legal}</p>
+              <ul className="space-y-2.5 text-xs">
+                <li><Link href="/privacy" className="transition-colors hover:text-white">{t.footer.privacy}</Link></li>
+                <li><Link href="/terms" className="transition-colors hover:text-white">{t.footer.terms}</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-white/8 pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+          <div className="mt-12 flex flex-col items-start justify-between gap-2 border-t border-white/10 pt-6 font-mono text-[10px] tracking-wider md:flex-row md:items-center">
             <p>{t.footer.copy}</p>
-            <p>{lang === 'es' ? 'Hecho para negocios en USA 🇺🇸' : 'Made for US businesses 🇺🇸'}</p>
+            <p>{t.footer.made}</p>
           </div>
         </div>
       </footer>
