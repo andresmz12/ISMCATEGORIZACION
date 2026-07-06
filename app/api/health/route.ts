@@ -1,91 +1,75 @@
 import { NextResponse } from 'next/server'
+import os from 'node:os'
 import { prisma } from '@/lib/prisma'
-import os from 'os'
 
 export const dynamic = 'force-dynamic'
 
-const WINDOW_MS = 5 * 60 * 1000
-const CPU_SAMPLE_MS = 100
-// Container memory limit isn't reliably exposed on Railway, so use a
-// configurable ceiling instead of os.totalmem() (which reports the host's RAM).
-const MEMORY_LIMIT_MB = Number(process.env.HEALTH_MEMORY_LIMIT_MB) || 512
+const DB_PING_TIMEOUT_MS = 1500
 
-interface RequestRecord {
-  timestamp: number
-  failed: boolean
+// CPU % of THIS process, averaged over the interval between health checks.
+// Baseline starts at module load, so the first call measures since boot.
+let lastCpu = process.cpuUsage()
+let lastAt = Date.now()
+
+function cpuPercent(): number {
+  const now = Date.now()
+  const cur = process.cpuUsage()
+  const usedMs = (cur.user - lastCpu.user + (cur.system - lastCpu.system)) / 1000
+  const elapsedMs = now - lastAt
+  lastCpu = cur
+  lastAt = now
+  if (elapsedMs <= 0) return 0
+  const cores = os.cpus().length || 1
+  return Math.min(100, Math.max(0, Math.round((usedMs / (elapsedMs * cores)) * 1000) / 10))
 }
 
-const requestHistory: RequestRecord[] = []
+// Process RSS as % of the container memory limit. Railway doesn't expose the
+// container limit to Node, so set MEMORY_LIMIT_MB to the plan's limit for an
+// exact figure; without it, fall back to the host's total memory.
+function memoryPercent(): number {
+  const rss = process.memoryUsage().rss
+  const limitMb =
+    Number(process.env.MEMORY_LIMIT_MB) || Number(process.env.HEALTH_MEMORY_LIMIT_MB)
+  const total = limitMb > 0 ? limitMb * 1024 * 1024 : os.totalmem()
+  return Math.min(100, Math.max(0, Math.round((rss / total) * 1000) / 10))
+}
 
-function systemCpuTimes() {
-  let idle = 0
-  let total = 0
-  for (const cpu of os.cpus()) {
-    for (const type of Object.values(cpu.times)) total += type
-    idle += cpu.times.idle
+async function pingDatabase(): Promise<boolean> {
+  try {
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('DB ping timeout')), DB_PING_TIMEOUT_MS)
+      ),
+    ])
+    return true
+  } catch {
+    return false
   }
-  return { idle, total }
-}
-
-// System-wide CPU %, sampled over a short window at request time rather than
-// averaged across the (long, mostly idle) interval between health checks.
-async function sampleCpuUsage(sampleMs: number): Promise<number> {
-  const start = systemCpuTimes()
-  await new Promise(resolve => setTimeout(resolve, sampleMs))
-  const end = systemCpuTimes()
-  const idleDelta = end.idle - start.idle
-  const totalDelta = end.total - start.total
-  if (totalDelta <= 0) return 0
-  return Math.round(Math.min(100, Math.max(0, 100 - (100 * idleDelta) / totalDelta)) * 10) / 10
 }
 
 export async function GET() {
-  const now = Date.now()
+  const databaseConnected = await pingDatabase()
+  const memoryUsage = memoryPercent()
+  const cpuUsage = cpuPercent()
 
-  // Prune records outside the 5-minute window
-  const cutoff = now - WINDOW_MS
-  while (requestHistory.length > 0 && requestHistory[0].timestamp < cutoff) {
-    requestHistory.shift()
-  }
+  const status = !databaseConnected
+    ? 'error'
+    : memoryUsage > 90 || cpuUsage > 90
+      ? 'degraded'
+      : 'ok'
 
-  // Database check
-  let databaseConnected: boolean
-  try {
-    await prisma.$queryRaw`SELECT 1`
-    databaseConnected = true
-  } catch {
-    databaseConnected = false
-  }
-
-  // Record this request: a failed health check = DB unreachable
-  requestHistory.push({ timestamp: now, failed: !databaseConnected })
-
-  // errorRate: % of requests that failed in the last 5 minutes (0–100)
-  let errorRate: number | null = 0
-  if (requestHistory.length > 0) {
-    const failed = requestHistory.filter(r => r.failed).length
-    errorRate = Math.round((failed / requestHistory.length) * 1000) / 10
-  }
-
-  // memoryUsage: process RSS as % of a configured container memory limit (0–100)
-  let memoryUsage: number | null = null
-  try {
-    const rssMb = process.memoryUsage().rss / 1024 / 1024
-    memoryUsage = Math.round(Math.min(100, (rssMb / MEMORY_LIMIT_MB) * 100) * 10) / 10
-  } catch {
-    memoryUsage = null
-  }
-
-  // cpuUsage: system CPU % sampled over a short window at request time (0–100)
-  let cpuUsage: number | null = null
-  try {
-    cpuUsage = await sampleCpuUsage(CPU_SAMPLE_MS)
-  } catch {
-    cpuUsage = null
-  }
-
+  // errorRate is intentionally omitted: this app doesn't track 5xx responses,
+  // and reporting a made-up number would be worse than reporting nothing.
   return NextResponse.json(
-    { databaseConnected, errorRate, memoryUsage, cpuUsage },
-    { status: 200 }
+    {
+      status,
+      databaseConnected,
+      memoryUsage,
+      cpuUsage,
+      uptimeSeconds: Math.round(process.uptime()),
+      ts: new Date().toISOString(),
+    },
+    { status: status === 'error' ? 503 : 200 }
   )
 }
