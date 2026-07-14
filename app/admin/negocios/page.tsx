@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { estimateTransactionLimit } from '@/lib/ai-pricing'
 
 interface Business {
   id: string
@@ -178,6 +179,15 @@ export default function AdminNegociosPage() {
                       const usage = biz.aiUsage[0]
                       const spent = usage?.costCents ?? 0
                       const isBlocked = !!usage?.blocked && !usage?.unblockedByAdmin
+
+                      const draftRaw = budgetDraft[biz.id]
+                      const draftDollars = draftRaw !== undefined
+                        ? (draftRaw === '' ? null : Number(draftRaw))
+                        : (biz.aiMonthlyBudgetCents != null ? biz.aiMonthlyBudgetCents / 100 : null)
+                      const estimatedTx = draftDollars != null && Number.isFinite(draftDollars) && draftDollars > 0
+                        ? estimateTransactionLimit(Math.round(draftDollars * 100))
+                        : null
+
                       return (
                         <>
                           <p className="text-sm text-gray-700">
@@ -215,6 +225,11 @@ export default function AdminNegociosPage() {
                             </button>
                           </div>
                           <p className="text-xs text-gray-400">Límite en USD por mes. Déjalo vacío para no limitar.</p>
+                          {estimatedTx != null && (
+                            <p className="text-xs text-[#1B4965] font-medium">
+                              ≈ {estimatedTx.toLocaleString('es-CO')} transacciones clasificadas con IA al mes
+                            </p>
+                          )}
                         </>
                       )
                     })()}
