@@ -6,11 +6,20 @@
 const INPUT_CENTS_PER_MTOK = 100
 const OUTPUT_CENTS_PER_MTOK = 500
 
-// Rough average cost per classified transaction (~75 input + ~55 output tokens),
-// used only to translate a $ budget into a transaction count so business users
-// see a usage bar without ever seeing dollar figures, and so admins can see
-// what a budget they're typing actually buys.
-const AVG_COST_CENTS_PER_TRANSACTION = (75 * INPUT_CENTS_PER_MTOK + 55 * OUTPUT_CENTS_PER_MTOK) / 1_000_000
+// Average cost per classified transaction, used only to translate a $ budget
+// into a transaction count for display (the business-user usage bar, and the
+// live estimate on the admin businesses page) — the actual $ enforcement in
+// checkAiBudget/recordAiUsage always uses the real token counts the Anthropic
+// API returns per call, never this estimate.
+//
+// Derived by reconstructing the exact prompt shape from classify-ai/route.ts
+// (an 18-category system prompt + a 20-transaction batch with realistic bank
+// descriptions) and measuring it at ~4 chars/token: ~48 input + ~50 output
+// tokens/transaction. Rounded up slightly (60/60) as a safety margin, since
+// JSON punctuation tends to tokenize less efficiently than plain prose and
+// real transaction descriptions can run longer than the sample — better to
+// under-promise the transaction count than to over-promise it.
+const AVG_COST_CENTS_PER_TRANSACTION = (60 * INPUT_CENTS_PER_MTOK + 60 * OUTPUT_CENTS_PER_MTOK) / 1_000_000
 
 export function tokensToCents(inputTokens: number, outputTokens: number): number {
   return Math.round(

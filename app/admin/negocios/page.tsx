@@ -92,6 +92,23 @@ export default function AdminNegociosPage() {
         </div>
       </div>
 
+      {!loading && businesses.length > 0 && (() => {
+        const totalSpentCents = businesses.reduce((sum, b) => sum + (b.aiUsage[0]?.costCents ?? 0), 0)
+        const blockedCount = businesses.filter(b => b.aiUsage[0]?.blocked && !b.aiUsage[0]?.unblockedByAdmin).length
+        return (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card p-4">
+              <p className="text-xs text-gray-500 font-medium mb-1">Total gastado en IA este mes (todos los negocios)</p>
+              <p className="text-xl font-bold text-[#1B4965]">{fmtUsd(totalSpentCents)}</p>
+            </div>
+            <div className="card p-4">
+              <p className="text-xs text-gray-500 font-medium mb-1">Negocios bloqueados por presupuesto</p>
+              <p className={`text-xl font-bold ${blockedCount > 0 ? 'text-red-600' : 'text-gray-700'}`}>{blockedCount}</p>
+            </div>
+          </div>
+        )
+      })()}
+
       <div className="card p-4">
         <input
           className="input text-sm w-full max-w-sm"
