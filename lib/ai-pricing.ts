@@ -27,7 +27,10 @@ export function tokensToCents(inputTokens: number, outputTokens: number): number
   )
 }
 
+// null/undefined budget = unlimited (no cap configured). A budget of exactly
+// 0 is a valid "fully blocked" configuration and must NOT be treated as
+// unlimited — use == null here, not a truthy check, so 0 stays 0.
 export function estimateTransactionLimit(budgetCents: number | null | undefined): number | null {
-  if (!budgetCents) return null
+  if (budgetCents == null) return null
   return Math.floor(budgetCents / AVG_COST_CENTS_PER_TRANSACTION)
 }

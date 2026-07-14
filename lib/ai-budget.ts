@@ -16,11 +16,24 @@ export async function checkAiBudget(businessId: string): Promise<NextResponse | 
     where: { id: businessId },
     select: { aiMonthlyBudgetCents: true },
   })
-  if (!business?.aiMonthlyBudgetCents) return null
+  // null/undefined = no budget configured (unlimited). A budget of exactly 0
+  // is a valid "fully blocked" setting and must not be treated as unlimited.
+  if (business?.aiMonthlyBudgetCents == null) return null
 
   const usage = await prisma.aiUsage.findUnique({
     where: { businessId_period: { businessId, period: currentPeriod() } },
   })
+  // A $0 budget blocks immediately, even before any AiUsage row exists yet
+  // (e.g. a brand-new business never used AI this period).
+  if (business.aiMonthlyBudgetCents === 0 && !usage?.unblockedByAdmin) {
+    return NextResponse.json(
+      {
+        error:
+          'Este negocio alcanzó su presupuesto mensual de clasificación con IA. Contacta a tu administrador para aumentar el límite.',
+      },
+      { status: 403 }
+    )
+  }
   if (!usage) return null
 
   if (usage.blocked && !usage.unblockedByAdmin) {
@@ -62,7 +75,7 @@ export async function recordAiUsage(
     where: { id: businessId },
     select: { aiMonthlyBudgetCents: true },
   })
-  if (business?.aiMonthlyBudgetCents && usage.costCents >= business.aiMonthlyBudgetCents && !usage.blocked) {
+  if (business?.aiMonthlyBudgetCents != null && usage.costCents >= business.aiMonthlyBudgetCents && !usage.blocked) {
     await prisma.aiUsage.update({ where: { id: usage.id }, data: { blocked: true } })
   }
 }
