@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
+import { parseTransactionDate } from '@/lib/date'
 import crypto from 'crypto'
 
 function makeChecksum(date: string, description: string, amount: number): string {
@@ -48,8 +49,8 @@ export async function POST(req: Request) {
     for (let i = 0; i < transactions.length; i++) {
       const t = transactions[i]
       try {
-        const dateObj = new Date(t.date)
-        if (isNaN(dateObj.getTime())) { errors.push(`Row ${i + 1}: invalid date`); continue }
+        const dateObj = parseTransactionDate(t.date)
+        if (!dateObj) { errors.push(`Row ${i + 1}: invalid date`); continue }
         if (!t.description?.trim()) { errors.push(`Row ${i + 1}: empty description`); continue }
         const amount = Number(t.amount)
         if (isNaN(amount) || amount <= 0) { errors.push(`Row ${i + 1}: invalid amount`); continue }

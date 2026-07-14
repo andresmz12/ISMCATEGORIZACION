@@ -7,6 +7,7 @@ import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
 import { decryptSecret } from '@/lib/crypto'
+import { noon } from '@/lib/date'
 import crypto from 'crypto'
 
 function makeChecksum(date: string, description: string, amount: number): string {
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
         const amount = Math.abs(tx.amount)
         // Plaid: positive amount = money out (debit), negative = money in (credit)
         const type = tx.amount > 0 ? 'DEBIT' : 'CREDIT'
-        const date = new Date(`${dateStr}T12:00:00`)
+        const date = noon(dateStr)
         const checksum = makeChecksum(dateStr, description, amount)
 
         // Find source account name

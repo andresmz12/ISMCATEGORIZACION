@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
-import { endOfDay } from '@/lib/date'
+import { endOfDay, parseTransactionDate } from '@/lib/date'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -68,11 +68,13 @@ export async function POST(req: Request) {
   if (!businessId || !date || !description) return NextResponse.json({ error: 'businessId, date, description required' }, { status: 400 })
   const parsedAmount = Number(amount)
   if (!isFinite(parsedAmount) || parsedAmount <= 0) return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
+  const parsedDate = parseTransactionDate(date)
+  if (!parsedDate) return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
   if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const tx = await prisma.transaction.create({
-    data: { businessId, date: new Date(date), description, amount: parsedAmount, type: type || 'DEBIT', status: 'PENDING' },
+    data: { businessId, date: parsedDate, description, amount: parsedAmount, type: type || 'DEBIT', status: 'PENDING' },
   })
   await logAudit({ userId, businessId, action: 'CREATE_TRANSACTION', entity: 'Transaction', entityId: tx.id, metadata: { description, amount: parsedAmount, type: type || 'DEBIT' } })
   return NextResponse.json(tx, { status: 201 })
