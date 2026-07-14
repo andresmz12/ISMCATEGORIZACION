@@ -2,17 +2,39 @@ import { NextResponse } from 'next/server'
 import { execSync } from 'child_process'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import path from 'path'
 
-// One-time setup endpoint — pushes schema + seeds demo users.
-// Protected by SETUP_SECRET env var. Safe to leave deployed.
+function secretsMatch(a: string, b: string): boolean {
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  if (bufA.length !== bufB.length) return false
+  return crypto.timingSafeEqual(bufA, bufB)
+}
+
+// One-time bootstrap endpoint — pushes schema + seeds the first superadmin
+// and system categories. Protected by SETUP_SECRET, AND self-disables the
+// moment any user exists in the database, so it only ever works on a truly
+// empty (first boot) deployment — not left open indefinitely afterward.
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization') || ''
   const secret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
   const envSecret = process.env.SETUP_SECRET
 
-  if (!envSecret || !secret || secret !== envSecret) {
+  if (!envSecret || !secret || !secretsMatch(secret, envSecret)) {
     return NextResponse.json({ error: 'Forbidden — pass Authorization: Bearer <SETUP_SECRET>' }, { status: 403 })
+  }
+
+  try {
+    const existingUsers = await prisma.user.count()
+    if (existingUsers > 0) {
+      return NextResponse.json(
+        { error: 'Setup already completed — this endpoint only runs once, on an empty database. Use /api/admin/create-superadmin or /api/admin/reset-password instead.' },
+        { status: 403 }
+      )
+    }
+  } catch {
+    // User table may not exist yet on a genuinely fresh database — fall through and let setup run.
   }
 
   const results: string[] = []
@@ -91,8 +113,12 @@ export async function GET(req: Request) {
 
   // Step 3: Seed users + categories
   try {
-    const superEmail = process.env.SUPERADMIN_EMAIL || 'superadmin@mypnl.com'
-    const superPassword = process.env.SUPERADMIN_PASSWORD || 'SuperAdmin123!'
+    const superEmail = process.env.SUPERADMIN_EMAIL
+    const superPassword = process.env.SUPERADMIN_PASSWORD
+    if (!superEmail || !superPassword) {
+      results.push('✗ SUPERADMIN_EMAIL and SUPERADMIN_PASSWORD must be set — no default credentials are used')
+      return NextResponse.json({ ok: false, results, error: 'SUPERADMIN_EMAIL and SUPERADMIN_PASSWORD must be set' }, { status: 503 })
+    }
     const superHash = await bcrypt.hash(superPassword, 12)
     await prisma.user.upsert({
       where: { email: superEmail },

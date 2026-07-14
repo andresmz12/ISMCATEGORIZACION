@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+
+function secretsMatch(a: string, b: string): boolean {
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  if (bufA.length !== bufB.length) return false
+  return crypto.timingSafeEqual(bufA, bufB)
+}
 
 // POST /api/admin/reset-password
 // Body: { secret: string, email: string, newPassword: string }
@@ -21,7 +29,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'secret, email and newPassword required' }, { status: 400 })
   }
 
-  if (body.secret !== resetSecret) {
+  if (!secretsMatch(String(body.secret), resetSecret)) {
     return NextResponse.json({ error: 'Invalid secret' }, { status: 403 })
   }
 

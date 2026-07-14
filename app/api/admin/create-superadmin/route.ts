@@ -14,8 +14,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const password = process.env.SUPERADMIN_PASSWORD || 'SuperAdmin123!'
-    const email = process.env.SUPERADMIN_EMAIL || 'superadmin@mypnl.com'
+    const password = process.env.SUPERADMIN_PASSWORD
+    const email = process.env.SUPERADMIN_EMAIL
+    if (!password || !email) {
+      return NextResponse.json(
+        { success: false, error: 'SUPERADMIN_PASSWORD and SUPERADMIN_EMAIL must be set — no default credentials are used' },
+        { status: 503 }
+      )
+    }
     const hash = await bcrypt.hash(password, 12)
 
     const existing = await prisma.$queryRaw<{ id: string }[]>`
