@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { href: '/import', label: t('nav.import'), icon: (<svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>) },
         { href: '/reports', label: t('nav.reports'), icon: (<svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>) },
         { href: '/recibos', label: t('nav.receipts'), icon: (<svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>) },
-        { href: '/plaid', label: t('nav.plaid'), highlight: true, icon: (<svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>) },
+        { href: '/plaid', label: t('nav.plaid'), highlight: true, comingSoon: true, icon: (<svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>) },
       ],
     },
     {
@@ -158,6 +158,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {!isCollapsed && (
                       <span className="flex items-center gap-1.5 flex-1 min-w-0">
                         {item.label}
+                        {item.comingSoon && (
+                          <span className="ml-auto bg-white/15 text-white/70 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap">
+                            Pronto
+                          </span>
+                        )}
                         {item.badge > 0 && (
                           <span className="ml-auto bg-[#2EC4B6] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
                             {item.badge}

@@ -173,6 +173,28 @@ export default function PlaidPage() {
     }
   }
 
+  // Coming soon — bank connection module not launched yet.
+  // Remove this block to re-enable the feature; everything below it still works.
+  return (
+    <div className="max-w-2xl mx-auto py-16 px-4 text-center space-y-5">
+      <div className="inline-flex items-center gap-2 bg-gray-100 text-gray-500 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+        Próximamente
+      </div>
+      <div className="flex justify-center">
+        <div className="w-16 h-16 rounded-2xl bg-[#1B4965]/10 flex items-center justify-center">
+          <svg className="w-8 h-8 text-[#1B4965]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
+        </div>
+      </div>
+      <h1 className="text-2xl font-bold text-gray-900">Conexión bancaria — módulo próximamente</h1>
+      <p className="text-gray-500 text-sm max-w-md mx-auto">
+        Estamos trabajando en la conexión directa con tu banco. Mientras tanto, puedes seguir subiendo tu estado de cuenta manualmente desde{' '}
+        <a href="/clasificar" className="text-[#1B4965] font-semibold underline">Clasificar con IA</a>.
+      </p>
+    </div>
+  )
+
   // Upgrade wall for BASIC plan
   if (!isPlaidEnabled) {
     return (
