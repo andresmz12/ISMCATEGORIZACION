@@ -7,6 +7,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
+import { checkAiBudget, recordAiUsage } from '@/lib/ai-budget'
 import { noon } from '@/lib/date'
 
 const CATEGORIES = [
@@ -44,6 +45,9 @@ export async function POST(req: Request) {
     if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+
+    const budgetDenied = await checkAiBudget(businessId)
+    if (budgetDenied) return budgetDenied
 
     const buffer = Buffer.from(await file.arrayBuffer())
     if (buffer.length > 5 * 1024 * 1024) {
@@ -92,6 +96,8 @@ Use null for any field you cannot read. Receipt may be in English or Spanish.`,
         ],
       }],
     })
+
+    await recordAiUsage(businessId, response.usage.input_tokens, response.usage.output_tokens, 1)
 
     const raw = response.content[0].type === 'text' ? response.content[0].text : ''
     let extracted: any = {}
