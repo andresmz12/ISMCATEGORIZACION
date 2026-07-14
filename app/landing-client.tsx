@@ -630,12 +630,12 @@ export default function LandingClient() {
             </button>
             <Link
               href="/signin"
-              className="hidden px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-black/60 transition-colors hover:text-black sm:block"
+              className="block px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-black/60 transition-colors hover:text-black"
             >
               {t.nav.login}
             </Link>
             <Link
-              href="/signup"
+              href="/register"
               className="px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: NAVY }}
             >
@@ -690,7 +690,7 @@ export default function LandingClient() {
               className="mt-9 flex flex-wrap items-center gap-3"
             >
               <Link
-                href="/signup"
+                href="/register"
                 className="group inline-flex items-center gap-2 px-6 py-3.5 font-mono text-xs font-bold uppercase tracking-wider text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: NAVY }}
               >
@@ -872,7 +872,7 @@ export default function LandingClient() {
                   </ul>
 
                   <Link
-                    href="/signup"
+                    href="/register"
                     className={`mt-8 block py-3 text-center font-mono text-[11px] font-bold uppercase tracking-wider transition-opacity hover:opacity-85 ${p.highlight ? 'text-black' : 'text-white'}`}
                     style={{ backgroundColor: p.highlight ? TEAL : NAVY }}
                   >
@@ -911,7 +911,7 @@ export default function LandingClient() {
             <p className="mt-5 max-w-md text-[15px] leading-relaxed text-white/50">{t.finalCta.sub}</p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <Link
-                href="/signup"
+                href="/register"
                 className="group inline-flex items-center gap-2 px-7 py-4 font-mono text-xs font-bold uppercase tracking-wider text-black transition-opacity hover:opacity-90"
                 style={{ backgroundColor: TEAL }}
               >
@@ -947,7 +947,7 @@ export default function LandingClient() {
               <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">{t.footer.account}</p>
               <ul className="space-y-2.5 text-xs">
                 <li><Link href="/signin" className="transition-colors hover:text-white">{t.footer.login}</Link></li>
-                <li><Link href="/signup" className="transition-colors hover:text-white">{t.footer.signup}</Link></li>
+                <li><Link href="/register" className="transition-colors hover:text-white">{t.footer.signup}</Link></li>
               </ul>
             </div>
             <div>
