@@ -9,11 +9,17 @@ interface Business {
   entityType: string | null
   taxYear: number | null
   createdAt: string
+  aiMonthlyBudgetCents: number | null
   users: {
     role: string
     user: { id: string; name: string | null; email: string; accountType: string; plan: string }
   }[]
   _count: { transactions: number }
+  aiUsage: { costCents: number; blocked: boolean; unblockedByAdmin: boolean }[]
+}
+
+function fmtUsd(cents: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
 
 export default function AdminNegociosPage() {
@@ -21,6 +27,8 @@ export default function AdminNegociosPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [budgetDraft, setBudgetDraft] = useState<Record<string, string>>({})
+  const [savingBudget, setSavingBudget] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -31,6 +39,31 @@ export default function AdminNegociosPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  async function saveBudget(bizId: string) {
+    const raw = budgetDraft[bizId]
+    const dollars = raw === '' || raw === undefined ? null : Number(raw)
+    if (dollars !== null && (!Number.isFinite(dollars) || dollars < 0)) return
+    setSavingBudget(bizId)
+    await fetch(`/api/admin/businesses/${bizId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aiMonthlyBudgetCents: dollars === null ? null : Math.round(dollars * 100) }),
+    })
+    await load()
+    setSavingBudget(null)
+  }
+
+  async function unblockAi(bizId: string) {
+    setSavingBudget(bizId)
+    await fetch(`/api/admin/businesses/${bizId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unblockAiUsage: true }),
+    })
+    await load()
+    setSavingBudget(null)
+  }
 
   const filtered = businesses.filter(b => {
     if (search && !b.name.toLowerCase().includes(search.toLowerCase())) {
@@ -135,6 +168,56 @@ export default function AdminNegociosPage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Presupuesto mensual de IA</p>
+                  <div className="bg-white rounded-lg px-3 py-3 border border-gray-100 space-y-2">
+                    {(() => {
+                      const usage = biz.aiUsage[0]
+                      const spent = usage?.costCents ?? 0
+                      const isBlocked = !!usage?.blocked && !usage?.unblockedByAdmin
+                      return (
+                        <>
+                          <p className="text-sm text-gray-700">
+                            Gastado este mes: <strong>{fmtUsd(spent)}</strong>
+                            {biz.aiMonthlyBudgetCents != null && <> de <strong>{fmtUsd(biz.aiMonthlyBudgetCents)}</strong></>}
+                          </p>
+                          {isBlocked && (
+                            <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                              <span className="text-xs text-red-700 font-medium">Clasificación con IA bloqueada por presupuesto</span>
+                              <button
+                                onClick={() => unblockAi(biz.id)}
+                                disabled={savingBudget === biz.id}
+                                className="text-xs font-medium px-2.5 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                              >
+                                Reactivar
+                              </button>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              className="input text-sm flex-1"
+                              placeholder="Sin límite"
+                              defaultValue={biz.aiMonthlyBudgetCents != null ? (biz.aiMonthlyBudgetCents / 100).toString() : ''}
+                              onChange={e => setBudgetDraft(d => ({ ...d, [biz.id]: e.target.value }))}
+                            />
+                            <button
+                              onClick={() => saveBudget(biz.id)}
+                              disabled={savingBudget === biz.id}
+                              className="text-xs font-medium px-3 py-2 rounded-lg bg-[#1B4965] text-white hover:bg-[#153d52] transition-colors disabled:opacity-50"
+                            >
+                              Guardar
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-400">Límite en USD por mes. Déjalo vacío para no limitar.</p>
+                        </>
+                      )
+                    })()}
                   </div>
                 </div>
 

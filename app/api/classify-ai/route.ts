@@ -7,6 +7,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
+import { checkAiBudget, recordAiUsage } from '@/lib/ai-budget'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -37,6 +38,8 @@ export async function POST(req: Request) {
     if (!await checkBusinessAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+    const budgetDenied = await checkAiBudget(businessId)
+    if (budgetDenied) return budgetDenied
 
     const transactions = await prisma.transaction.findMany({
       where: { id: { in: transactionIds }, businessId, status: 'PENDING' },
@@ -72,6 +75,11 @@ Respond with a JSON array matching the input order. Use only category names from
     const warnings: string[] = []
 
     for (let i = 0; i < transactions.length; i += BATCH) {
+      if (i > 0 && await checkAiBudget(businessId)) {
+        warnings.push(`Se alcanzó el presupuesto mensual de IA — ${transactions.length - i} transacciones restantes fueron omitidas`)
+        break
+      }
+
       const batch = transactions.slice(i, i + BATCH)
       const txList = batch.map((t: any, idx: number) => ({
         index: idx,
@@ -92,6 +100,7 @@ Respond with a JSON array matching the input order. Use only category names from
         ],
         system: dynamicPrompt,
       })
+      await recordAiUsage(businessId, response.usage.input_tokens, response.usage.output_tokens)
 
       let classifications: any[] = []
       try {

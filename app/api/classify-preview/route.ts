@@ -6,8 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { requirePlanFeature } from '@/lib/plan-limits'
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+import { checkAiBudget, recordAiUsage } from '@/lib/ai-budget'
 
 // Classifies raw transaction rows with AI WITHOUT saving to DB.
 // Returns classified rows so the user can review before committing.
@@ -27,6 +26,7 @@ export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 503 })
   }
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
   try {
     const { businessId, rows } = await req.json()
@@ -39,6 +39,8 @@ export async function POST(req: Request) {
     if (!await checkBusinessAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+    const budgetDenied = await checkAiBudget(businessId)
+    if (budgetDenied) return budgetDenied
 
     // Load actual categories for this business
     const categories = await prisma.category.findMany({
@@ -64,8 +66,14 @@ Respond with a JSON array matching the input order. Use only category names from
 
     const BATCH = 20
     const results: any[] = []
+    const warnings: string[] = []
 
     for (let i = 0; i < rows.length; i += BATCH) {
+      if (i > 0 && await checkAiBudget(businessId)) {
+        warnings.push(`Se alcanzó el presupuesto mensual de IA — ${rows.length - i} filas restantes no fueron clasificadas`)
+        break
+      }
+
       const batch = rows.slice(i, i + BATCH)
       const txList = batch.map((t: any, idx: number) => ({
         index: idx,
@@ -86,6 +94,7 @@ Respond with a JSON array matching the input order. Use only category names from
             content: `Classify these ${batch.length} transactions:\n\n${JSON.stringify(txList, null, 2)}\n\nReturn a JSON array with ${batch.length} objects.`,
           }],
         })
+        await recordAiUsage(businessId, response.usage.input_tokens, response.usage.output_tokens)
         const text = response.content?.[0]?.type === 'text' ? response.content[0].text : ''
         const match = text.match(/\[[\s\S]*\]/)
         if (match) classifications = JSON.parse(match[0])
@@ -116,7 +125,7 @@ Respond with a JSON array matching the input order. Use only category names from
       }
     }
 
-    return NextResponse.json({ results })
+    return NextResponse.json({ results, ...(warnings.length ? { warnings } : {}) })
   } catch (e: any) {
     console.error('classify-preview error:', e)
     return NextResponse.json({ error: 'Error al clasificar' }, { status: 500 })
