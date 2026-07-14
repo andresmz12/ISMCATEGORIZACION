@@ -34,7 +34,7 @@ export default function ClasificarPage() {
   const { businesses, activeBizId: activeBiz } = useActiveBiz()
   const [savedMappings, setSavedMappings] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
-  const [classifiedThisMonth, setClassifiedThisMonth] = useState<number | null>(null)
+  const [aiUsage, setAiUsage] = useState<{ classifiedCount: number; limit: number | null } | null>(null)
 
   const [file, setFile] = useState<File | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
@@ -61,7 +61,7 @@ export default function ClasificarPage() {
       if (Array.isArray(d)) setCategories(d)
     })
     fetch(`/api/businesses/${activeBiz}/ai-usage`).then(r => r.ok ? r.json() : null).then(d => {
-      if (d) setClassifiedThisMonth(d.classifiedCount)
+      if (d) setAiUsage(d)
     })
   }, [activeBiz])
 
@@ -532,10 +532,25 @@ export default function ClasificarPage() {
           <h1 className="text-xl font-bold text-gray-900">Clasificar con IA</h1>
           <p className="text-sm text-gray-500 mt-0.5">Sube tu estado de cuenta y la IA lo clasifica automáticamente</p>
         </div>
-        {classifiedThisMonth !== null && (
-          <div className="text-xs px-3 py-1.5 rounded-lg bg-[#1B4965]/10 text-[#1B4965] font-medium whitespace-nowrap">
-            {classifiedThisMonth} clasificadas este mes
-          </div>
+        {aiUsage && (
+          aiUsage.limit ? (
+            <div className="w-44 flex-shrink-0">
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>Este mes</span>
+                <span className="font-medium text-[#1B4965]">{aiUsage.classifiedCount} / {aiUsage.limit}</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${aiUsage.classifiedCount >= aiUsage.limit ? 'bg-red-500' : 'bg-[#1B4965]'}`}
+                  style={{ width: `${Math.min(100, (aiUsage.classifiedCount / aiUsage.limit) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs px-3 py-1.5 rounded-lg bg-[#1B4965]/10 text-[#1B4965] font-medium whitespace-nowrap">
+              {aiUsage.classifiedCount} clasificadas este mes
+            </div>
+          )
         )}
       </div>
 

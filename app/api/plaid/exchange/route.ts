@@ -3,9 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { plaidClient } from '@/lib/plaid'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
+import { encryptSecret } from '@/lib/crypto'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
   if (!public_token || !businessId) {
     return NextResponse.json({ error: 'public_token y businessId requeridos' }, { status: 400 })
   }
-  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+  if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     const connection = await prisma.plaidConnection.create({
       data: {
         businessId,
-        accessToken: access_token,
+        accessToken: encryptSecret(access_token),
         itemId: item_id,
         institutionName: institutionName || 'Banco',
         accounts: {

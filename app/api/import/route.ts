@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import crypto from 'crypto'
 
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -222,7 +222,13 @@ export async function POST(req: Request) {
           importedIds.push(result.id)
         }
       } catch (e: any) {
-        errors.push(`Row ${i + 2}: ${e.message}`)
+        // P2002 = unique constraint violation on (businessId, checksum) — a
+        // concurrent request beat this one to it; treat as a duplicate, not an error.
+        if (e.code === 'P2002') {
+          duplicates++
+        } else {
+          errors.push(`Row ${i + 2}: ${e.message}`)
+        }
       }
     }
 

@@ -4,10 +4,11 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
 import { checkAiBudget, recordAiUsage } from '@/lib/ai-budget'
+import { getActiveRules, matchRule } from '@/lib/classification-rules'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -35,16 +36,36 @@ export async function POST(req: Request) {
     if (!Array.isArray(transactionIds) || transactionIds.length > 500) {
       return NextResponse.json({ error: 'transactionIds must be an array of at most 500 items' }, { status: 400 })
     }
-    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     const budgetDenied = await checkAiBudget(businessId)
     if (budgetDenied) return budgetDenied
 
-    const transactions = await prisma.transaction.findMany({
+    const allTransactions = await prisma.transaction.findMany({
       where: { id: { in: transactionIds }, businessId, status: 'PENDING' },
     })
-    if (!transactions.length) return NextResponse.json({ classified: [], skipped: transactionIds.length })
+    if (!allTransactions.length) return NextResponse.json({ classified: [], skipped: transactionIds.length })
+
+    const results: any[] = []
+
+    // Apply the business's classification rules first — matched transactions
+    // are classified deterministically without spending AI budget on them.
+    const rules = await getActiveRules(businessId)
+    const transactions: typeof allTransactions = []
+    for (const tx of allTransactions) {
+      const match = rules.length ? matchRule(rules, tx) : null
+      if (!match) { transactions.push(tx); continue }
+      await prisma.transaction.update({
+        where: { id: tx.id },
+        data: { categoryId: match.categoryId, deductibility: match.deductibility as any, method: 'RULE', status: 'CLASSIFIED' },
+      })
+      results.push({ id: tx.id, category: match.categoryId, method: 'RULE', autoClassified: true })
+    }
+    if (!transactions.length) {
+      await logAudit({ userId, businessId, action: 'CLASSIFY_TRANSACTIONS', entity: 'Transaction', metadata: { total: results.length, autoClassified: results.length, needsReview: 0 } })
+      return NextResponse.json({ classified: results, autoClassified: results.length, needsReview: 0 })
+    }
 
     // Load all categories available to this business (system + custom)
     const categories = await prisma.category.findMany({
@@ -71,7 +92,6 @@ Respond with a JSON array matching the input order. Use only category names from
 
     // Process in batches of 20
     const BATCH = 20
-    const results: any[] = []
     const warnings: string[] = []
 
     for (let i = 0; i < transactions.length; i += BATCH) {

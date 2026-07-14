@@ -4,9 +4,10 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { requirePlanFeature } from '@/lib/plan-limits'
 import { checkAiBudget, recordAiUsage } from '@/lib/ai-budget'
+import { getActiveRules, matchRule } from '@/lib/classification-rules'
 
 // Classifies raw transaction rows with AI WITHOUT saving to DB.
 // Returns classified rows so the user can review before committing.
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     if (rows.length > 500) {
       return NextResponse.json({ error: 'Max 500 rows per request' }, { status: 400 })
     }
-    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     const budgetDenied = await checkAiBudget(businessId)
@@ -48,8 +49,34 @@ export async function POST(req: Request) {
       select: { id: true, name: true },
     })
     const categoryByName = new Map(categories.map(c => [c.name.toLowerCase().trim(), c]))
+    const categoryById = new Map(categories.map(c => [c.id, c]))
     const categoryNames = categories.map(c => c.name)
     const uncategorized = categories.find(c => c.name.toLowerCase().includes('uncategor') || c.name.toLowerCase().includes('sin categor'))
+
+    const results: any[] = []
+    const warnings: string[] = []
+
+    // Apply the business's classification rules first — matched rows are
+    // classified deterministically without spending AI budget on them.
+    const rules = await getActiveRules(businessId)
+    const remainingRows: any[] = []
+    for (const row of rows) {
+      const match = rules.length ? matchRule(rules, row) : null
+      if (!match) { remainingRows.push(row); continue }
+      const cat = categoryById.get(match.categoryId) || null
+      results.push({
+        date: row.date,
+        description: row.description,
+        amount: row.amount,
+        type: row.type,
+        categoryId: cat?.id || null,
+        categoryName: cat?.name || null,
+        aiSuggestion: null,
+        deductibility: match.deductibility || 'NO',
+        aiConfidence: 'HIGH',
+        reason: 'Coincide con una regla de clasificación',
+      })
+    }
 
     const prompt = `You are an expert accountant specializing in expense categorization for small businesses.
 
@@ -65,16 +92,14 @@ For each transaction, return:
 Respond with a JSON array matching the input order. Use only category names from the list above.`
 
     const BATCH = 20
-    const results: any[] = []
-    const warnings: string[] = []
 
-    for (let i = 0; i < rows.length; i += BATCH) {
+    for (let i = 0; i < remainingRows.length; i += BATCH) {
       if (i > 0 && await checkAiBudget(businessId)) {
-        warnings.push(`Se alcanzó el presupuesto mensual de IA — ${rows.length - i} filas restantes no fueron clasificadas`)
+        warnings.push(`Se alcanzó el presupuesto mensual de IA — ${remainingRows.length - i} filas restantes no fueron clasificadas`)
         break
       }
 
-      const batch = rows.slice(i, i + BATCH)
+      const batch = remainingRows.slice(i, i + BATCH)
       const txList = batch.map((t: any, idx: number) => ({
         index: idx,
         date: t.date,

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 
 export async function GET(req: Request) {
@@ -42,7 +42,7 @@ export async function DELETE(req: Request) {
 
   // Bulk delete
   if (!id && businessId) {
-    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     if (target === 'history') {
@@ -59,7 +59,7 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
   const mapping = await prisma.bankFormatMapping.findUnique({ where: { id } })
   if (!mapping) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (!await checkBusinessAccess(userId, mapping.businessId, accountType)) {
+  if (!await checkBusinessWriteAccess(userId, mapping.businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   await prisma.bankFormatMapping.delete({ where: { id } })

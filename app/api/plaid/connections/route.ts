@@ -6,6 +6,7 @@ import { plaidClient } from '@/lib/plaid'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
+import { decryptSecret } from '@/lib/crypto'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -66,7 +67,7 @@ export async function DELETE(req: Request) {
   if (!connection) return NextResponse.json({ error: 'Conexión no encontrada' }, { status: 404 })
 
   try {
-    await plaidClient.itemRemove({ access_token: connection.accessToken })
+    await plaidClient.itemRemove({ access_token: decryptSecret(connection.accessToken) })
   } catch (e) {
     console.warn('plaid itemRemove warning:', e)
   }

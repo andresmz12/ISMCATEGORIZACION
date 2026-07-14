@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import crypto from 'crypto'
 
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     if (transactions.length > 500) {
       return NextResponse.json({ error: 'Max 500 transactions per batch' }, { status: 400 })
     }
-    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -34,6 +34,16 @@ export async function POST(req: Request) {
     let duplicates = 0
     const errors: string[] = []
     const createdIds: string[] = []
+
+    // Only accept categoryIds that actually belong to this business (or are system categories) —
+    // otherwise a client could attach a category from a business it has no access to.
+    const requestedCategoryIds = [...new Set(transactions.map((t: any) => t.categoryId).filter(Boolean))]
+    const validCategoryIds = requestedCategoryIds.length
+      ? new Set((await prisma.category.findMany({
+          where: { id: { in: requestedCategoryIds }, OR: [{ businessId }, { isSystem: true }] },
+          select: { id: true },
+        })).map(c => c.id))
+      : new Set<string>()
 
     for (let i = 0; i < transactions.length; i++) {
       const t = transactions[i]
@@ -43,6 +53,7 @@ export async function POST(req: Request) {
         if (!t.description?.trim()) { errors.push(`Row ${i + 1}: empty description`); continue }
         const amount = Number(t.amount)
         if (isNaN(amount) || amount <= 0) { errors.push(`Row ${i + 1}: invalid amount`); continue }
+        const categoryId = t.categoryId && validCategoryIds.has(t.categoryId) ? t.categoryId : null
 
         const dateStr = dateObj.toISOString().split('T')[0]
         const checksum = makeChecksum(dateStr, t.description.trim(), amount)
@@ -57,12 +68,12 @@ export async function POST(req: Request) {
               description: t.description.trim(),
               amount,
               type: t.type || 'DEBIT',
-              status: t.categoryId ? 'CLASSIFIED' : 'PENDING',
-              categoryId: t.categoryId || null,
+              status: categoryId ? 'CLASSIFIED' : 'PENDING',
+              categoryId,
               deductibility: t.deductibility || null,
               aiConfidence: t.aiConfidence || null,
               aiSuggestion: t.aiSuggestion || null,
-              method: t.categoryId ? 'AI' : null,
+              method: categoryId ? 'AI' : null,
               checksum,
               sourceFile: sourceFile || null,
             },
@@ -77,6 +88,12 @@ export async function POST(req: Request) {
           if (result.id) createdIds.push(result.id)
         }
       } catch (e: any) {
+        // P2002 = unique constraint violation on (businessId, checksum) — a
+        // concurrent request beat this one to it; treat as a duplicate, not an error.
+        if (e.code === 'P2002') {
+          duplicates++
+          continue
+        }
         errors.push(`Row ${i + 1}: ${e.message}`)
       }
     }

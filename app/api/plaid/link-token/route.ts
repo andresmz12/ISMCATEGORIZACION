@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { plaidClient } from '@/lib/plaid'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { CountryCode, Products } from 'plaid'
 import { requirePlanFeature } from '@/lib/plan-limits'
 
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const { businessId } = await req.json()
   if (!businessId) return NextResponse.json({ error: 'businessId requerido' }, { status: 400 })
-  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+  if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 
 export async function GET(req: Request) {
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   if (!businessId) return NextResponse.json({ error: 'businessId required' }, { status: 400 })
   if (name.length > 100) return NextResponse.json({ error: 'Name too long' }, { status: 400 })
 
-  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+  if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

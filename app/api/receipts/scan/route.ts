@@ -4,9 +4,10 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
+import { noon } from '@/lib/date'
 
 const CATEGORIES = [
   'Advertising', 'Car & Truck Expenses', 'Commissions & Fees', 'Contract Labor',
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     const file = formData.get('file') as File
     if (!businessId || !file) return NextResponse.json({ error: 'businessId and file required' }, { status: 400 })
 
-    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -109,7 +110,7 @@ Use null for any field you cannot read. Receipt may be in English or Spanish.`,
     const confidence: string = extracted.confidence || 'LOW'
     const txStatus = confidence === 'HIGH' && categoryId ? 'CLASSIFIED' : 'PENDING'
     const amount = Math.abs(parseFloat(String(extracted.total)) || 0)
-    const rawDate = extracted.date ? new Date(extracted.date) : null
+    const rawDate = extracted.date ? noon(String(extracted.date)) : null
     const txDate = rawDate && !isNaN(rawDate.getTime()) ? rawDate : new Date()
 
     const notesLines: string[] = []

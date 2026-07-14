@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 
 export async function GET(req: Request) {
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   const VALID_FIELDS = ['description', 'amount']
   const safeField = VALID_FIELDS.includes(field) ? field : 'description'
   const safePriority = typeof priority === 'number' && isFinite(priority) ? Math.round(priority) : 0
-  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+  if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const rule = await prisma.classificationRule.create({
@@ -66,7 +66,7 @@ export async function DELETE(req: Request) {
 
   // Bulk delete all rules for a business
   if (!id && businessId) {
-    if (!await checkBusinessAccess(userId, businessId, accountType)) {
+    if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     const { count } = await prisma.classificationRule.deleteMany({ where: { businessId } })
@@ -77,7 +77,7 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
   const rule = await prisma.classificationRule.findUnique({ where: { id } })
   if (!rule) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (!await checkBusinessAccess(userId, rule.businessId, accountType)) {
+  if (!await checkBusinessWriteAccess(userId, rule.businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   await prisma.classificationRule.delete({ where: { id } })

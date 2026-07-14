@@ -1,5 +1,14 @@
 import sgMail from '@sendgrid/mail'
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export async function sendAssignmentEmail(opts: {
   to: string
   assigneeName: string
@@ -18,7 +27,12 @@ export async function sendAssignmentEmail(opts: {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 
   const from = process.env.SENDGRID_FROM || 'noreply@myprofitandloss.com'
-  console.log('[email] Sending assignment email to:', opts.to, 'from:', from, 'title:', opts.title)
+
+  const assigneeName = escapeHtml(opts.assigneeName)
+  const assignerName = escapeHtml(opts.assignerName)
+  const businessName = escapeHtml(opts.businessName)
+  const title = escapeHtml(opts.title)
+  const description = opts.description ? escapeHtml(opts.description) : null
 
   const dueLine = opts.dueDate
     ? `<p><strong>Fecha límite:</strong> ${new Date(opts.dueDate).toLocaleDateString('es-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
@@ -29,8 +43,8 @@ export async function sendAssignmentEmail(opts: {
     : `Nueva asignación: ${opts.title}`
 
   const introText = opts.isReassignment
-    ? `<strong>${opts.assignerName}</strong> te ha reasignado la siguiente tarea en <strong>${opts.businessName}</strong>.`
-    : `<strong>${opts.assignerName}</strong> te ha asignado una nueva tarea contable en el negocio <strong>${opts.businessName}</strong>.`
+    ? `<strong>${assignerName}</strong> te ha reasignado la siguiente tarea en <strong>${businessName}</strong>.`
+    : `<strong>${assignerName}</strong> te ha asignado una nueva tarea contable en el negocio <strong>${businessName}</strong>.`
 
   const [response] = await sgMail.send({
     from: { email: from, name: 'My Profit & Loss' },
@@ -42,11 +56,11 @@ export async function sendAssignmentEmail(opts: {
           <h1 style="color:#fff;font-size:20px;margin:0">My Profit &amp; Loss</h1>
         </div>
         <div style="background:#f8fafc;padding:32px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;border-top:none">
-          <p style="color:#334155;font-size:16px">Hola <strong>${opts.assigneeName}</strong>,</p>
+          <p style="color:#334155;font-size:16px">Hola <strong>${assigneeName}</strong>,</p>
           <p style="color:#475569">${introText}</p>
           <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:20px 0">
-            <h2 style="color:#1B4965;font-size:16px;margin:0 0 8px">${opts.title}</h2>
-            ${opts.description ? `<p style="color:#64748b;font-size:14px;margin:0">${opts.description}</p>` : ''}
+            <h2 style="color:#1B4965;font-size:16px;margin:0 0 8px">${title}</h2>
+            ${description ? `<p style="color:#64748b;font-size:14px;margin:0">${description}</p>` : ''}
             ${dueLine}
           </div>
           <a href="${process.env.NEXTAUTH_URL || 'https://myprofitandloss.com'}/asignaciones"
@@ -57,7 +71,7 @@ export async function sendAssignmentEmail(opts: {
       </div>
     `,
   })
-  console.log('[email] SendGrid status:', response.statusCode)
+  if (response.statusCode >= 400) console.error('[email] SendGrid assignment email failed:', response.statusCode)
 }
 
 export async function sendWelcomeEmail(opts: {
@@ -76,7 +90,12 @@ export async function sendWelcomeEmail(opts: {
 
   const from = process.env.SENDGRID_FROM || 'noreply@myprofitandloss.com'
   const appUrl = process.env.NEXTAUTH_URL || 'https://myprofitandloss.com'
-  console.log('[email] Sending welcome email to:', opts.to, 'from:', from)
+
+  const name = escapeHtml(opts.name)
+  const inviterName = escapeHtml(opts.inviterName)
+  const businessName = escapeHtml(opts.businessName)
+  const email = escapeHtml(opts.to)
+  const password = escapeHtml(opts.password)
 
   const [response] = await sgMail.send({
     from: { email: from, name: 'My Profit & Loss' },
@@ -88,15 +107,15 @@ export async function sendWelcomeEmail(opts: {
           <h1 style="color:#fff;font-size:20px;margin:0">My Profit &amp; Loss</h1>
         </div>
         <div style="background:#f8fafc;padding:32px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;border-top:none">
-          <p style="color:#334155;font-size:16px">Hola <strong>${opts.name}</strong>,</p>
+          <p style="color:#334155;font-size:16px">Hola <strong>${name}</strong>,</p>
           <p style="color:#475569">
-            <strong>${opts.inviterName}</strong> te ha invitado a unirte al equipo de
-            <strong>${opts.businessName}</strong> en My Profit &amp; Loss.
+            <strong>${inviterName}</strong> te ha invitado a unirte al equipo de
+            <strong>${businessName}</strong> en My Profit &amp; Loss.
           </p>
           <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:20px 0">
             <p style="color:#334155;font-size:14px;margin:0 0 8px"><strong>Tus credenciales de acceso:</strong></p>
-            <p style="color:#475569;font-size:14px;margin:4px 0"><strong>Usuario (correo):</strong> ${opts.to}</p>
-            <p style="color:#475569;font-size:14px;margin:4px 0"><strong>Contraseña temporal:</strong> <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:14px">${opts.password}</code></p>
+            <p style="color:#475569;font-size:14px;margin:4px 0"><strong>Usuario (correo):</strong> ${email}</p>
+            <p style="color:#475569;font-size:14px;margin:4px 0"><strong>Contraseña temporal:</strong> <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:14px">${password}</code></p>
           </div>
           <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:16px;margin:20px 0">
             <p style="color:#92400e;font-size:13px;margin:0">
@@ -112,5 +131,5 @@ export async function sendWelcomeEmail(opts: {
       </div>
     `,
   })
-  console.log('[email] SendGrid welcome email status:', response.statusCode)
+  if (response.statusCode >= 400) console.error('[email] SendGrid welcome email failed:', response.statusCode)
 }

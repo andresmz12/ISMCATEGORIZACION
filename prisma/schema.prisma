@@ -196,8 +196,8 @@ model Transaction {
   @@index([businessId, date])
   @@index([businessId, categoryId])
   @@index([categoryId])
-  @@index([checksum])
-  @@index([plaidTransactionId])
+  @@unique([businessId, checksum])
+  @@unique([plaidTransactionId])
 }
 
 model TransactionSplit {

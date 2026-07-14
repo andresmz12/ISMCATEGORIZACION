@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { endOfDay } from '@/lib/date'
 
 const round = (n: number) => Math.round(n * 100) / 100
 
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
   if (from || to) {
     where.date = {}
     if (from) where.date.gte = new Date(from)
-    if (to) where.date.lte = new Date(to)
+    if (to) where.date.lte = endOfDay(to)
   }
 
   const transactions = await prisma.transaction.findMany({

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
@@ -16,7 +16,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (accountType !== 'SUPERADMIN') {
     if (category.isSystem) return NextResponse.json({ error: 'Cannot delete system categories' }, { status: 403 })
     if (!category.businessId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    if (!await checkBusinessAccess(userId, category.businessId, accountType)) {
+    if (!await checkBusinessWriteAccess(userId, category.businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
   }
@@ -41,7 +41,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (accountType !== 'SUPERADMIN') {
     if (category.isSystem) return NextResponse.json({ error: 'Cannot edit system categories' }, { status: 403 })
     if (!category.businessId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    if (!await checkBusinessAccess(userId, category.businessId, accountType)) {
+    if (!await checkBusinessWriteAccess(userId, category.businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
   }

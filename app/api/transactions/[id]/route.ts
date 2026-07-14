@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -12,7 +12,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const accountType = (session.user as any).accountType
   const tx = await prisma.transaction.findUnique({ where: { id: params.id } })
   if (!tx) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (!await checkBusinessAccess(userId, tx.businessId, accountType)) {
+  if (!await checkBusinessWriteAccess(userId, tx.businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -20,6 +20,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const { categoryId, deductibility, status, notes, method, splits } = body
 
   if (notes && notes.length > 1000) return NextResponse.json({ error: 'Notes too long' }, { status: 400 })
+
+  if (categoryId) {
+    const validCategory = await prisma.category.findFirst({
+      where: { id: categoryId, OR: [{ businessId: tx.businessId }, { businessId: null }] },
+      select: { id: true },
+    })
+    if (!validCategory) return NextResponse.json({ error: 'Category does not exist for this business' }, { status: 400 })
+  }
 
   if (splits && Array.isArray(splits) && splits.length > 0) {
     if (splits.some((s: any) => !s.categoryId || !s.amount)) {
@@ -91,7 +99,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const accountType = (session.user as any).accountType
   const tx = await prisma.transaction.findUnique({ where: { id: params.id } })
   if (!tx) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (!await checkBusinessAccess(userId, tx.businessId, accountType)) {
+  if (!await checkBusinessWriteAccess(userId, tx.businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   await prisma.transaction.delete({ where: { id: params.id } })

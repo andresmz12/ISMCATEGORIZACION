@@ -3,9 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { plaidClient } from '@/lib/plaid'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
+import { decryptSecret } from '@/lib/crypto'
 import crypto from 'crypto'
 
 function makeChecksum(date: string, description: string, amount: number): string {
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
   if (!connectionId || !businessId) {
     return NextResponse.json({ error: 'connectionId y businessId requeridos' }, { status: 400 })
   }
-  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+  if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -40,17 +41,27 @@ export async function POST(req: Request) {
     let cursor = connection.cursor ?? undefined
     let imported = 0
     let duplicates = 0
+    let removedCount = 0
     let hasMore = true
 
     while (hasMore) {
       const syncRes = await plaidClient.transactionsSync({
-        access_token: connection.accessToken,
+        access_token: decryptSecret(connection.accessToken),
         cursor,
         count: 100,
       })
-      const { added, modified, next_cursor } = syncRes.data
+      const { added, modified, removed, next_cursor } = syncRes.data
       hasMore = syncRes.data.has_more
       cursor = next_cursor
+
+      // Plaid reports reversed/voided/never-posted transactions here — delete
+      // the local copy so books stay in sync with the actual bank feed.
+      if (removed?.length) {
+        const { count } = await prisma.transaction.deleteMany({
+          where: { businessId, plaidTransactionId: { in: removed.map(r => r.transaction_id) } },
+        })
+        removedCount += count
+      }
 
       const allTx = [...added, ...modified]
 
@@ -86,20 +97,27 @@ export async function POST(req: Request) {
           continue
         }
 
-        await prisma.transaction.create({
-          data: {
-            businessId,
-            date,
-            description,
-            amount,
-            type,
-            status: 'PENDING',
-            checksum,
-            sourceFile,
-            plaidTransactionId: tx.transaction_id,
-          },
-        })
-        imported++
+        try {
+          await prisma.transaction.create({
+            data: {
+              businessId,
+              date,
+              description,
+              amount,
+              type,
+              status: 'PENDING',
+              checksum,
+              sourceFile,
+              plaidTransactionId: tx.transaction_id,
+            },
+          })
+          imported++
+        } catch (e: any) {
+          // P2002 = unique constraint violation — a concurrent sync/import already
+          // created this transaction; treat as a duplicate, not a fatal error.
+          if (e.code === 'P2002') duplicates++
+          else throw e
+        }
       }
     }
 
@@ -114,10 +132,10 @@ export async function POST(req: Request) {
       action: 'PLAID_SYNC',
       entity: 'PlaidConnection',
       entityId: connectionId,
-      metadata: { imported, duplicates },
+      metadata: { imported, duplicates, removed: removedCount },
     })
 
-    return NextResponse.json({ imported, duplicates })
+    return NextResponse.json({ imported, duplicates, removed: removedCount })
   } catch (e: any) {
     console.error('plaid sync error:', e?.response?.data || e)
     return NextResponse.json({ error: 'Error al sincronizar transacciones' }, { status: 500 })

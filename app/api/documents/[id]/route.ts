@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -30,10 +31,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const userId = (session.user as any).id
-  const bu = await prisma.businessUser.findUnique({
-    where: { userId_businessId: { userId, businessId: doc.businessId } },
-  })
-  if (!bu && (session.user as any).accountType !== 'SUPERADMIN') {
+  const accountType = (session.user as any).accountType
+  if (!await checkBusinessWriteAccess(userId, doc.businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

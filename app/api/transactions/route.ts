@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkBusinessAccess } from '@/lib/check-business-access'
+import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
+import { endOfDay } from '@/lib/date'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -38,7 +39,7 @@ export async function GET(req: Request) {
     if (from || to) {
       where.date = {}
       if (from) where.date.gte = new Date(from)
-      if (to) where.date.lte = new Date(to)
+      if (to) where.date.lte = endOfDay(to)
     }
     if (search) where.description = { contains: search, mode: 'insensitive' }
   }
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
   if (!businessId || !date || !description) return NextResponse.json({ error: 'businessId, date, description required' }, { status: 400 })
   const parsedAmount = Number(amount)
   if (!isFinite(parsedAmount) || parsedAmount <= 0) return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
-  if (!await checkBusinessAccess(userId, businessId, accountType)) {
+  if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const tx = await prisma.transaction.create({

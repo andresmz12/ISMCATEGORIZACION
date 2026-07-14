@@ -8,6 +8,27 @@ function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 }
 
+// /api/transactions caps `limit` at 1000 server-side, so a single request with
+// limit=5000 silently returns only the first page. Page through using the
+// response's `total` until every matching transaction has been fetched.
+async function fetchAllTransactions(businessId: string, from: string, to: string): Promise<any[]> {
+  const PAGE_SIZE = 1000
+  const all: any[] = []
+  let page = 1
+  while (true) {
+    const params = new URLSearchParams({ businessId, limit: String(PAGE_SIZE), page: String(page) })
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+    const res = await fetch(`/api/transactions?${params}`)
+    const data = await res.json()
+    const txs: any[] = data.transactions || []
+    all.push(...txs)
+    if (all.length >= (data.total ?? 0) || txs.length < PAGE_SIZE) break
+    page++
+  }
+  return all
+}
+
 export default function ReportsPage() {
   const { data: session } = useSession()
   const { t } = useTranslation()
@@ -134,12 +155,7 @@ export default function ReportsPage() {
     if (!activeBiz) return
     setExporting(true)
     try {
-      const params = new URLSearchParams({ businessId: activeBiz, limit: '5000' })
-      if (from) params.set('from', from)
-      if (to) params.set('to', to)
-      const res = await fetch(`/api/transactions?${params}`)
-      const data = await res.json()
-      const txs: any[] = data.transactions || []
+      const txs = await fetchAllTransactions(activeBiz, from, to)
 
       // Group by category name
       const grouped: Record<string, any[]> = {}
@@ -238,12 +254,7 @@ export default function ReportsPage() {
     if (!activeBiz) return
     setExporting(true)
     try {
-      const params = new URLSearchParams({ businessId: activeBiz, limit: '5000' })
-      if (from) params.set('from', from)
-      if (to) params.set('to', to)
-      const res = await fetch(`/api/transactions?${params}`)
-      const data = await res.json()
-      const txs: any[] = data.transactions || []
+      const txs = await fetchAllTransactions(activeBiz, from, to)
 
       // Group by category name (same as Excel version)
       const grouped: Record<string, any[]> = {}
