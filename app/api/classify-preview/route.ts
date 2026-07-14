@@ -94,7 +94,7 @@ Respond with a JSON array matching the input order. Use only category names from
             content: `Classify these ${batch.length} transactions:\n\n${JSON.stringify(txList, null, 2)}\n\nReturn a JSON array with ${batch.length} objects.`,
           }],
         })
-        await recordAiUsage(businessId, response.usage.input_tokens, response.usage.output_tokens)
+        await recordAiUsage(businessId, response.usage.input_tokens, response.usage.output_tokens, batch.length)
         const text = response.content?.[0]?.type === 'text' ? response.content[0].text : ''
         const match = text.match(/\[[\s\S]*\]/)
         if (match) classifications = JSON.parse(match[0])

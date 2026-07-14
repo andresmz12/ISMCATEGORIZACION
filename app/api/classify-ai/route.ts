@@ -100,7 +100,7 @@ Respond with a JSON array matching the input order. Use only category names from
         ],
         system: dynamicPrompt,
       })
-      await recordAiUsage(businessId, response.usage.input_tokens, response.usage.output_tokens)
+      await recordAiUsage(businessId, response.usage.input_tokens, response.usage.output_tokens, batch.length)
 
       let classifications: any[] = []
       try {

@@ -47,7 +47,8 @@ export async function checkAiBudget(businessId: string): Promise<NextResponse | 
 export async function recordAiUsage(
   businessId: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
+  classifiedCount = 0
 ): Promise<void> {
   if (inputTokens <= 0 && outputTokens <= 0) return
   const costCents = tokensToCents(inputTokens, outputTokens)
@@ -55,11 +56,12 @@ export async function recordAiUsage(
 
   const usage = await prisma.aiUsage.upsert({
     where: { businessId_period: { businessId, period } },
-    create: { businessId, period, inputTokens, outputTokens, costCents },
+    create: { businessId, period, inputTokens, outputTokens, costCents, classifiedCount },
     update: {
       inputTokens: { increment: inputTokens },
       outputTokens: { increment: outputTokens },
       costCents: { increment: costCents },
+      classifiedCount: { increment: classifiedCount },
     },
   })
 
@@ -70,4 +72,14 @@ export async function recordAiUsage(
   if (business?.aiMonthlyBudgetCents && usage.costCents >= business.aiMonthlyBudgetCents && !usage.blocked) {
     await prisma.aiUsage.update({ where: { id: usage.id }, data: { blocked: true } })
   }
+}
+
+// Transaction-count summary for the current business's own users (never exposes cost).
+export async function getClassifiedCount(businessId: string): Promise<{ classifiedCount: number; period: string }> {
+  const period = currentPeriod()
+  const usage = await prisma.aiUsage.findUnique({
+    where: { businessId_period: { businessId, period } },
+    select: { classifiedCount: true },
+  })
+  return { classifiedCount: usage?.classifiedCount ?? 0, period }
 }

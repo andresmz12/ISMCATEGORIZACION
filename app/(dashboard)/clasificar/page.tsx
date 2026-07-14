@@ -34,6 +34,7 @@ export default function ClasificarPage() {
   const { businesses, activeBizId: activeBiz } = useActiveBiz()
   const [savedMappings, setSavedMappings] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
+  const [classifiedThisMonth, setClassifiedThisMonth] = useState<number | null>(null)
 
   const [file, setFile] = useState<File | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
@@ -58,6 +59,9 @@ export default function ClasificarPage() {
     })
     fetch(`/api/categories?businessId=${activeBiz}`).then(r => r.ok ? r.json() : []).then(d => {
       if (Array.isArray(d)) setCategories(d)
+    })
+    fetch(`/api/businesses/${activeBiz}/ai-usage`).then(r => r.ok ? r.json() : null).then(d => {
+      if (d) setClassifiedThisMonth(d.classifiedCount)
     })
   }, [activeBiz])
 
@@ -528,6 +532,11 @@ export default function ClasificarPage() {
           <h1 className="text-xl font-bold text-gray-900">Clasificar con IA</h1>
           <p className="text-sm text-gray-500 mt-0.5">Sube tu estado de cuenta y la IA lo clasifica automáticamente</p>
         </div>
+        {classifiedThisMonth !== null && (
+          <div className="text-xs px-3 py-1.5 rounded-lg bg-[#1B4965]/10 text-[#1B4965] font-medium whitespace-nowrap">
+            {classifiedThisMonth} clasificadas este mes
+          </div>
+        )}
       </div>
 
       {/* Step progress */}
