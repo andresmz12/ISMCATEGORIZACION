@@ -124,6 +124,7 @@ model Business {
   entityType           String?
   taxYear              Int?
   aiMonthlyBudgetCents Int?
+  chatbotEnabled       Boolean              @default(false)
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   users            BusinessUser[]

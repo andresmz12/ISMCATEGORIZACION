@@ -11,6 +11,7 @@ interface Business {
   taxYear: number | null
   createdAt: string
   aiMonthlyBudgetCents: number | null
+  chatbotEnabled: boolean
   users: {
     role: string
     user: { id: string; name: string | null; email: string; accountType: string; plan: string }
@@ -50,6 +51,17 @@ export default function AdminNegociosPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ aiMonthlyBudgetCents: dollars === null ? null : Math.round(dollars * 100) }),
+    })
+    await load()
+    setSavingBudget(null)
+  }
+
+  async function toggleChatbot(bizId: string, enabled: boolean) {
+    setSavingBudget(bizId)
+    await fetch(`/api/admin/businesses/${bizId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatbotEnabled: enabled }),
     })
     await load()
     setSavingBudget(null)
@@ -250,6 +262,29 @@ export default function AdminNegociosPage() {
                         </>
                       )
                     })()}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Asistente de chat (IA)</p>
+                  <div className="bg-white rounded-lg px-3 py-3 border border-gray-100 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-700 font-medium">
+                        {biz.chatbotEnabled ? 'Habilitado' : 'Deshabilitado'}
+                      </p>
+                      <p className="text-xs text-gray-400">Solo el super administrador puede activarlo por negocio</p>
+                    </div>
+                    <button
+                      onClick={() => toggleChatbot(biz.id, !biz.chatbotEnabled)}
+                      disabled={savingBudget === biz.id}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                        biz.chatbotEnabled ? 'bg-[#2EC4B6]' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        biz.chatbotEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
                   </div>
                 </div>
 

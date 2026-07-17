@@ -24,6 +24,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     await prisma.business.update({ where: { id: params.id }, data: { aiMonthlyBudgetCents: value } })
   }
 
+  if (body.chatbotEnabled !== undefined) {
+    await prisma.business.update({ where: { id: params.id }, data: { chatbotEnabled: !!body.chatbotEnabled } })
+  }
+
   if (body.unblockAiUsage === true) {
     await prisma.aiUsage.upsert({
       where: { businessId_period: { businessId: params.id, period: currentPeriod() } },

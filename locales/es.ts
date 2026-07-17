@@ -17,6 +17,7 @@ const es = {
   'nav.logs': 'Logs',
   'nav.team': 'Usuarios',
   'nav.classify': 'Clasificar con IA',
+  'nav.chat': 'Asistente',
 
   // Auth
   'auth.signin': 'Iniciar sesión',

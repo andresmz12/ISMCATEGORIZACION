@@ -17,6 +17,7 @@ const en = {
   'nav.logs': 'Logs',
   'nav.team': 'Team',
   'nav.classify': 'Classify with AI',
+  'nav.chat': 'Assistant',
 
   // Auth
   'auth.signin': 'Sign In',
