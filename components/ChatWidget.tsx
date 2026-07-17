@@ -26,6 +26,13 @@ export function ChatWidget({ businessId, businessName }: { businessId: string; b
     if (open) inputRef.current?.focus()
   }, [open])
 
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
   // Reset the conversation when switching businesses — a stale history
   // referencing a different business's data would confuse the model.
   useEffect(() => {
@@ -71,15 +78,29 @@ export function ChatWidget({ businessId, businessName }: { businessId: string; b
               <p className="text-white text-sm font-semibold">Asistente</p>
               <p className="text-white/60 text-xs">{businessName}</p>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="text-white/60 hover:text-white transition-colors"
-              aria-label="Cerrar chat"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-3">
+              {messages.length > 0 && (
+                <button
+                  onClick={() => setMessages([])}
+                  className="text-white/60 hover:text-white transition-colors"
+                  aria-label="Nueva conversación"
+                  title="Nueva conversación"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={() => setOpen(false)}
+                className="text-white/60 hover:text-white transition-colors"
+                aria-label="Cerrar chat"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
@@ -112,6 +133,7 @@ export function ChatWidget({ businessId, businessName }: { businessId: string; b
               ref={inputRef}
               className="input text-sm flex-1"
               placeholder="Escribe tu pregunta..."
+              maxLength={2000}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}

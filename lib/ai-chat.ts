@@ -14,8 +14,8 @@ export const QUERY_TRANSACTIONS_TOOL = {
     properties: {
       mode: {
         type: 'string',
-        enum: ['count', 'sum', 'list'],
-        description: "'count' = number of matching transactions, 'sum' = total amount of matching transactions, 'list' = the transactions themselves",
+        enum: ['count', 'sum', 'list', 'breakdown'],
+        description: "'count' = number of matching transactions, 'sum' = total amount of matching transactions, 'list' = the transactions themselves, 'breakdown' = totals grouped by category (use this for \"spending by category\" questions instead of calling 'sum' once per category)",
       },
       categoryName: { type: 'string', description: 'Filter by category name (partial match, case-insensitive), e.g. "Office Expenses"' },
       status: { type: 'string', enum: ['PENDING', 'CLASSIFIED', 'NEEDS_REVIEW'], description: 'Filter by classification status' },
@@ -84,6 +84,28 @@ export async function runQueryTransactions(businessId: string, input: QueryTrans
   if (input.mode === 'sum') {
     const agg = await prisma.transaction.aggregate({ where, _sum: { amount: true }, _count: true })
     return { count: agg._count, totalAmount: agg._sum.amount ?? 0 }
+  }
+
+  if (input.mode === 'breakdown') {
+    const rows = await prisma.transaction.groupBy({
+      by: ['categoryId'],
+      where,
+      _sum: { amount: true },
+      _count: true,
+    })
+    const categoryIds = rows.map(r => r.categoryId).filter((id): id is string => !!id)
+    const categories = categoryIds.length
+      ? await prisma.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true, name: true } })
+      : []
+    const nameById = new Map(categories.map(c => [c.id, c.name]))
+    const breakdown = rows
+      .map(r => ({
+        category: r.categoryId ? (nameById.get(r.categoryId) ?? 'Unknown category') : 'Uncategorized',
+        count: r._count,
+        totalAmount: r._sum.amount ?? 0,
+      }))
+      .sort((a, b) => Math.abs(b.totalAmount) - Math.abs(a.totalAmount))
+    return { breakdown }
   }
 
   const limit = Math.min(Math.max(Number(input.limit) || 20, 1), 50)
