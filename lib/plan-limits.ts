@@ -13,7 +13,9 @@ const FEATURE_MESSAGES: Record<PlanFeature, string> = {
 }
 
 export function getPlanLimits(plan: string) {
-  return LIMITS[plan as keyof typeof LIMITS] ?? LIMITS.BASIC
+  // Fail closed: an unrecognized/missing plan value gets zero access, never
+  // BASIC — BASIC is a real paid tier, not a safe default to fall back to.
+  return LIMITS[plan as keyof typeof LIMITS] ?? LIMITS.NONE
 }
 
 export function requirePlanFeature(session: any, feature: PlanFeature): NextResponse | null {

@@ -19,7 +19,14 @@ function currentPeriod(): string {
 // blocked, otherwise null.
 export async function checkAiBudget(businessId: string): Promise<NextResponse | null> {
   const accountId = await getBusinessAccountId(businessId)
-  if (!accountId) return null
+  // Fail closed: a business with no resolvable owning account is a data
+  // integrity problem (see lib/account.ts), not evidence of "no budget
+  // configured" — the old per-business check could never hit this case
+  // since the budget lived directly on Business, which always exists.
+  // Letting it through here would mean unmetered, unblockable AI spend.
+  if (!accountId) {
+    return NextResponse.json({ error: BUDGET_MESSAGE }, { status: 403 })
+  }
 
   const account = await prisma.billingAccount.findUnique({
     where: { id: accountId },

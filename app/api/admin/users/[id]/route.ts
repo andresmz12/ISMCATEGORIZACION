@@ -37,7 +37,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const accountData: Record<string, any> = {}
-    if (body.plan && ['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(body.plan)) accountData.plan = body.plan
+    if (body.plan && ['NONE', 'BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(body.plan)) accountData.plan = body.plan
     if (body.aiMonthlyBudgetCents !== undefined) {
       const value = body.aiMonthlyBudgetCents === null ? null : Number(body.aiMonthlyBudgetCents)
       if (value !== null && (!Number.isFinite(value) || value < 0)) {

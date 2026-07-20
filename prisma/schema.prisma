@@ -14,6 +14,11 @@ enum AccountType {
 }
 
 enum Plan {
+  // No active subscription and nothing granted by an admin — every paid
+  // feature is blocked and the account is redirected to billing. BASIC is
+  // a real $20/mo paid tier, not a free default, so it must never be the
+  // fallback for "hasn't paid yet".
+  NONE
   BASIC
   PLUS
   ENTERPRISE
@@ -70,7 +75,7 @@ enum AccountRole {
 model BillingAccount {
   id                   String    @id @default(cuid())
   name                 String?
-  plan                 Plan      @default(BASIC)
+  plan                 Plan      @default(NONE)
   squareCustomerId     String?   @unique
   squareSubscriptionId String?   @unique
   subscriptionStatus   String?

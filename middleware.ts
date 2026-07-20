@@ -20,6 +20,16 @@ export default withAuth(
       }
     }
 
+    // No active plan (never paid, nothing granted by an admin) — block the
+    // whole app except /settings, where they can see billing and pay, or
+    // see "ask your account owner" if they're a team member. Superadmins
+    // don't have their own plan/billing, so they're exempt.
+    const accountType = (token as any)?.accountType
+    const plan = (token as any)?.plan
+    if (accountType !== 'SUPERADMIN' && plan === 'NONE' && !path.startsWith('/settings')) {
+      return NextResponse.redirect(new URL('/settings?blocked=1', req.url))
+    }
+
     // Security headers are set globally via next.config.js headers().
     // Middleware only handles auth-gated redirects.
     return NextResponse.next()

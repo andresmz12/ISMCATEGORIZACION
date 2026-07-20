@@ -128,6 +128,7 @@ const en = {
   'admin.allStatus': 'All statuses',
 
   // Plan
+  'plan.none': 'No plan (blocked)',
   'plan.basic': 'Basic',
   'plan.plus': 'Plus',
   'plan.enterprise': 'Enterprise',
@@ -390,6 +391,8 @@ const en = {
   'settings.resumeSubscription': 'Resume subscription',
   'settings.ownerOnlyBilling': 'Only the account owner can manage billing',
   'settings.alreadyTopPlan': "You already have the highest plan available for purchase. Contact support if you need something different.",
+  'settings.blockedOwner': "Your account doesn't have an active plan. Choose a plan below to activate access.",
+  'settings.blockedMember': "Your account doesn't have an active plan. Contact the account owner to restore access.",
   'settings.subscriptionCanceled': 'Your subscription is canceled — you keep access until the end of the paid period',
   'settings.subscriptionPaymentFailed': 'The last charge failed — update your payment method to avoid interruptions',
   'settings.confirmCancel': 'Cancel your subscription? You will keep access until the end of the period you already paid for.',

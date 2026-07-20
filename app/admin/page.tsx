@@ -293,6 +293,7 @@ export default function AdminPage() {
           </select>
           <select className="input text-sm" value={filterPlan} onChange={e => setFilterPlan(e.target.value)}>
             <option value="">{t('admin.allPlans')}</option>
+            <option value="NONE">{t('plan.none')}</option>
             <option value="BASIC">{t('plan.basic')}</option>
             <option value="PLUS">{t('plan.plus')}</option>
             <option value="ENTERPRISE">{t('plan.enterprise')}</option>
@@ -343,6 +344,7 @@ export default function AdminPage() {
                         onChange={e => changePlan(user, e.target.value)}
                         disabled={actionLoading === user.id || user.accountType === 'SUPERADMIN'}
                       >
+                        <option value="NONE">{t('plan.none')}</option>
                         <option value="BASIC">{t('plan.basic')}</option>
                         <option value="PLUS">{t('plan.plus')}</option>
                         <option value="ENTERPRISE">{t('plan.enterprise')}</option>
@@ -511,6 +513,7 @@ export default function AdminPage() {
                     value={editForm.plan}
                     onChange={e => setEditForm(f => ({ ...f, plan: e.target.value }))}
                   >
+                    <option value="NONE">Sin plan (bloqueada)</option>
                     <option value="BASIC">Basic</option>
                     <option value="PLUS">Plus</option>
                     <option value="ENTERPRISE">Enterprise</option>
@@ -619,6 +622,7 @@ export default function AdminPage() {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Plan</label>
                 <select className={inputCls} value={form.plan} onChange={e => setForm(f => ({ ...f, plan: e.target.value }))}>
+                  <option value="NONE">Sin plan (bloqueada)</option>
                   <option value="BASIC">Basic</option>
                   <option value="PLUS">Plus</option>
                   <option value="ENTERPRISE">Enterprise</option>

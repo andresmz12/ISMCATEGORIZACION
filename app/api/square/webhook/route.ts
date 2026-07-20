@@ -117,16 +117,17 @@ async function handleSubscriptionUpdated(event: SubscriptionUpdatedEvent) {
   const status = subscription?.status
   if (!subscriptionId || !status) return
 
-  const data: { subscriptionStatus: string; plan?: 'BASIC' | 'PLUS' | 'ENTERPRISE' } = { subscriptionStatus: status }
+  const data: { subscriptionStatus: string; plan?: 'NONE' | 'PLUS' | 'ENTERPRISE' } = { subscriptionStatus: status }
 
   if (status === 'ACTIVE') {
     const plan = planFromVariationId(subscription.planVariationId)
     if (plan) data.plan = plan
   } else if (status === 'CANCELED' || status === 'DEACTIVATED' || status === 'COMPLETED' || status === 'PAUSED') {
     // Paid access ends the moment Square stops billing (or pauses billing)
-    // for this subscription; resuming will flip it back via a later
-    // subscription.updated event with status ACTIVE.
-    data.plan = 'BASIC'
+    // for this subscription — back to NONE, not BASIC. BASIC is itself a
+    // paid $20/mo tier, not a free fallback; resuming will flip the account
+    // back via a later subscription.updated event with status ACTIVE.
+    data.plan = 'NONE'
   }
 
   await prisma.billingAccount.updateMany({

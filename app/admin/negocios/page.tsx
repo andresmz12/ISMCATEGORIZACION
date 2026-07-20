@@ -47,6 +47,7 @@ export default function AdminNegociosPage() {
     ENTERPRISE: 'bg-purple-100 text-purple-700',
     PLUS: 'bg-blue-100 text-blue-700',
     BASIC: 'bg-gray-100 text-gray-600',
+    NONE: 'bg-red-100 text-red-700',
   }
 
   return (

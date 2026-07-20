@@ -67,7 +67,10 @@ export async function POST(req: Request) {
     if (existing) return NextResponse.json({ error: 'Este correo ya está registrado' }, { status: 400 })
 
     const passwordHash = await bcrypt.hash(password, 12)
-    const normalizedPlan = (['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE' | 'CUSTOM'
+    // Defaults to NONE (blocked), not BASIC — a superadmin creating an
+    // account here must consciously grant a plan, same as self-registration
+    // never getting one for free.
+    const normalizedPlan = (['NONE', 'BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(plan) ? plan : 'NONE') as 'NONE' | 'BASIC' | 'PLUS' | 'ENTERPRISE' | 'CUSTOM'
     const user = await prisma.user.create({
       data: {
         email: normalizedEmail,

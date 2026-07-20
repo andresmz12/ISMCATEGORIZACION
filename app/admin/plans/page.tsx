@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 
 interface PlanStats {
+  NONE: number
   BASIC: number
   PLUS: number
   ENTERPRISE: number
@@ -85,7 +86,7 @@ export default function PlansPage() {
       .then(r => r.json())
       .then((users: any[]) => {
         if (!Array.isArray(users)) return
-        const s: PlanStats = { BASIC: 0, PLUS: 0, ENTERPRISE: 0, CUSTOM: 0 }
+        const s: PlanStats = { NONE: 0, BASIC: 0, PLUS: 0, ENTERPRISE: 0, CUSTOM: 0 }
         for (const u of users) {
           if (u.plan in s) s[u.plan as keyof PlanStats]++
         }
@@ -101,7 +102,11 @@ export default function PlansPage() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="card p-4 text-center">
+            <p className="text-3xl font-bold text-red-600">{stats.NONE}</p>
+            <p className="text-sm text-gray-500 mt-1">cuentas sin plan (bloqueadas)</p>
+          </div>
           {(['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'] as const).map(plan => (
             <div key={plan} className="card p-4 text-center">
               <p className="text-3xl font-bold text-[#1B4965]">{stats[plan]}</p>

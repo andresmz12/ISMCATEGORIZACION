@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   if (!rl.ok) return rateLimitResponse()
 
   try {
-    const { email, password, name, plan, firmName, termsAccepted } = await req.json()
+    const { email, password, name, firmName, termsAccepted } = await req.json()
 
     if (!termsAccepted) return NextResponse.json({ error: 'Debes aceptar los Términos de Uso para continuar' }, { status: 400 })
     if (!email || !password) return NextResponse.json({ error: 'Email y contraseña requeridos' }, { status: 400 })
@@ -24,8 +24,12 @@ export async function POST(req: Request) {
     if (existing) return NextResponse.json({ error: 'Este correo ya está registrado' }, { status: 400 })
 
     const passwordHash = await bcrypt.hash(password, 12)
-    const normalizedPlan = (['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE' | 'CUSTOM'
 
+    // Self-registration NEVER grants a plan — every paid tier (including
+    // BASIC, which is a real $20/mo charge) is only reachable by paying
+    // through Square or being granted one by an admin. Previously this
+    // trusted a client-supplied `plan` field straight into the DB, which let
+    // anyone register with plan: "ENTERPRISE" and get full paid access for free.
     const user = await prisma.user.create({
       data: {
         email: normalizedEmail,
@@ -39,7 +43,7 @@ export async function POST(req: Request) {
         billingAccount: {
           create: {
             name: firmName?.trim()?.slice(0, 100) || null,
-            plan: normalizedPlan,
+            plan: 'NONE',
           },
         },
       },

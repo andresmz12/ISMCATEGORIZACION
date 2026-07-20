@@ -30,7 +30,7 @@ async function main() {
     CREATE TABLE IF NOT EXISTS "BillingAccount" (
       "id" TEXT PRIMARY KEY,
       "name" TEXT,
-      "plan" "Plan" NOT NULL DEFAULT 'BASIC',
+      "plan" "Plan" NOT NULL DEFAULT 'NONE',
       "squareCustomerId" TEXT UNIQUE,
       "squareSubscriptionId" TEXT UNIQUE,
       "subscriptionStatus" TEXT,

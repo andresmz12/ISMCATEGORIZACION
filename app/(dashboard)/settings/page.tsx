@@ -6,7 +6,7 @@ import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
 
 const PAID_PLANS = ['PLUS', 'ENTERPRISE'] as const
-const PLAN_RANK: Record<string, number> = { BASIC: 0, PLUS: 1, ENTERPRISE: 2, CUSTOM: 3 }
+const PLAN_RANK: Record<string, number> = { NONE: -1, BASIC: 0, PLUS: 1, ENTERPRISE: 2, CUSTOM: 3 }
 
 function SettingsPageInner() {
   const { data: session, update: updateSession } = useSession()
@@ -125,12 +125,18 @@ function SettingsPageInner() {
     toast(t('settings.passwordChanged'), 'success')
   }
 
-  const planLabels: Record<string, string> = { BASIC: t('plan.basic'), PLUS: t('plan.plus'), ENTERPRISE: t('plan.enterprise'), CUSTOM: t('plan.custom') }
+  const planLabels: Record<string, string> = { NONE: t('plan.none'), BASIC: t('plan.basic'), PLUS: t('plan.plus'), ENTERPRISE: t('plan.enterprise'), CUSTOM: t('plan.custom') }
   const accountLabels: Record<string, string> = { ACCOUNTANT: t('role.accountant'), SUPERADMIN: t('role.superadmin'), TEAM_MEMBER: t('role.team_member') }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-xl font-bold text-gray-900">{t('settings.title')}</h1>
+
+      {searchParams.get('blocked') === '1' && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {accountRole === 'OWNER' ? t('settings.blockedOwner') : t('settings.blockedMember')}
+        </div>
+      )}
 
       {/* Account info card */}
       <div className="card p-5 flex items-center gap-4">
