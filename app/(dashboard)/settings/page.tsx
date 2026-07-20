@@ -4,8 +4,9 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
+import { isTrialActive } from '@/lib/billing-access'
 
-const PAID_PLANS = ['PLUS', 'ENTERPRISE'] as const
+const PAID_PLANS = ['BASIC', 'PLUS', 'ENTERPRISE'] as const
 const PLAN_RANK: Record<string, number> = { NONE: -1, BASIC: 0, PLUS: 1, ENTERPRISE: 2, CUSTOM: 3 }
 
 function SettingsPageInner() {
@@ -20,6 +21,7 @@ function SettingsPageInner() {
   const [profile, setProfile] = useState({
     name: '', firmName: '', email: '', plan: '', createdAt: '',
     subscriptionStatus: null as string | null, hasSubscription: false,
+    trialEndsAt: null as string | null,
   })
   const [profileLoading, setProfileLoading] = useState(false)
   const [billingLoading, setBillingLoading] = useState<string | null>(null)
@@ -36,6 +38,7 @@ function SettingsPageInner() {
         if (d?.email) setProfile({
           name: d.name || '', firmName: d.firmName || '', email: d.email, plan: d.plan, createdAt: d.createdAt,
           subscriptionStatus: d.subscriptionStatus ?? null, hasSubscription: !!d.hasSubscription,
+          trialEndsAt: d.trialEndsAt ?? null,
         })
       })
       .catch(() => {})
@@ -60,7 +63,7 @@ function SettingsPageInner() {
     }
   }, [searchParams])
 
-  async function startCheckout(plan: 'PLUS' | 'ENTERPRISE') {
+  async function startCheckout(plan: 'BASIC' | 'PLUS' | 'ENTERPRISE') {
     setBillingLoading(plan)
     const res = await fetch('/api/square/checkout', {
       method: 'POST',
@@ -72,7 +75,7 @@ function SettingsPageInner() {
     window.location.href = data.url
   }
 
-  async function manageSubscription(action: 'cancel' | 'resume' | 'swap', plan?: 'PLUS' | 'ENTERPRISE') {
+  async function manageSubscription(action: 'cancel' | 'resume' | 'swap', plan?: 'BASIC' | 'PLUS' | 'ENTERPRISE') {
     if (action === 'cancel' && !confirm(t('settings.confirmCancel'))) return
     setBillingLoading(action)
     const res = await fetch('/api/square/manage', {
@@ -128,6 +131,12 @@ function SettingsPageInner() {
   const planLabels: Record<string, string> = { NONE: t('plan.none'), BASIC: t('plan.basic'), PLUS: t('plan.plus'), ENTERPRISE: t('plan.enterprise'), CUSTOM: t('plan.custom') }
   const accountLabels: Record<string, string> = { ACCOUNTANT: t('role.accountant'), SUPERADMIN: t('role.superadmin'), TEAM_MEMBER: t('role.team_member') }
 
+  const inTrial = profile.plan === 'NONE' && isTrialActive(profile.trialEndsAt)
+  const trialDaysLeft = inTrial && profile.trialEndsAt
+    ? Math.max(0, Math.ceil((new Date(profile.trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+    : 0
+  const planBadgeLabel = inTrial ? t('plan.trial') : (planLabels[profile.plan] || profile.plan)
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-xl font-bold text-gray-900">{t('settings.title')}</h1>
@@ -148,7 +157,7 @@ function SettingsPageInner() {
           <p className="text-sm text-gray-500 truncate">{profile.email}</p>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs px-2 py-0.5 rounded-full bg-[#1B4965]/10 text-[#1B4965] font-medium">{accountLabels[accountType] || accountType}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-[#2EC4B6]/10 text-[#2EC4B6] font-medium">{planLabels[profile.plan] || profile.plan}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-[#2EC4B6]/10 text-[#2EC4B6] font-medium">{planBadgeLabel}</span>
           </div>
         </div>
         {profile.createdAt && (
@@ -159,6 +168,12 @@ function SettingsPageInner() {
       {/* Billing */}
       <div className="card p-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('settings.billing')}</h2>
+
+        {inTrial && (
+          <div className="mb-4 p-3 bg-[#2EC4B6]/10 border border-[#2EC4B6]/20 rounded-lg text-[#146d64] text-sm">
+            {t('settings.trialActive').replace('{days}', String(trialDaysLeft))}
+          </div>
+        )}
 
         {profile.subscriptionStatus === 'PAYMENT_FAILED' && (
           <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">

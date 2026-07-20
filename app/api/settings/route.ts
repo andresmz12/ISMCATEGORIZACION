@@ -78,7 +78,7 @@ export async function GET() {
     where: { id: userId },
     select: {
       id: true, name: true, email: true, accountType: true, accountRole: true, createdAt: true, lastLogin: true,
-      billingAccount: { select: { plan: true, name: true, subscriptionStatus: true, squareSubscriptionId: true } },
+      billingAccount: { select: { plan: true, name: true, subscriptionStatus: true, squareSubscriptionId: true, trialEndsAt: true } },
     },
   })
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -89,5 +89,6 @@ export async function GET() {
     firmName: billingAccount.name,
     subscriptionStatus: billingAccount.subscriptionStatus,
     hasSubscription: !!billingAccount.squareSubscriptionId,
+    trialEndsAt: billingAccount.trialEndsAt,
   })
 }

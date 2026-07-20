@@ -37,6 +37,9 @@ async function main() {
       "currentPeriodEnd" TIMESTAMP(3),
       "pendingSquareOrderId" TEXT UNIQUE,
       "pendingSquarePlan" "Plan",
+      "trialEndsAt" TIMESTAMP(3),
+      "aiMonthlyBudgetCents" INTEGER,
+      "chatbotEnabled" BOOLEAN NOT NULL DEFAULT false,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
     );

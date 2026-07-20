@@ -11,9 +11,8 @@
  * that's where the plans described in the task were created.
  *
  * Not part of the app build — run manually, once, then throw the IDs into
- * SQUARE_PLAN_VARIATION_ID_PLUS / SQUARE_PLAN_VARIATION_ID_ENTERPRISE (and
- * whatever you use for Basic, if anything — Basic is free in this app and
- * doesn't need a Square subscription).
+ * SQUARE_PLAN_VARIATION_ID_BASIC / SQUARE_PLAN_VARIATION_ID_PLUS /
+ * SQUARE_PLAN_VARIATION_ID_ENTERPRISE.
  */
 import { SquareClient, SquareEnvironment } from 'square'
 
@@ -82,6 +81,7 @@ async function main() {
   }
 
   console.log('Copy each variation_id into the matching env var, e.g.:')
+  console.log('  SQUARE_PLAN_VARIATION_ID_BASIC=<id for the $20/mo variation>')
   console.log('  SQUARE_PLAN_VARIATION_ID_PLUS=<id for the $50/mo variation>')
   console.log('  SQUARE_PLAN_VARIATION_ID_ENTERPRISE=<id for the $80/mo variation>')
 }

@@ -1,5 +1,6 @@
 import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
+import { effectivePlan } from './lib/billing-access'
 
 export default withAuth(
   function middleware(req) {
@@ -20,13 +21,15 @@ export default withAuth(
       }
     }
 
-    // No active plan (never paid, nothing granted by an admin) — block the
-    // whole app except /settings, where they can see billing and pay, or
-    // see "ask your account owner" if they're a team member. Superadmins
-    // don't have their own plan/billing, so they're exempt.
+    // No active plan (never paid, nothing granted by an admin, and no
+    // signup trial still running) — block the whole app except /settings,
+    // where they can see billing and pay, or see "ask your account owner"
+    // if they're a team member. Superadmins don't have their own
+    // plan/billing, so they're exempt.
     const accountType = (token as any)?.accountType
     const plan = (token as any)?.plan
-    if (accountType !== 'SUPERADMIN' && plan === 'NONE' && !path.startsWith('/settings')) {
+    const trialEndsAt = (token as any)?.trialEndsAt
+    if (accountType !== 'SUPERADMIN' && effectivePlan(plan, trialEndsAt) === 'NONE' && !path.startsWith('/settings')) {
       return NextResponse.redirect(new URL('/settings?blocked=1', req.url))
     }
 

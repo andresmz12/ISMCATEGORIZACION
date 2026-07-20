@@ -87,6 +87,12 @@ model BillingAccount {
   // shortcut has no reference_id we can pass through ourselves.
   pendingSquareOrderId String?   @unique
   pendingSquarePlan    Plan?
+  // New self-registrations get a 7-day trial: plan stays NONE (they still
+  // haven't paid, so admin views / "granted a plan" semantics stay honest),
+  // but lib/billing-access.ts treats the account as BASIC-equivalent for
+  // feature access until this passes. Null for accounts that never had a
+  // trial (admin-granted, pre-trial-feature accounts, or already paying).
+  trialEndsAt          DateTime?
   // AI budget and chatbot access are account-wide, not per-business — an
   // account can own several businesses, and this is the one shared bucket
   // that applies to every business and team member under it. See lib/account.ts.

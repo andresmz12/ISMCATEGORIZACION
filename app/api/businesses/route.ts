@@ -44,6 +44,7 @@ export async function POST(req: Request) {
   const accountType = (session.user as any).accountType
   const accountId = (session.user as any).accountId
   const plan = (session.user as any).plan
+  const trialEndsAt = (session.user as any).trialEndsAt
 
   try {
     const { name, industry, entityType, taxYear } = await req.json()
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
     }
 
     if (accountType === 'ACCOUNTANT') {
-      const limits = getPlanLimits(plan)
+      const limits = getPlanLimits(plan, trialEndsAt)
       const existingCount = await countOwnedBusinesses(accountId)
       if (existingCount >= limits.businesses) {
         const planLabel = plan ?? 'BASIC'

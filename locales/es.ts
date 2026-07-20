@@ -129,6 +129,7 @@ const es = {
 
   // Plan
   'plan.none': 'Sin plan (bloqueada)',
+  'plan.trial': 'Prueba gratuita',
   'plan.basic': 'Básico',
   'plan.plus': 'Plus',
   'plan.enterprise': 'Enterprise',
@@ -385,6 +386,7 @@ const es = {
   'settings.noInvited': 'Sin usuarios invitados',
   'settings.accessLevel': 'Nivel de acceso',
   'settings.billing': 'Facturación',
+  'settings.trialActive': 'Estás en tu prueba gratuita — te quedan {days} día(s). Elige un plan abajo para seguir teniendo acceso cuando termine.',
   'settings.upgradeTo': 'Actualizar a {plan}',
   'settings.changeTo': 'Cambiar a {plan}',
   'settings.cancelSubscription': 'Cancelar suscripción',

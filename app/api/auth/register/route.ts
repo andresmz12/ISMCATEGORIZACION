@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { validatePassword, validateEmail, getClientIp } from '@/lib/validate'
+import { TRIAL_DURATION_MS } from '@/lib/billing-access'
 
 export async function POST(req: Request) {
   const ip = getClientIp(req)
@@ -30,6 +31,8 @@ export async function POST(req: Request) {
     // through Square or being granted one by an admin. Previously this
     // trusted a client-supplied `plan` field straight into the DB, which let
     // anyone register with plan: "ENTERPRISE" and get full paid access for free.
+    // Plan stays NONE (honest: they haven't paid), but trialEndsAt gives them
+    // 7 days of BASIC-equivalent access — see lib/billing-access.ts.
     const user = await prisma.user.create({
       data: {
         email: normalizedEmail,
@@ -44,6 +47,7 @@ export async function POST(req: Request) {
           create: {
             name: firmName?.trim()?.slice(0, 100) || null,
             plan: 'NONE',
+            trialEndsAt: new Date(Date.now() + TRIAL_DURATION_MS),
           },
         },
       },

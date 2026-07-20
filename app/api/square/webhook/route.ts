@@ -117,7 +117,7 @@ async function handleSubscriptionUpdated(event: SubscriptionUpdatedEvent) {
   const status = subscription?.status
   if (!subscriptionId || !status) return
 
-  const data: { subscriptionStatus: string; plan?: 'NONE' | 'PLUS' | 'ENTERPRISE' } = { subscriptionStatus: status }
+  const data: { subscriptionStatus: string; plan?: 'NONE' | 'BASIC' | 'PLUS' | 'ENTERPRISE' } = { subscriptionStatus: status }
 
   if (status === 'ACTIVE') {
     const plan = planFromVariationId(subscription.planVariationId)

@@ -4,12 +4,15 @@
 // one paid phase each, monthly cadence) — the Subscriptions API doesn't let
 // you create them inline, they're catalog objects you set up once.
 //
-// BASIC has no Square subscription (it's the free default) and CUSTOM has no
-// fixed price (negotiated manually) — neither is self-serve checkout, so
-// only PLUS and ENTERPRISE appear here.
-export type PaidPlan = 'PLUS' | 'ENTERPRISE'
+// BASIC, PLUS and ENTERPRISE are all paid, fixed-price tiers ($20/$50/$80)
+// backed by their own Square subscription. CUSTOM has no fixed price
+// (negotiated manually), so it's the only tier that isn't self-serve
+// checkout and doesn't appear here. NONE isn't a purchasable plan either —
+// it's the "hasn't paid" state, never something you check out into.
+export type PaidPlan = 'BASIC' | 'PLUS' | 'ENTERPRISE'
 
 export const SQUARE_PAID_PLANS: Record<PaidPlan, { variationIdEnvVar: string; priceCents: number }> = {
+  BASIC: { variationIdEnvVar: 'SQUARE_PLAN_VARIATION_ID_BASIC', priceCents: 2000 },
   PLUS: { variationIdEnvVar: 'SQUARE_PLAN_VARIATION_ID_PLUS', priceCents: 5000 },
   ENTERPRISE: { variationIdEnvVar: 'SQUARE_PLAN_VARIATION_ID_ENTERPRISE', priceCents: 8000 },
 }
@@ -22,7 +25,7 @@ export function getSquarePlanVariationId(plan: PaidPlan): string {
 }
 
 export function isPaidPlan(plan: string): plan is PaidPlan {
-  return plan === 'PLUS' || plan === 'ENTERPRISE'
+  return plan === 'BASIC' || plan === 'PLUS' || plan === 'ENTERPRISE'
 }
 
 // Reverse lookup used by the webhook handler: given the plan_variation_id
