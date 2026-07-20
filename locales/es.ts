@@ -389,6 +389,7 @@ const es = {
   'settings.cancelSubscription': 'Cancelar suscripción',
   'settings.resumeSubscription': 'Reanudar suscripción',
   'settings.ownerOnlyBilling': 'Solo el dueño de la cuenta puede administrar la facturación',
+  'settings.alreadyTopPlan': 'Ya tienes el plan más alto disponible para compra. Si necesitas algo distinto, contacta a soporte.',
   'settings.subscriptionCanceled': 'Tu suscripción está cancelada — sigues en el plan hasta el final del periodo pagado',
   'settings.subscriptionPaymentFailed': 'El último cobro falló — actualiza tu método de pago para evitar interrupciones',
   'settings.confirmCancel': '¿Cancelar tu suscripción? Seguirás teniendo acceso hasta el final del periodo ya pagado.',

@@ -6,6 +6,7 @@ import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
 
 const PAID_PLANS = ['PLUS', 'ENTERPRISE'] as const
+const PLAN_RANK: Record<string, number> = { BASIC: 0, PLUS: 1, ENTERPRISE: 2, CUSTOM: 3 }
 
 function SettingsPageInner() {
   const { data: session, update: updateSession } = useSession()
@@ -166,25 +167,23 @@ function SettingsPageInner() {
 
         {accountRole !== 'OWNER' ? (
           <p className="text-sm text-gray-400">{t('settings.ownerOnlyBilling')}</p>
-        ) : (
+        ) : profile.hasSubscription ? (
+          // Real Square subscription — swapping either up or down is a legitimate
+          // billing change (labeled "change to", never "upgrade"), and there's an
+          // actual subscription behind it to cancel/resume.
           <div className="flex flex-wrap gap-2">
-            {PAID_PLANS.filter(p => p !== profile.plan).map(plan => {
-              const loadingKey = profile.hasSubscription ? 'swap' : plan
-              return (
-                <button
-                  key={plan}
-                  onClick={() => profile.hasSubscription ? manageSubscription('swap', plan) : startCheckout(plan)}
-                  disabled={billingLoading !== null}
-                  className="btn-primary disabled:opacity-50"
-                >
-                  {billingLoading === loadingKey
-                    ? t('common.loading')
-                    : (profile.hasSubscription ? t('settings.changeTo') : t('settings.upgradeTo')).replace('{plan}', planLabels[plan])}
-                </button>
-              )
-            })}
+            {PAID_PLANS.filter(p => p !== profile.plan).map(plan => (
+              <button
+                key={plan}
+                onClick={() => manageSubscription('swap', plan)}
+                disabled={billingLoading !== null}
+                className="btn-primary disabled:opacity-50"
+              >
+                {billingLoading === 'swap' ? t('common.loading') : t('settings.changeTo').replace('{plan}', planLabels[plan])}
+              </button>
+            ))}
 
-            {profile.hasSubscription && profile.subscriptionStatus !== 'CANCELED' && (
+            {profile.subscriptionStatus !== 'CANCELED' ? (
               <button
                 onClick={() => manageSubscription('cancel')}
                 disabled={billingLoading !== null}
@@ -192,8 +191,7 @@ function SettingsPageInner() {
               >
                 {billingLoading === 'cancel' ? t('common.loading') : t('settings.cancelSubscription')}
               </button>
-            )}
-            {profile.hasSubscription && profile.subscriptionStatus === 'CANCELED' && (
+            ) : (
               <button
                 onClick={() => manageSubscription('resume')}
                 disabled={billingLoading !== null}
@@ -203,7 +201,32 @@ function SettingsPageInner() {
               </button>
             )}
           </div>
-        )}
+        ) : (() => {
+          // No real Square subscription behind the current plan (e.g. an
+          // admin-granted plan) — only offer checkout for plans that are
+          // genuinely higher-tier. Never offer a lower/equal plan as an
+          // "upgrade", and if there's nothing higher to sell, say so instead
+          // of showing a button (there's also nothing to cancel here).
+          const currentRank = PLAN_RANK[profile.plan] ?? 0
+          const upgradeOptions = PAID_PLANS.filter(p => PLAN_RANK[p] > currentRank)
+          if (upgradeOptions.length === 0) {
+            return <p className="text-sm text-gray-400">{t('settings.alreadyTopPlan')}</p>
+          }
+          return (
+            <div className="flex flex-wrap gap-2">
+              {upgradeOptions.map(plan => (
+                <button
+                  key={plan}
+                  onClick={() => startCheckout(plan)}
+                  disabled={billingLoading !== null}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  {billingLoading === plan ? t('common.loading') : t('settings.upgradeTo').replace('{plan}', planLabels[plan])}
+                </button>
+              ))}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Profile form */}
