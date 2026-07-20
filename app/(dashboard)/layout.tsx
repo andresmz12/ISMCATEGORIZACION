@@ -291,10 +291,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
 
-      {/* Floating chat bubble — only rendered once a superadmin flips
-          chatbotEnabled on for the active business; hidden entirely otherwise. */}
-      {activeBusiness?.chatbotEnabled && activeBizId && (
-        <ChatWidget key={activeBizId} businessId={activeBizId} businessName={activeBusiness.name} />
+      {/* Floating chat bubble — chatbotEnabled is account-wide (see
+          lib/account.ts): once a superadmin flips it on for an account, it
+          applies to every business that account owns, not just one. Hidden
+          entirely otherwise. */}
+      {(session?.user as any)?.chatbotEnabled && activeBizId && (
+        <ChatWidget key={activeBizId} businessId={activeBizId} businessName={activeBusiness?.name || ''} />
       )}
     </div>
   )

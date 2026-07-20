@@ -10,11 +10,6 @@ async function requireSuperadmin() {
   return session
 }
 
-function currentPeriod(): string {
-  const now = new Date()
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
-}
-
 export async function GET() {
   if (!await requireSuperadmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -29,7 +24,6 @@ export async function GET() {
         },
       },
       _count: { select: { transactions: true } },
-      aiUsage: { where: { period: currentPeriod() } },
     },
   })
 

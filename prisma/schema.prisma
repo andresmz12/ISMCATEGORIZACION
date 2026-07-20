@@ -82,9 +82,15 @@ model BillingAccount {
   // shortcut has no reference_id we can pass through ourselves.
   pendingSquareOrderId String?   @unique
   pendingSquarePlan    Plan?
+  // AI budget and chatbot access are account-wide, not per-business — an
+  // account can own several businesses, and this is the one shared bucket
+  // that applies to every business and team member under it. See lib/account.ts.
+  aiMonthlyBudgetCents Int?
+  chatbotEnabled       Boolean   @default(false)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   users                User[]
+  aiUsage              AiUsage[]
 }
 
 model User {
@@ -159,8 +165,6 @@ model Business {
   industry             String?
   entityType           String?
   taxYear              Int?
-  aiMonthlyBudgetCents Int?
-  chatbotEnabled       Boolean              @default(false)
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   users            BusinessUser[]
@@ -172,25 +176,26 @@ model Business {
   documents        Document[]
   assignments      Assignment[]
   plaidConnections PlaidConnection[]
-  aiUsage          AiUsage[]
 }
 
+// Scoped to the BillingAccount (not Business) — an account's AI spend is
+// shared across every business it owns. See lib/account.ts.
 model AiUsage {
-  id                String   @id @default(cuid())
-  businessId        String
+  id                String         @id @default(cuid())
+  accountId         String
   period            String
-  inputTokens       Int      @default(0)
-  outputTokens      Int      @default(0)
-  costCents         Int      @default(0)
-  classifiedCount   Int      @default(0)
-  blocked           Boolean  @default(false)
-  unblockedByAdmin  Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  business          Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  inputTokens       Int            @default(0)
+  outputTokens      Int            @default(0)
+  costCents         Int            @default(0)
+  classifiedCount   Int            @default(0)
+  blocked           Boolean        @default(false)
+  unblockedByAdmin  Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  billingAccount    BillingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
-  @@unique([businessId, period])
-  @@index([businessId])
+  @@unique([accountId, period])
+  @@index([accountId])
 }
 
 model BusinessUser {

@@ -17,6 +17,7 @@ export const authOptions: NextAuthOptions = {
         token.accountId = (user as any).accountId
         token.accountRole = (user as any).accountRole
         token.plan = (user as any).plan
+        token.chatbotEnabled = (user as any).chatbotEnabled
       }
       return token
     },
@@ -27,6 +28,7 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).accountId = token.accountId
         ;(session.user as any).accountRole = token.accountRole
         ;(session.user as any).plan = token.plan
+        ;(session.user as any).chatbotEnabled = token.chatbotEnabled
       }
       return session
     },
@@ -53,7 +55,7 @@ export const authOptions: NextAuthOptions = {
             select: {
               id: true, email: true, passwordHash: true, name: true, accountType: true, isActive: true,
               accountId: true, accountRole: true,
-              billingAccount: { select: { plan: true } },
+              billingAccount: { select: { plan: true, chatbotEnabled: true } },
             },
           })
           if (!user || !user.isActive) return null
@@ -64,6 +66,7 @@ export const authOptions: NextAuthOptions = {
           return {
             id: user.id, email: user.email, name: user.name, accountType: user.accountType,
             accountId: user.accountId, accountRole: user.accountRole, plan: user.billingAccount.plan,
+            chatbotEnabled: user.billingAccount.chatbotEnabled,
           }
         } catch (err) {
           console.error('authorize error:', err)

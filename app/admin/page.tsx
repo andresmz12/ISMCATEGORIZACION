@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useTranslation } from '@/lib/i18n'
+import { estimateTransactionLimit } from '@/lib/ai-pricing'
 
 interface User {
   id: string
@@ -12,6 +13,14 @@ interface User {
   lastLogin?: string
   createdAt: string
   _count?: { businessUsers: number }
+  // Account-wide — shared across every business this account owns (see lib/account.ts).
+  aiMonthlyBudgetCents: number | null
+  chatbotEnabled: boolean
+  aiUsage: { costCents: number; blocked: boolean; unblockedByAdmin: boolean }[]
+}
+
+function fmtUsd(cents: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
 
 interface Metrics {
@@ -53,6 +62,10 @@ export default function AdminPage() {
   const [editForm, setEditForm] = useState({ name: '', email: '', accountType: '', plan: '' })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState('')
+
+  // AI budget / chatbot (account-wide) — edited within the same modal
+  const [budgetDraft, setBudgetDraft] = useState('')
+  const [savingAi, setSavingAi] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -101,6 +114,57 @@ export default function AdminPage() {
     setEditUser(user)
     setEditForm({ name: user.name || '', email: user.email, accountType: user.accountType, plan: user.plan })
     setEditError('')
+    setBudgetDraft(user.aiMonthlyBudgetCents != null ? (user.aiMonthlyBudgetCents / 100).toString() : '')
+  }
+
+  async function saveAiBudget() {
+    if (!editUser) return
+    const dollars = budgetDraft === '' ? null : Number(budgetDraft)
+    if (dollars !== null && (!Number.isFinite(dollars) || dollars < 0)) return
+    setSavingAi(true)
+    await fetch(`/api/admin/users/${editUser.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aiMonthlyBudgetCents: dollars === null ? null : Math.round(dollars * 100) }),
+    })
+    const fresh = await fetch('/api/admin/users').then(r => r.json())
+    if (Array.isArray(fresh)) {
+      setUsers(fresh)
+      setEditUser(fresh.find((u: User) => u.id === editUser.id) || null)
+    }
+    setSavingAi(false)
+  }
+
+  async function toggleChatbotForUser(enabled: boolean) {
+    if (!editUser) return
+    setSavingAi(true)
+    await fetch(`/api/admin/users/${editUser.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatbotEnabled: enabled }),
+    })
+    const fresh = await fetch('/api/admin/users').then(r => r.json())
+    if (Array.isArray(fresh)) {
+      setUsers(fresh)
+      setEditUser(fresh.find((u: User) => u.id === editUser.id) || null)
+    }
+    setSavingAi(false)
+  }
+
+  async function unblockAiForUser() {
+    if (!editUser) return
+    setSavingAi(true)
+    await fetch(`/api/admin/users/${editUser.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unblockAiUsage: true }),
+    })
+    const fresh = await fetch('/api/admin/users').then(r => r.json())
+    if (Array.isArray(fresh)) {
+      setUsers(fresh)
+      setEditUser(fresh.find((u: User) => u.id === editUser.id) || null)
+    }
+    setSavingAi(false)
   }
 
   async function handleEdit(e: React.FormEvent) {
@@ -454,6 +518,75 @@ export default function AdminPage() {
                   </select>
                 </div>
               </div>
+
+              {editUser?.accountType === 'ACCOUNTANT' && (
+                <div className="border-t border-gray-100 pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Presupuesto de IA (por cuenta)</p>
+                  <p className="text-xs text-gray-400 -mt-2">
+                    Compartido por todos los negocios de esta cuenta y por los miembros de equipo invitados.
+                  </p>
+
+                  {(() => {
+                    const usage = editUser.aiUsage[0]
+                    const spent = usage?.costCents ?? 0
+                    const isBlocked = !!usage?.blocked && !usage?.unblockedByAdmin
+                    const draftDollars = budgetDraft === '' ? null : Number(budgetDraft)
+                    const estimatedTx = draftDollars != null && Number.isFinite(draftDollars) && draftDollars > 0
+                      ? estimateTransactionLimit(Math.round(draftDollars * 100))
+                      : null
+                    return (
+                      <>
+                        <p className="text-sm text-gray-700">
+                          Gastado este mes: <strong>{fmtUsd(spent)}</strong>
+                          {editUser.aiMonthlyBudgetCents != null && <> de <strong>{fmtUsd(editUser.aiMonthlyBudgetCents)}</strong></>}
+                        </p>
+                        {isBlocked && (
+                          <div className="flex items-center justify-between gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                            <span className="text-xs text-red-700 font-medium">Clasificación con IA bloqueada por presupuesto</span>
+                            <button type="button" onClick={unblockAiForUser} disabled={savingAi} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50">
+                              Reactivar
+                            </button>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            className={inputCls}
+                            placeholder="Sin límite"
+                            value={budgetDraft}
+                            onChange={e => setBudgetDraft(e.target.value)}
+                          />
+                          <button type="button" onClick={saveAiBudget} disabled={savingAi} className="text-xs font-medium px-3 py-2 rounded-lg bg-[#1B4965] text-white hover:bg-[#153d52] transition-colors disabled:opacity-50 whitespace-nowrap">
+                            Guardar
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-400">Límite en USD por mes. Déjalo vacío para no limitar.</p>
+                        {estimatedTx != null && (
+                          <p className="text-xs text-[#1B4965] font-medium">≈ {estimatedTx.toLocaleString('es-CO')} transacciones clasificadas con IA al mes</p>
+                        )}
+                      </>
+                    )
+                  })()}
+
+                  <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2.5 border border-gray-100">
+                    <div>
+                      <p className="text-sm text-gray-700 font-medium">Asistente de chat (IA)</p>
+                      <p className="text-xs text-gray-400">{editUser.chatbotEnabled ? 'Habilitado para esta cuenta' : 'Deshabilitado'}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleChatbotForUser(!editUser.chatbotEnabled)}
+                      disabled={savingAi}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${editUser.chatbotEnabled ? 'bg-[#2EC4B6]' : 'bg-gray-300'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editUser.chatbotEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setEditUser(null)} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                   Cancelar

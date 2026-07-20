@@ -9,9 +9,15 @@ async function isSuperAdmin() {
   return (session?.user as any)?.accountType === 'SUPERADMIN'
 }
 
+function currentPeriod(): string {
+  const now = new Date()
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
 export async function GET() {
   if (!await isSuperAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  const period = currentPeriod()
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
     select: {
@@ -22,13 +28,26 @@ export async function GET() {
       isActive: true,
       lastLogin: true,
       createdAt: true,
-      billingAccount: { select: { plan: true, name: true } },
+      billingAccount: {
+        select: {
+          plan: true,
+          name: true,
+          aiMonthlyBudgetCents: true,
+          chatbotEnabled: true,
+          aiUsage: { where: { period } },
+        },
+      },
       _count: { select: { businessUsers: true } },
     },
   })
 
   return NextResponse.json(users.map(({ billingAccount, ...u }) => ({
-    ...u, plan: billingAccount.plan, firmName: billingAccount.name,
+    ...u,
+    plan: billingAccount.plan,
+    firmName: billingAccount.name,
+    aiMonthlyBudgetCents: billingAccount.aiMonthlyBudgetCents,
+    chatbotEnabled: billingAccount.chatbotEnabled,
+    aiUsage: billingAccount.aiUsage,
   })))
 }
 

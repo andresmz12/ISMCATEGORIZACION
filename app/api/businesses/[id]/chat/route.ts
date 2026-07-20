@@ -6,6 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { checkAiBudget, recordAiUsage } from '@/lib/ai-budget'
+import { getBusinessAccountId } from '@/lib/account'
 import { QUERY_TRANSACTIONS_TOOL, runQueryTransactions } from '@/lib/ai-chat'
 
 function buildSystemPrompt(): string {
@@ -39,12 +40,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const business = await prisma.business.findUnique({
-    where: { id: businessId },
-    select: { chatbotEnabled: true },
-  })
-  if (!business?.chatbotEnabled) {
-    return NextResponse.json({ error: 'El asistente de chat no está habilitado para este negocio' }, { status: 403 })
+  // chatbotEnabled is account-wide (see lib/account.ts) — enabling it applies
+  // to every business the account owns, not just this one.
+  const accountId = await getBusinessAccountId(businessId)
+  const account = accountId
+    ? await prisma.billingAccount.findUnique({ where: { id: accountId }, select: { chatbotEnabled: true } })
+    : null
+  if (!account?.chatbotEnabled) {
+    return NextResponse.json({ error: 'El asistente de chat no está habilitado para esta cuenta' }, { status: 403 })
   }
 
   const budgetDenied = await checkAiBudget(businessId)
