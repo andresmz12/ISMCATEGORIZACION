@@ -117,53 +117,59 @@ export default function AdminPage() {
     setBudgetDraft(user.aiMonthlyBudgetCents != null ? (user.aiMonthlyBudgetCents / 100).toString() : '')
   }
 
+  // Shared by saveAiBudget/toggleChatbotForUser/unblockAiForUser — re-fetches
+  // the user list and only touches `editUser` if it's still showing the same
+  // account the save was for. Without this guard, an admin who closes the
+  // modal (or opens a different user's) before the PATCH+refetch round trip
+  // finishes would have it reopen — or worse, silently overwrite the
+  // currently-open modal with a different user's AI budget/chatbot data.
+  async function refreshAndSyncEditUser(targetId: string) {
+    const fresh = await fetch('/api/admin/users').then(r => r.json())
+    if (Array.isArray(fresh)) {
+      setUsers(fresh)
+      const updated = fresh.find((u: User) => u.id === targetId)
+      setEditUser(prev => (prev && prev.id === targetId ? (updated ?? prev) : prev))
+    }
+  }
+
   async function saveAiBudget() {
     if (!editUser) return
+    const targetId = editUser.id
     const dollars = budgetDraft === '' ? null : Number(budgetDraft)
     if (dollars !== null && (!Number.isFinite(dollars) || dollars < 0)) return
     setSavingAi(true)
-    await fetch(`/api/admin/users/${editUser.id}`, {
+    await fetch(`/api/admin/users/${targetId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ aiMonthlyBudgetCents: dollars === null ? null : Math.round(dollars * 100) }),
     })
-    const fresh = await fetch('/api/admin/users').then(r => r.json())
-    if (Array.isArray(fresh)) {
-      setUsers(fresh)
-      setEditUser(fresh.find((u: User) => u.id === editUser.id) || null)
-    }
+    await refreshAndSyncEditUser(targetId)
     setSavingAi(false)
   }
 
   async function toggleChatbotForUser(enabled: boolean) {
     if (!editUser) return
+    const targetId = editUser.id
     setSavingAi(true)
-    await fetch(`/api/admin/users/${editUser.id}`, {
+    await fetch(`/api/admin/users/${targetId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chatbotEnabled: enabled }),
     })
-    const fresh = await fetch('/api/admin/users').then(r => r.json())
-    if (Array.isArray(fresh)) {
-      setUsers(fresh)
-      setEditUser(fresh.find((u: User) => u.id === editUser.id) || null)
-    }
+    await refreshAndSyncEditUser(targetId)
     setSavingAi(false)
   }
 
   async function unblockAiForUser() {
     if (!editUser) return
+    const targetId = editUser.id
     setSavingAi(true)
-    await fetch(`/api/admin/users/${editUser.id}`, {
+    await fetch(`/api/admin/users/${targetId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ unblockAiUsage: true }),
     })
-    const fresh = await fetch('/api/admin/users').then(r => r.json())
-    if (Array.isArray(fresh)) {
-      setUsers(fresh)
-      setEditUser(fresh.find((u: User) => u.id === editUser.id) || null)
-    }
+    await refreshAndSyncEditUser(targetId)
     setSavingAi(false)
   }
 
