@@ -56,20 +56,34 @@ async function main() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "BillingAccount" ADD COLUMN IF NOT EXISTS "squareSubscriptionId" TEXT`)
   await prisma.$executeRawUnsafe(`ALTER TABLE "BillingAccount" ADD COLUMN IF NOT EXISTS "pendingSquareOrderId" TEXT`)
   await prisma.$executeRawUnsafe(`ALTER TABLE "BillingAccount" ADD COLUMN IF NOT EXISTS "pendingSquarePlan" "Plan"`)
+  // Plain unique indexes (not named table constraints) — this is what Prisma
+  // itself generates for `@unique` on Postgres, and IF NOT EXISTS makes this
+  // trivially idempotent. An earlier ADD CONSTRAINT ... UNIQUE version of
+  // this collided with an index Prisma had already half-created under the
+  // same name (Postgres raises 42P07 "relation already exists" for that,
+  // not 42710 "duplicate_object", so the old EXCEPTION WHEN duplicate_object
+  // guard never caught it).
+  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "BillingAccount_squareCustomerId_key" ON "BillingAccount" ("squareCustomerId")`)
+  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "BillingAccount_squareSubscriptionId_key" ON "BillingAccount" ("squareSubscriptionId")`)
+  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "BillingAccount_pendingSquareOrderId_key" ON "BillingAccount" ("pendingSquareOrderId")`)
+
+  // AiUsage.accountId (added when AI budget/usage moved from per-business to
+  // per-account) is a required column with no sensible default, and `prisma
+  // db push` refuses to add one of those to a non-empty table. These rows
+  // are just this month's AI spend counters, not real business data, so
+  // clearing them out — only if this table hasn't been migrated yet — is
+  // far simpler than backfilling accountId via a join before businessId
+  // disappears from the schema. Worst case: this month's spend tracker
+  // resets to zero once.
   await prisma.$executeRawUnsafe(`
     DO $$ BEGIN
-      ALTER TABLE "BillingAccount" ADD CONSTRAINT "BillingAccount_squareCustomerId_key" UNIQUE ("squareCustomerId");
-    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-  `)
-  await prisma.$executeRawUnsafe(`
-    DO $$ BEGIN
-      ALTER TABLE "BillingAccount" ADD CONSTRAINT "BillingAccount_squareSubscriptionId_key" UNIQUE ("squareSubscriptionId");
-    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-  `)
-  await prisma.$executeRawUnsafe(`
-    DO $$ BEGIN
-      ALTER TABLE "BillingAccount" ADD CONSTRAINT "BillingAccount_pendingSquareOrderId_key" UNIQUE ("pendingSquareOrderId");
-    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+      IF to_regclass('"AiUsage"') IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'AiUsage' AND column_name = 'accountId'
+      ) THEN
+        TRUNCATE TABLE "AiUsage";
+      END IF;
+    END $$;
   `)
 
   await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "accountId" TEXT`)
