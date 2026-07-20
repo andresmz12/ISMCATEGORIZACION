@@ -10,8 +10,8 @@
 export type PaidPlan = 'PLUS' | 'ENTERPRISE'
 
 export const SQUARE_PAID_PLANS: Record<PaidPlan, { variationIdEnvVar: string; priceCents: number }> = {
-  PLUS: { variationIdEnvVar: 'SQUARE_PLAN_VARIATION_ID_PLUS', priceCents: 4500 },
-  ENTERPRISE: { variationIdEnvVar: 'SQUARE_PLAN_VARIATION_ID_ENTERPRISE', priceCents: 7000 },
+  PLUS: { variationIdEnvVar: 'SQUARE_PLAN_VARIATION_ID_PLUS', priceCents: 5000 },
+  ENTERPRISE: { variationIdEnvVar: 'SQUARE_PLAN_VARIATION_ID_ENTERPRISE', priceCents: 8000 },
 }
 
 export function getSquarePlanVariationId(plan: PaidPlan): string {

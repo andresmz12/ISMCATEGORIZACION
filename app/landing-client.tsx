@@ -446,13 +446,13 @@ const copy = {
           cta: 'Empezar con Basic', highlight: false,
         },
         {
-          name: 'Plus', price: '$45', desc: 'El plan completo para la mayoría',
+          name: 'Plus', price: '$50', desc: 'El plan completo para la mayoría',
           features: ['Hasta 5 negocios', 'Importación CSV y XLSX', 'Clasificación automática con IA', 'Escaneo de recibos (OCR)', 'Reportes y exportación PDF / Excel', 'Conexión bancaria Plaid', 'Multi-usuario'],
           missing: [],
           cta: 'Empezar con Plus', highlight: true,
         },
         {
-          name: 'Enterprise', price: '$70', desc: 'Para contadores y firmas',
+          name: 'Enterprise', price: '$80', desc: 'Para contadores y firmas',
           features: ['Hasta 20 negocios', 'Todo lo de Plus', 'Clasificación automática con IA', 'Escaneo de recibos (OCR)', 'Reportes PDF / Excel', 'Conexión bancaria Plaid', 'Multi-usuario', 'Soporte prioritario'],
           missing: [],
           cta: 'Empezar con Enterprise', highlight: false,
@@ -535,13 +535,13 @@ const copy = {
           cta: 'Start with Basic', highlight: false,
         },
         {
-          name: 'Plus', price: '$45', desc: 'The complete plan for most',
+          name: 'Plus', price: '$50', desc: 'The complete plan for most',
           features: ['Up to 5 businesses', 'CSV & XLSX import', 'Automatic AI classification', 'Receipt scanning (OCR)', 'Reports & PDF / Excel export', 'Plaid bank connection', 'Multi-user'],
           missing: [],
           cta: 'Start with Plus', highlight: true,
         },
         {
-          name: 'Enterprise', price: '$70', desc: 'For accountants and firms',
+          name: 'Enterprise', price: '$80', desc: 'For accountants and firms',
           features: ['Up to 20 businesses', 'Everything in Plus', 'Automatic AI classification', 'Receipt scanning (OCR)', 'PDF / Excel reports', 'Plaid bank connection', 'Multi-user', 'Priority support'],
           missing: [],
           cta: 'Start with Enterprise', highlight: false,

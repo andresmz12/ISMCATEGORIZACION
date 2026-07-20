@@ -28,7 +28,7 @@ const PLAN_FEATURES = {
   },
   PLUS: {
     name: 'Plus',
-    price: '$45 / mes',
+    price: '$50 / mes',
     color: 'border-blue-400',
     badge: 'bg-blue-100 text-blue-700',
     features: [
@@ -44,7 +44,7 @@ const PLAN_FEATURES = {
   },
   ENTERPRISE: {
     name: 'Enterprise',
-    price: '$70 / mes',
+    price: '$80 / mes',
     color: 'border-purple-400',
     badge: 'bg-purple-100 text-purple-700',
     features: [
