@@ -19,16 +19,17 @@ export async function GET() {
       name: true,
       email: true,
       accountType: true,
-      plan: true,
       isActive: true,
       lastLogin: true,
       createdAt: true,
-      firmName: true,
+      billingAccount: { select: { plan: true, name: true } },
       _count: { select: { businessUsers: true } },
     },
   })
 
-  return NextResponse.json(users)
+  return NextResponse.json(users.map(({ billingAccount, ...u }) => ({
+    ...u, plan: billingAccount.plan, firmName: billingAccount.name,
+  })))
 }
 
 export async function POST(req: Request) {
@@ -47,15 +48,21 @@ export async function POST(req: Request) {
     if (existing) return NextResponse.json({ error: 'Este correo ya está registrado' }, { status: 400 })
 
     const passwordHash = await bcrypt.hash(password, 12)
+    const normalizedPlan = (['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE' | 'CUSTOM'
     const user = await prisma.user.create({
       data: {
         email: normalizedEmail,
         passwordHash,
         name: (name || normalizedEmail.split('@')[0]).trim().slice(0, 100),
         accountType: 'ACCOUNTANT',
-        firmName: firmName?.trim()?.slice(0, 100) || null,
-        plan: (['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE' | 'CUSTOM',
+        accountRole: 'OWNER',
         isActive: true,
+        billingAccount: {
+          create: {
+            name: firmName?.trim()?.slice(0, 100) || null,
+            plan: normalizedPlan,
+          },
+        },
       },
     })
 

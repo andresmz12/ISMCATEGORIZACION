@@ -93,7 +93,7 @@ export async function POST(req: Request) {
   const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } })
   if (existing) return NextResponse.json({ error: 'Ya existe un usuario con ese correo' }, { status: 409 })
 
-  const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { plan: true } })
+  const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { accountId: true } })
 
   // No one — not the owner creating this account, not this server's logs, not
   // an email — ever knows this password. The new user sets their own via the
@@ -109,7 +109,8 @@ export async function POST(req: Request) {
       email: email.toLowerCase().trim(),
       passwordHash,
       accountType: 'TEAM_MEMBER',
-      plan: owner?.plan ?? 'BASIC',
+      accountId: owner!.accountId,
+      accountRole: 'MEMBER',
       inviteToken,
       inviteTokenExpiresAt,
       businessUsers: {

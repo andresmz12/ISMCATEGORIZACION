@@ -22,11 +22,23 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
     include: {
       users: {
-        include: { user: { select: { id: true, name: true, email: true, accountType: true, plan: true } } },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, accountType: true, billingAccount: { select: { plan: true } } },
+          },
+        },
       },
       _count: { select: { transactions: true } },
       aiUsage: { where: { period: currentPeriod() } },
     },
   })
-  return NextResponse.json(businesses)
+
+  const flattened = businesses.map(b => ({
+    ...b,
+    users: b.users.map(bu => ({
+      ...bu,
+      user: { ...bu.user, plan: bu.user.billingAccount.plan, billingAccount: undefined },
+    })),
+  }))
+  return NextResponse.json(flattened)
 }

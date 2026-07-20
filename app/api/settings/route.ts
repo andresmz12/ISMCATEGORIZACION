@@ -31,8 +31,13 @@ export async function PATCH(req: Request) {
     updates.name = name.trim()
   }
 
-  if (firmName !== undefined) {
-    updates.firmName = firmName?.trim()?.slice(0, 100) || null
+  // The firm name lives on the shared BillingAccount now — only the account
+  // owner can rename it, since it's visible to every invited team member too.
+  if (firmName !== undefined && user.accountRole === 'OWNER') {
+    await prisma.billingAccount.update({
+      where: { id: user.accountId },
+      data: { name: firmName?.trim()?.slice(0, 100) || null },
+    })
   }
 
   if (newPassword) {
@@ -44,19 +49,24 @@ export async function PATCH(req: Request) {
     updates.passwordHash = await bcrypt.hash(newPassword, 12)
   }
 
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(updates).length === 0 && firmName === undefined) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: updates,
-    select: { id: true, name: true, email: true, firmName: true, accountType: true, plan: true },
-  })
+  const updated = Object.keys(updates).length > 0
+    ? await prisma.user.update({
+        where: { id: userId },
+        data: updates,
+        select: { id: true, name: true, email: true, accountType: true, billingAccount: { select: { plan: true, name: true } } },
+      })
+    : await prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { id: true, name: true, email: true, accountType: true, billingAccount: { select: { plan: true, name: true } } },
+      })
 
-  const changedFields = Object.keys(updates)
+  const changedFields = [...Object.keys(updates), ...(firmName !== undefined ? ['firmName'] : [])]
   await logAudit({ userId, action: 'UPDATE_SETTINGS', entity: 'User', entityId: userId, metadata: { fields: changedFields } })
-  return NextResponse.json(updated)
+  return NextResponse.json({ ...updated, plan: updated.billingAccount.plan, firmName: updated.billingAccount.name, billingAccount: undefined })
 }
 
 export async function GET() {
@@ -66,8 +76,11 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true, firmName: true, accountType: true, plan: true, createdAt: true, lastLogin: true },
+    select: {
+      id: true, name: true, email: true, accountType: true, createdAt: true, lastLogin: true,
+      billingAccount: { select: { plan: true, name: true } },
+    },
   })
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(user)
+  return NextResponse.json({ ...user, plan: user.billingAccount.plan, firmName: user.billingAccount.name, billingAccount: undefined })
 }

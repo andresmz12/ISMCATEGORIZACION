@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { prisma } from './prisma'
 import { PLAN_LIMITS as LIMITS } from './plan-config'
 
 export type PlanFeature = 'aiClassify' | 'receiptScan' | 'reports' | 'plaid' | 'team'
@@ -23,4 +24,17 @@ export function requirePlanFeature(session: any, feature: PlanFeature): NextResp
     return NextResponse.json({ error: FEATURE_MESSAGES[feature] }, { status: 403 })
   }
   return null
+}
+
+// Businesses are owned by an account, not by an individual User — count
+// across every user that shares the account so the limit reflects what the
+// whole team (owner + invited members) has created, not just the caller.
+export async function countOwnedBusinesses(accountId: string): Promise<number> {
+  const result = await prisma.$queryRaw<{ count: number }[]>`
+    SELECT COUNT(*)::integer as count
+    FROM "BusinessUser" bu
+    INNER JOIN "User" u ON u.id = bu."userId"
+    WHERE u."accountId" = ${accountId} AND bu.role = 'OWNER'
+  `
+  return result[0].count
 }

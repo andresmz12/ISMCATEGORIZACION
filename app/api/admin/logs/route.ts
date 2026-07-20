@@ -15,7 +15,7 @@ export async function GET() {
       where: { accountType: { not: 'SUPERADMIN' } },
       orderBy: { createdAt: 'desc' },
       take: 20,
-      select: { id: true, name: true, email: true, accountType: true, plan: true, createdAt: true },
+      select: { id: true, name: true, email: true, accountType: true, createdAt: true, billingAccount: { select: { plan: true } } },
     }),
     // Recent logins
     prisma.user.findMany({
@@ -63,7 +63,7 @@ export async function GET() {
       ts: u.createdAt.toISOString(),
       type: 'register',
       msg: `Nuevo usuario: ${u.name || u.email}`,
-      sub: `${u.accountType} · Plan ${u.plan}`,
+      sub: `${u.accountType} · Plan ${u.billingAccount.plan}`,
     })
   }
   for (const u of recentLogins) {

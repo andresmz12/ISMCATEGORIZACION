@@ -58,8 +58,9 @@ async function main() {
       passwordHash: superAdminHash,
       name: 'Super Admin',
       accountType: AccountType.SUPERADMIN,
-      plan: Plan.ENTERPRISE,
+      accountRole: 'OWNER',
       isActive: true,
+      billingAccount: { create: { plan: Plan.ENTERPRISE } },
     },
   })
   console.log('✓ Superadmin: superadmin@mypnl.com / SuperAdmin123!')
@@ -73,10 +74,10 @@ async function main() {
       email: 'contador@demo.com',
       passwordHash: contadorHash,
       name: 'Carlos Contable',
-      firmName: 'Contable & Asociados LLC',
       accountType: AccountType.ACCOUNTANT,
-      plan: Plan.PLUS,
+      accountRole: 'OWNER',
       isActive: true,
+      billingAccount: { create: { name: 'Contable & Asociados LLC', plan: Plan.PLUS } },
     },
   })
   console.log('✓ Contador: contador@demo.com / password123')
@@ -128,8 +129,9 @@ async function main() {
       passwordHash: individualHash,
       name: 'Maria Emprendedora',
       accountType: AccountType.ACCOUNTANT,
-      plan: Plan.BASIC,
+      accountRole: 'OWNER',
       isActive: true,
+      billingAccount: { create: { plan: Plan.BASIC } },
     },
   })
   console.log('✓ Usuario demo: usuario@demo.com / password123')

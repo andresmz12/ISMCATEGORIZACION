@@ -128,8 +128,9 @@ export async function GET(req: Request) {
         passwordHash: superHash,
         name: 'Super Admin',
         accountType: 'SUPERADMIN',
-        plan: 'ENTERPRISE',
+        accountRole: 'OWNER',
         isActive: true,
+        billingAccount: { create: { plan: 'ENTERPRISE' } },
       },
     })
     results.push(`✓ ${superEmail} (superadmin)`)
@@ -147,8 +148,9 @@ export async function GET(req: Request) {
           passwordHash: contHash,
           name: 'Carlos Contable',
           accountType: 'ACCOUNTANT',
-          plan: 'PLUS',
+          accountRole: 'OWNER',
           isActive: true,
+          billingAccount: { create: { plan: 'PLUS' } },
         },
       })
       results.push('✓ contador@demo.com (demo)')
@@ -162,8 +164,9 @@ export async function GET(req: Request) {
           passwordHash: indHash,
           name: 'Maria Emprendedora',
           accountType: 'ACCOUNTANT',
-          plan: 'BASIC',
+          accountRole: 'OWNER',
           isActive: true,
+          billingAccount: { create: { plan: 'BASIC' } },
         },
       })
       results.push('✓ usuario@demo.com (demo)')

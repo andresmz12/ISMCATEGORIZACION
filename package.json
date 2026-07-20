@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && (tsx scripts/migrate-account-types.ts || true) && (prisma db push --accept-data-loss || echo 'db push failed, continuing...') && next build",
+    "build": "prisma generate && (tsx scripts/migrate-account-types.ts || true) && (tsx scripts/migrate-accounts.ts || true) && (prisma db push --accept-data-loss || echo 'db push failed, continuing...') && next build",
     "start": "next start -p $PORT",
     "lint": "next lint",
     "db:generate": "prisma generate",

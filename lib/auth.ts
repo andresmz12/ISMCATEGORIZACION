@@ -14,6 +14,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.accountType = (user as any).accountType
+        token.accountId = (user as any).accountId
         token.plan = (user as any).plan
       }
       return token
@@ -22,6 +23,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id
         ;(session.user as any).accountType = token.accountType
+        ;(session.user as any).accountId = token.accountId
         ;(session.user as any).plan = token.plan
       }
       return session
@@ -46,14 +48,21 @@ export const authOptions: NextAuthOptions = {
         try {
           const user = await prisma.user.findUnique({
             where: { email },
-            select: { id: true, email: true, passwordHash: true, name: true, accountType: true, plan: true, isActive: true },
+            select: {
+              id: true, email: true, passwordHash: true, name: true, accountType: true, isActive: true,
+              accountId: true,
+              billingAccount: { select: { plan: true } },
+            },
           })
           if (!user || !user.isActive) return null
           const valid = await bcrypt.compare(credentials.password, user.passwordHash)
           if (!valid) return null
 
           prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } }).catch(() => {})
-          return { id: user.id, email: user.email, name: user.name, accountType: user.accountType, plan: user.plan }
+          return {
+            id: user.id, email: user.email, name: user.name, accountType: user.accountType,
+            accountId: user.accountId, plan: user.billingAccount.plan,
+          }
         } catch (err) {
           console.error('authorize error:', err)
           return null

@@ -4,7 +4,7 @@ import { customAlphabet } from 'nanoid'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
-import { getPlanLimits } from '@/lib/plan-limits'
+import { getPlanLimits, countOwnedBusinesses } from '@/lib/plan-limits'
 
 const cuid = customAlphabet('36ghjkmnpqrtvwxyz2468', 24)
 
@@ -42,6 +42,7 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
+  const accountId = (session.user as any).accountId
   const plan = (session.user as any).plan
 
   try {
@@ -54,10 +55,8 @@ export async function POST(req: Request) {
 
     if (accountType === 'ACCOUNTANT') {
       const limits = getPlanLimits(plan)
-      const existing = await prisma.$queryRaw<{ count: number }[]>`
-        SELECT COUNT(*)::integer as count FROM "BusinessUser" WHERE "userId" = ${userId} AND role = 'OWNER'
-      `
-      if (existing[0].count >= limits.businesses) {
+      const existingCount = await countOwnedBusinesses(accountId)
+      if (existingCount >= limits.businesses) {
         const planLabel = plan ?? 'BASIC'
         const cap = limits.businesses === Infinity ? 'ilimitados' : limits.businesses
         return NextResponse.json({

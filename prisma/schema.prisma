@@ -56,14 +56,38 @@ enum AssignmentStatus {
   CANCELLED
 }
 
+enum AccountRole {
+  OWNER
+  MEMBER
+}
+
+// The billing/subscription anchor. One Stripe customer & subscription maps to
+// one BillingAccount; every User that belongs to it (owner + invited team
+// members) shares its `plan`. Not to be confused with `Business` (a client
+// company the firm tracks transactions for) or NextAuth's `Account` model
+// below (OAuth-linked accounts) — named differently only to avoid clashing
+// with that pre-existing Prisma model.
+model BillingAccount {
+  id                   String    @id @default(cuid())
+  name                 String?
+  plan                 Plan      @default(BASIC)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  subscriptionStatus   String?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  users                User[]
+}
+
 model User {
   id              String      @id @default(cuid())
   email           String      @unique
   passwordHash    String
   name            String?
-  firmName        String?
   accountType     AccountType @default(ACCOUNTANT)
-  plan            Plan        @default(BASIC)
+  accountId       String
+  accountRole     AccountRole @default(MEMBER)
   isActive        Boolean     @default(true)
   lastLogin       DateTime?
   termsAcceptedAt DateTime?
@@ -72,6 +96,7 @@ model User {
   inviteTokenExpiresAt  DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  billingAccount      BillingAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   businessUsers       BusinessUser[]
   accounts            Account[]
   sessions            Session[]
@@ -80,6 +105,8 @@ model User {
   assignmentsAssigned Assignment[] @relation("AssignedTo")
   assignmentsCreated  Assignment[] @relation("CreatedBy")
   assignmentNotes     AssignmentNote[]
+
+  @@index([accountId])
 }
 
 model Account {

@@ -22,8 +22,9 @@ async function main() {
       passwordHash: hash,
       name: 'Super Admin',
       accountType: 'SUPERADMIN',
-      plan: 'ENTERPRISE',
+      accountRole: 'OWNER',
       isActive: true,
+      billingAccount: { create: { plan: 'ENTERPRISE' } },
     },
   })
   console.log(`✅ Password reset for ${user.email}`)

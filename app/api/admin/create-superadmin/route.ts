@@ -29,15 +29,28 @@ export async function POST(req: NextRequest) {
     `
 
     if (existing.length === 0) {
-      await prisma.$executeRaw`
-        INSERT INTO "User" (id, email, "passwordHash", name, "accountType", plan, "isActive", "createdAt", "updatedAt")
-        VALUES (${cuid()}, ${email}, ${hash}, 'Super Admin', 'SUPERADMIN', 'ENTERPRISE', true, NOW(), NOW())
-      `
+      const accountId = cuid()
+      await prisma.$transaction([
+        prisma.$executeRaw`
+          INSERT INTO "BillingAccount" (id, plan, "updatedAt")
+          VALUES (${accountId}, 'ENTERPRISE', NOW())
+        `,
+        prisma.$executeRaw`
+          INSERT INTO "User" (id, email, "passwordHash", name, "accountType", "accountId", "accountRole", "isActive", "createdAt", "updatedAt")
+          VALUES (${cuid()}, ${email}, ${hash}, 'Super Admin', 'SUPERADMIN', ${accountId}, 'OWNER', true, NOW(), NOW())
+        `,
+      ])
     } else {
-      await prisma.$executeRaw`
-        UPDATE "User" SET "passwordHash" = ${hash}, "isActive" = true, "accountType" = 'SUPERADMIN', plan = 'ENTERPRISE', "updatedAt" = NOW()
-        WHERE email = ${email}
-      `
+      await prisma.$transaction([
+        prisma.$executeRaw`
+          UPDATE "User" SET "passwordHash" = ${hash}, "isActive" = true, "accountType" = 'SUPERADMIN', "updatedAt" = NOW()
+          WHERE email = ${email}
+        `,
+        prisma.$executeRaw`
+          UPDATE "BillingAccount" SET plan = 'ENTERPRISE'
+          WHERE id = (SELECT "accountId" FROM "User" WHERE email = ${email})
+        `,
+      ])
     }
 
     return NextResponse.json({ success: true, message: 'Superadmin created/updated', email })

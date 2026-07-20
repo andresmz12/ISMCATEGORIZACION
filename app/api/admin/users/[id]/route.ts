@@ -14,7 +14,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const data: Record<string, any> = {}
 
   if (typeof body.isActive === 'boolean') data.isActive = body.isActive
-  if (body.plan && ['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(body.plan)) data.plan = body.plan
   if (body.name !== undefined) data.name = body.name
   if (body.email && typeof body.email === 'string') data.email = body.email.toLowerCase().trim()
   if (body.accountType && ['ACCOUNTANT', 'SUPERADMIN', 'TEAM_MEMBER'].includes(body.accountType)) data.accountType = body.accountType
@@ -22,13 +21,21 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data.passwordHash = await bcrypt.hash(body.password, 12)
   }
 
+  // Plan lives on the shared BillingAccount, not the User — changing it here
+  // changes it for every user (owner + invited team members) on that account.
+  if (body.plan && ['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(body.plan)) {
+    const target = await prisma.user.findUnique({ where: { id: params.id }, select: { accountId: true } })
+    if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await prisma.billingAccount.update({ where: { id: target.accountId }, data: { plan: body.plan } })
+  }
+
   const user = await prisma.user.update({
     where: { id: params.id },
     data,
-    select: { id: true, email: true, isActive: true, plan: true },
+    select: { id: true, email: true, isActive: true, billingAccount: { select: { plan: true } } },
   })
 
-  return NextResponse.json(user)
+  return NextResponse.json({ ...user, plan: user.billingAccount.plan, billingAccount: undefined })
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {

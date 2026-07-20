@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     if (existing) return NextResponse.json({ error: 'Este correo ya está registrado' }, { status: 400 })
 
     const passwordHash = await bcrypt.hash(password, 12)
+    const normalizedPlan = (['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE' | 'CUSTOM'
 
     const user = await prisma.user.create({
       data: {
@@ -31,11 +32,16 @@ export async function POST(req: Request) {
         passwordHash,
         name: (name || email.split('@')[0]).trim().slice(0, 100),
         accountType: 'ACCOUNTANT',
-        firmName: firmName?.trim()?.slice(0, 100) || null,
-        plan: (['BASIC', 'PLUS', 'ENTERPRISE', 'CUSTOM'].includes(plan) ? plan : 'BASIC') as 'BASIC' | 'PLUS' | 'ENTERPRISE' | 'CUSTOM',
+        accountRole: 'OWNER',
         isActive: true,
         termsAcceptedAt: new Date(),
         termsVersion: '2026-07-02',
+        billingAccount: {
+          create: {
+            name: firmName?.trim()?.slice(0, 100) || null,
+            plan: normalizedPlan,
+          },
+        },
       },
     })
 
