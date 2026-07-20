@@ -44,6 +44,10 @@ function TransactionsContent() {
   const [bulkCategoryId, setBulkCategoryId] = useState('')
   const [bulkLoading, setBulkLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addForm, setAddForm] = useState({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '' })
+  const [addError, setAddError] = useState('')
+  const [addLoading, setAddLoading] = useState(false)
 
   useEffect(() => {
     if (!activeBiz) return
@@ -126,6 +130,48 @@ function TransactionsContent() {
     } catch (err) {
       console.error('Update failed:', err)
       toast(t('common.operationError'), 'error')
+    }
+  }
+
+  async function createTx() {
+    setAddError('')
+    if (!addForm.date || !addForm.description.trim() || !addForm.amount) {
+      setAddError('Fecha, descripción y monto son requeridos')
+      return
+    }
+    const amountNum = Number(addForm.amount)
+    if (!isFinite(amountNum) || amountNum <= 0) {
+      setAddError('El monto debe ser un número positivo')
+      return
+    }
+    setAddLoading(true)
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: activeBiz,
+          date: addForm.date,
+          description: addForm.description.trim(),
+          amount: amountNum,
+          type: addForm.type,
+          categoryId: addForm.categoryId || undefined,
+          deductibility: addForm.deductibility || undefined,
+          notes: addForm.notes || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setAddError(data.error || 'No se pudo crear la transacción'); return }
+      setShowAddModal(false)
+      setAddForm({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '' })
+      setPage(1)
+      loadTransactions(1, false)
+      toast('Transacción agregada', 'success')
+    } catch (err) {
+      console.error('Create failed:', err)
+      setAddError('Error de conexión')
+    } finally {
+      setAddLoading(false)
     }
   }
 
@@ -401,6 +447,12 @@ function TransactionsContent() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-gray-900">{t('nav.transactions')}</h1>
         <div className="flex gap-2 flex-wrap items-center">
+          <button onClick={() => { setShowAddModal(true); setAddError('') }} className="btn-primary text-sm flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Agregar transacción
+          </button>
           <button onClick={selectPending} className="btn-secondary text-sm">{t('tx.selectPending')}</button>
           <button onClick={downloadPDF} disabled={pdfLoading} className="btn-secondary text-sm flex items-center gap-1.5 disabled:opacity-50">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -619,6 +671,67 @@ function TransactionsContent() {
           <p className="text-center text-xs text-gray-300 py-3">{t('tx.endOfList')}</p>
         )}
       </div>
+
+      {/* Add manual transaction modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Agregar transacción manual</h3>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Fecha</label>
+                  <input type="date" className="input w-full text-sm" value={addForm.date} onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+                  <select className="input w-full text-sm" value={addForm.type} onChange={e => setAddForm(f => ({ ...f, type: e.target.value }))}>
+                    <option value="DEBIT">Gasto (débito)</option>
+                    <option value="CREDIT">Ingreso (crédito)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
+                <input className="input w-full text-sm" placeholder="Ej: Pago de renta oficina" value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Monto</label>
+                  <input type="number" min="0" step="0.01" className="input w-full text-sm" placeholder="0.00" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Categoría (opcional)</label>
+                  <select className="input w-full text-sm" value={addForm.categoryId} onChange={e => setAddForm(f => ({ ...f, categoryId: e.target.value }))}>
+                    <option value="">{t('tx.unassigned')}</option>
+                    {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Deducible (opcional)</label>
+                <select className="input w-full text-sm" value={addForm.deductibility} onChange={e => setAddForm(f => ({ ...f, deductibility: e.target.value }))}>
+                  <option value="">—</option>
+                  <option value="YES">{t('common.yes100')}</option>
+                  <option value="NO">{t('common.no')}</option>
+                  <option value="FIFTY">{t('common.fifty')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Notas (opcional)</label>
+                <textarea className="input w-full text-sm" rows={2} placeholder="Notas adicionales" value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+              {addError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{addError}</p>}
+            </div>
+            <div className="flex gap-2 mt-5 justify-end">
+              <button onClick={() => setShowAddModal(false)} className="btn-secondary">Cancelar</button>
+              <button onClick={createTx} disabled={addLoading} className="btn-primary disabled:opacity-50">
+                {addLoading ? 'Guardando...' : 'Guardar transacción'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Split Modal */}
       {splitTx && (

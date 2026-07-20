@@ -58,13 +58,15 @@ export async function GET(req: Request) {
   return NextResponse.json({ transactions, total, page, limit })
 }
 
+const VALID_DEDUCTIBILITY = new Set(['YES', 'NO', 'FIFTY'])
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
   const body = await req.json()
-  const { businessId, date, description, amount, type } = body
+  const { businessId, date, description, amount, type, categoryId, deductibility, notes } = body
   if (!businessId || !date || !description) return NextResponse.json({ error: 'businessId, date, description required' }, { status: 400 })
   const parsedAmount = Number(amount)
   if (!isFinite(parsedAmount) || parsedAmount <= 0) return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
@@ -73,9 +75,34 @@ export async function POST(req: Request) {
   if (!await checkBusinessWriteAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+
+  const txType = type === 'CREDIT' ? 'CREDIT' : 'DEBIT'
+
+  let resolvedCategoryId: string | null = null
+  if (categoryId) {
+    // A category may be business-owned or a shared system category (businessId: null) —
+    // same rule the classification/import paths use. Never trust the ID blindly.
+    const cat = await prisma.category.findFirst({ where: { id: categoryId, OR: [{ businessId }, { businessId: null }] } })
+    if (!cat) return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
+    resolvedCategoryId = cat.id
+  }
+  const resolvedDeductibility = VALID_DEDUCTIBILITY.has(deductibility) ? deductibility : null
+  const trimmedNotes = typeof notes === 'string' && notes.trim() ? notes.trim().slice(0, 2000) : null
+
   const tx = await prisma.transaction.create({
-    data: { businessId, date: parsedDate, description, amount: parsedAmount, type: type || 'DEBIT', status: 'PENDING' },
+    data: {
+      businessId,
+      date: parsedDate,
+      description,
+      amount: parsedAmount,
+      type: txType,
+      status: resolvedCategoryId ? 'CLASSIFIED' : 'PENDING',
+      categoryId: resolvedCategoryId,
+      deductibility: resolvedDeductibility,
+      method: resolvedCategoryId ? 'MANUAL' : undefined,
+      notes: trimmedNotes,
+    },
   })
-  await logAudit({ userId, businessId, action: 'CREATE_TRANSACTION', entity: 'Transaction', entityId: tx.id, metadata: { description, amount: parsedAmount, type: type || 'DEBIT' } })
+  await logAudit({ userId, businessId, action: 'CREATE_TRANSACTION', entity: 'Transaction', entityId: tx.id, metadata: { description, amount: parsedAmount, type: txType } })
   return NextResponse.json(tx, { status: 201 })
 }
