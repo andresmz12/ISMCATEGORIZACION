@@ -45,7 +45,7 @@ function TransactionsContent() {
   const [bulkLoading, setBulkLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [addForm, setAddForm] = useState({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '' })
+  const [addForm, setAddForm] = useState({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
   const [addError, setAddError] = useState('')
   const [addLoading, setAddLoading] = useState(false)
 
@@ -144,6 +144,11 @@ function TransactionsContent() {
       setAddError('El monto debe ser un número positivo')
       return
     }
+    const repeatCountNum = addForm.recurring ? Math.max(2, Math.min(60, parseInt(addForm.repeatCount) || 2)) : 1
+    if (addForm.recurring && (!addForm.repeatCount || repeatCountNum < 2)) {
+      setAddError('Ingresa cuántas veces se repite (mínimo 2)')
+      return
+    }
     setAddLoading(true)
     try {
       const res = await fetch('/api/transactions', {
@@ -158,15 +163,17 @@ function TransactionsContent() {
           categoryId: addForm.categoryId || undefined,
           deductibility: addForm.deductibility || undefined,
           notes: addForm.notes || undefined,
+          repeatCount: repeatCountNum,
+          repeatFrequency: addForm.recurring ? addForm.repeatFrequency : undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setAddError(data.error || 'No se pudo crear la transacción'); return }
       setShowAddModal(false)
-      setAddForm({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '' })
+      setAddForm({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
       setPage(1)
       loadTransactions(1, false)
-      toast('Transacción agregada', 'success')
+      toast(data.count > 1 ? `${data.count} transacciones agregadas` : 'Transacción agregada', 'success')
     } catch (err) {
       console.error('Create failed:', err)
       setAddError('Error de conexión')
@@ -721,6 +728,44 @@ function TransactionsContent() {
                 <label className="block text-xs font-medium text-gray-600 mb-1">Notas (opcional)</label>
                 <textarea className="input w-full text-sm" rows={2} placeholder="Notas adicionales" value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
+
+              <div className="border-t border-gray-100 pt-3">
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={addForm.recurring}
+                    onChange={e => setAddForm(f => ({ ...f, recurring: e.target.checked }))}
+                  />
+                  Es un gasto/ingreso recurrente — repetirlo varias veces
+                </label>
+                {addForm.recurring && (
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Frecuencia</label>
+                      <select className="input w-full text-sm" value={addForm.repeatFrequency} onChange={e => setAddForm(f => ({ ...f, repeatFrequency: e.target.value }))}>
+                        <option value="WEEKLY">Semanal</option>
+                        <option value="BIWEEKLY">Quincenal</option>
+                        <option value="MONTHLY">Mensual</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Número de repeticiones</label>
+                      <input
+                        type="number"
+                        min="2"
+                        max="60"
+                        className="input w-full text-sm"
+                        value={addForm.repeatCount}
+                        onChange={e => setAddForm(f => ({ ...f, repeatCount: e.target.value }))}
+                      />
+                    </div>
+                    <p className="col-span-2 text-xs text-gray-400">
+                      Se crearán {Math.max(2, Math.min(60, parseInt(addForm.repeatCount) || 2))} transacciones idénticas, empezando en la fecha indicada arriba, cada {addForm.repeatFrequency === 'WEEKLY' ? 'semana' : addForm.repeatFrequency === 'BIWEEKLY' ? 'dos semanas' : 'mes'}.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {addError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{addError}</p>}
             </div>
             <div className="flex gap-2 mt-5 justify-end">
