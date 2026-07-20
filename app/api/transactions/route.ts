@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
-import { endOfDay, parseTransactionDate } from '@/lib/date'
+import { endOfDay, parseTransactionDate, addRecurrenceInterval, RecurrenceFrequency } from '@/lib/date'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -59,6 +59,8 @@ export async function GET(req: Request) {
 }
 
 const VALID_DEDUCTIBILITY = new Set(['YES', 'NO', 'FIFTY'])
+const VALID_FREQUENCIES = new Set(['WEEKLY', 'BIWEEKLY', 'MONTHLY'])
+const MAX_REPEAT_COUNT = 60
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
   const body = await req.json()
-  const { businessId, date, description, amount, type, categoryId, deductibility, notes } = body
+  const { businessId, date, description, amount, type, categoryId, deductibility, notes, repeatCount, repeatFrequency } = body
   if (!businessId || !date || !description) return NextResponse.json({ error: 'businessId, date, description required' }, { status: 400 })
   const parsedAmount = Number(amount)
   if (!isFinite(parsedAmount) || parsedAmount <= 0) return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
@@ -89,20 +91,34 @@ export async function POST(req: Request) {
   const resolvedDeductibility = VALID_DEDUCTIBILITY.has(deductibility) ? deductibility : null
   const trimmedNotes = typeof notes === 'string' && notes.trim() ? notes.trim().slice(0, 2000) : null
 
-  const tx = await prisma.transaction.create({
-    data: {
-      businessId,
-      date: parsedDate,
-      description,
-      amount: parsedAmount,
-      type: txType,
-      status: resolvedCategoryId ? 'CLASSIFIED' : 'PENDING',
-      categoryId: resolvedCategoryId,
-      deductibility: resolvedDeductibility,
-      method: resolvedCategoryId ? 'MANUAL' : undefined,
-      notes: trimmedNotes,
-    },
+  // Recurring entry: same amount/category/notes repeated on a cadence — e.g.
+  // "rent, monthly, for the next 12 months". Count includes the first entry.
+  const count = Math.min(Math.max(parseInt(repeatCount) || 1, 1), MAX_REPEAT_COUNT)
+  const frequency: RecurrenceFrequency = VALID_FREQUENCIES.has(repeatFrequency) ? repeatFrequency : 'MONTHLY'
+
+  const rowsData = Array.from({ length: count }, (_, i) => ({
+    businessId,
+    date: i === 0 ? parsedDate : addRecurrenceInterval(parsedDate, frequency, i),
+    description,
+    amount: parsedAmount,
+    type: txType,
+    status: resolvedCategoryId ? 'CLASSIFIED' : 'PENDING',
+    categoryId: resolvedCategoryId,
+    deductibility: resolvedDeductibility,
+    method: resolvedCategoryId ? 'MANUAL' : undefined,
+    notes: trimmedNotes,
+  } as const))
+
+  const created = await prisma.$transaction(rowsData.map(data => prisma.transaction.create({ data })))
+
+  await logAudit({
+    userId,
+    businessId,
+    action: 'CREATE_TRANSACTION',
+    entity: 'Transaction',
+    entityId: created[0].id,
+    metadata: { description, amount: parsedAmount, type: txType, repeatCount: count, repeatFrequency: count > 1 ? frequency : undefined },
   })
-  await logAudit({ userId, businessId, action: 'CREATE_TRANSACTION', entity: 'Transaction', entityId: tx.id, metadata: { description, amount: parsedAmount, type: txType } })
-  return NextResponse.json(tx, { status: 201 })
+
+  return NextResponse.json({ transactions: created, count: created.length }, { status: 201 })
 }
