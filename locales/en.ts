@@ -383,6 +383,16 @@ const en = {
   'settings.planInfo': 'Your current plan',
   'settings.noInvited': 'No invited users',
   'settings.accessLevel': 'Access level',
+  'settings.billing': 'Billing',
+  'settings.upgradeTo': 'Upgrade to {plan}',
+  'settings.changeTo': 'Change to {plan}',
+  'settings.cancelSubscription': 'Cancel subscription',
+  'settings.resumeSubscription': 'Resume subscription',
+  'settings.ownerOnlyBilling': 'Only the account owner can manage billing',
+  'settings.subscriptionCanceled': 'Your subscription is canceled — you keep access until the end of the paid period',
+  'settings.subscriptionPaymentFailed': 'The last charge failed — update your payment method to avoid interruptions',
+  'settings.confirmCancel': 'Cancel your subscription? You will keep access until the end of the period you already paid for.',
+  'settings.checkoutComplete': 'Payment received — your plan will activate in a few seconds',
 
   // Rules extras
   'rules.learned': 'AI-Learned Rules',

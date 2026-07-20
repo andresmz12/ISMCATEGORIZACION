@@ -15,6 +15,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
         token.accountType = (user as any).accountType
         token.accountId = (user as any).accountId
+        token.accountRole = (user as any).accountRole
         token.plan = (user as any).plan
       }
       return token
@@ -24,6 +25,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id
         ;(session.user as any).accountType = token.accountType
         ;(session.user as any).accountId = token.accountId
+        ;(session.user as any).accountRole = token.accountRole
         ;(session.user as any).plan = token.plan
       }
       return session
@@ -50,7 +52,7 @@ export const authOptions: NextAuthOptions = {
             where: { email },
             select: {
               id: true, email: true, passwordHash: true, name: true, accountType: true, isActive: true,
-              accountId: true,
+              accountId: true, accountRole: true,
               billingAccount: { select: { plan: true } },
             },
           })
@@ -61,7 +63,7 @@ export const authOptions: NextAuthOptions = {
           prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } }).catch(() => {})
           return {
             id: user.id, email: user.email, name: user.name, accountType: user.accountType,
-            accountId: user.accountId, plan: user.billingAccount.plan,
+            accountId: user.accountId, accountRole: user.accountRole, plan: user.billingAccount.plan,
           }
         } catch (err) {
           console.error('authorize error:', err)

@@ -77,10 +77,17 @@ export async function GET() {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      id: true, name: true, email: true, accountType: true, createdAt: true, lastLogin: true,
-      billingAccount: { select: { plan: true, name: true } },
+      id: true, name: true, email: true, accountType: true, accountRole: true, createdAt: true, lastLogin: true,
+      billingAccount: { select: { plan: true, name: true, subscriptionStatus: true, squareSubscriptionId: true } },
     },
   })
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json({ ...user, plan: user.billingAccount.plan, firmName: user.billingAccount.name, billingAccount: undefined })
+  const { billingAccount, ...rest } = user
+  return NextResponse.json({
+    ...rest,
+    plan: billingAccount.plan,
+    firmName: billingAccount.name,
+    subscriptionStatus: billingAccount.subscriptionStatus,
+    hasSubscription: !!billingAccount.squareSubscriptionId,
+  })
 }

@@ -383,6 +383,16 @@ const es = {
   'settings.planInfo': 'Tu plan actual',
   'settings.noInvited': 'Sin usuarios invitados',
   'settings.accessLevel': 'Nivel de acceso',
+  'settings.billing': 'Facturación',
+  'settings.upgradeTo': 'Actualizar a {plan}',
+  'settings.changeTo': 'Cambiar a {plan}',
+  'settings.cancelSubscription': 'Cancelar suscripción',
+  'settings.resumeSubscription': 'Reanudar suscripción',
+  'settings.ownerOnlyBilling': 'Solo el dueño de la cuenta puede administrar la facturación',
+  'settings.subscriptionCanceled': 'Tu suscripción está cancelada — sigues en el plan hasta el final del periodo pagado',
+  'settings.subscriptionPaymentFailed': 'El último cobro falló — actualiza tu método de pago para evitar interrupciones',
+  'settings.confirmCancel': '¿Cancelar tu suscripción? Seguirás teniendo acceso hasta el final del periodo ya pagado.',
+  'settings.checkoutComplete': 'Pago recibido — tu plan se activará en unos segundos',
 
   // Rules extras
   'rules.learned': 'Reglas Aprendidas por IA',

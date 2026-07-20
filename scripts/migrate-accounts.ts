@@ -31,13 +31,45 @@ async function main() {
       "id" TEXT PRIMARY KEY,
       "name" TEXT,
       "plan" "Plan" NOT NULL DEFAULT 'BASIC',
-      "stripeCustomerId" TEXT UNIQUE,
-      "stripeSubscriptionId" TEXT UNIQUE,
+      "squareCustomerId" TEXT UNIQUE,
+      "squareSubscriptionId" TEXT UNIQUE,
       "subscriptionStatus" TEXT,
       "currentPeriodEnd" TIMESTAMP(3),
+      "pendingSquareOrderId" TEXT UNIQUE,
+      "pendingSquarePlan" "Plan",
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+  `)
+
+  // Deployments that already ran an earlier version of this script have a
+  // BillingAccount table with the old stripeCustomerId/stripeSubscriptionId
+  // columns (from before the Square rename). `prisma db push` can't rename
+  // them itself — it tries to DROP INDEX before DROP CONSTRAINT and Postgres
+  // rejects that ordering — so drop the old unique columns here, explicitly
+  // and idempotently, before push ever sees them. They're always NULL (no
+  // payment integration ever went live under the old names), so there's
+  // nothing to preserve.
+  await prisma.$executeRawUnsafe(`ALTER TABLE "BillingAccount" DROP COLUMN IF EXISTS "stripeCustomerId"`)
+  await prisma.$executeRawUnsafe(`ALTER TABLE "BillingAccount" DROP COLUMN IF EXISTS "stripeSubscriptionId"`)
+  await prisma.$executeRawUnsafe(`ALTER TABLE "BillingAccount" ADD COLUMN IF NOT EXISTS "squareCustomerId" TEXT`)
+  await prisma.$executeRawUnsafe(`ALTER TABLE "BillingAccount" ADD COLUMN IF NOT EXISTS "squareSubscriptionId" TEXT`)
+  await prisma.$executeRawUnsafe(`ALTER TABLE "BillingAccount" ADD COLUMN IF NOT EXISTS "pendingSquareOrderId" TEXT`)
+  await prisma.$executeRawUnsafe(`ALTER TABLE "BillingAccount" ADD COLUMN IF NOT EXISTS "pendingSquarePlan" "Plan"`)
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      ALTER TABLE "BillingAccount" ADD CONSTRAINT "BillingAccount_squareCustomerId_key" UNIQUE ("squareCustomerId");
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+  `)
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      ALTER TABLE "BillingAccount" ADD CONSTRAINT "BillingAccount_squareSubscriptionId_key" UNIQUE ("squareSubscriptionId");
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+  `)
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      ALTER TABLE "BillingAccount" ADD CONSTRAINT "BillingAccount_pendingSquareOrderId_key" UNIQUE ("pendingSquareOrderId");
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
   `)
 
   await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "accountId" TEXT`)

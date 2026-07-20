@@ -61,7 +61,7 @@ enum AccountRole {
   MEMBER
 }
 
-// The billing/subscription anchor. One Stripe customer & subscription maps to
+// The billing/subscription anchor. One Square customer & subscription maps to
 // one BillingAccount; every User that belongs to it (owner + invited team
 // members) shares its `plan`. Not to be confused with `Business` (a client
 // company the firm tracks transactions for) or NextAuth's `Account` model
@@ -71,10 +71,17 @@ model BillingAccount {
   id                   String    @id @default(cuid())
   name                 String?
   plan                 Plan      @default(BASIC)
-  stripeCustomerId     String?   @unique
-  stripeSubscriptionId String?   @unique
+  squareCustomerId     String?   @unique
+  squareSubscriptionId String?   @unique
   subscriptionStatus   String?
   currentPeriodEnd     DateTime?
+  // Set when a checkout is started (the order_id CreatePaymentLink returns
+  // synchronously, plus the plan that checkout was for) and cleared once the
+  // matching invoice.payment_made webhook arrives — this is how we correlate
+  // that webhook back to this account, since Square's subscription-checkout
+  // shortcut has no reference_id we can pass through ourselves.
+  pendingSquareOrderId String?   @unique
+  pendingSquarePlan    Plan?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   users                User[]
