@@ -395,7 +395,7 @@ const en = {
   'settings.alreadyTopPlan': "You already have the highest plan available for purchase. Contact support if you need something different.",
   'settings.blockedOwner': "Your account doesn't have an active plan. Choose a plan below to activate access.",
   'settings.blockedMember': "Your account doesn't have an active plan. Contact the account owner to restore access.",
-  'settings.subscriptionCanceled': 'Your subscription is canceled — you keep access until the end of the paid period',
+  'settings.subscriptionCanceled': 'Your subscription ended and you lost access — pick a plan below to reactivate it',
   'settings.subscriptionPaymentFailed': 'The last charge failed — update your payment method to avoid interruptions',
   'settings.confirmCancel': 'Cancel your subscription? You will keep access until the end of the period you already paid for.',
   'settings.checkoutComplete': 'Payment received — your plan will activate in a few seconds',

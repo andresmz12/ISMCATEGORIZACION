@@ -180,39 +180,26 @@ function SettingsPageInner() {
             {t('settings.subscriptionPaymentFailed')}
           </div>
         )}
-        {profile.subscriptionStatus === 'CANCELED' && (
+        {(profile.subscriptionStatus === 'CANCELED' || profile.subscriptionStatus === 'DEACTIVATED' || profile.subscriptionStatus === 'COMPLETED') && (
           <div className="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-lg text-amber-700 text-sm">
             {t('settings.subscriptionCanceled')}
           </div>
         )}
 
-        {accountRole !== 'OWNER' ? (
-          <p className="text-sm text-gray-400">{t('settings.ownerOnlyBilling')}</p>
-        ) : profile.hasSubscription ? (
-          // Real Square subscription — swapping either up or down is a legitimate
-          // billing change (labeled "change to", never "upgrade"), and there's an
-          // actual subscription behind it to cancel/resume.
-          <div className="flex flex-wrap gap-2">
-            {PAID_PLANS.filter(p => p !== profile.plan).map(plan => (
-              <button
-                key={plan}
-                onClick={() => manageSubscription('swap', plan)}
-                disabled={billingLoading !== null}
-                className="btn-primary disabled:opacity-50"
-              >
-                {billingLoading === 'swap' ? t('common.loading') : t('settings.changeTo').replace('{plan}', planLabels[plan])}
-              </button>
-            ))}
-
-            {profile.subscriptionStatus !== 'CANCELED' ? (
-              <button
-                onClick={() => manageSubscription('cancel')}
-                disabled={billingLoading !== null}
-                className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50"
-              >
-                {billingLoading === 'cancel' ? t('common.loading') : t('settings.cancelSubscription')}
-              </button>
-            ) : (
+        {(() => {
+          // Square only lets you swap/pause/cancel a subscription that's
+          // still ACTIVE or PENDING, and only resume one that's PAUSED —
+          // a CANCELED/DEACTIVATED/COMPLETED subscription can't be revived
+          // that way, so those fall through to the checkout buttons below
+          // (starting fresh) instead of showing a swap/resume button that
+          // would just fail against Square.
+          const canManage = profile.hasSubscription &&
+            ['ACTIVE', 'PENDING', 'PAUSED'].includes(profile.subscriptionStatus || '')
+          if (accountRole !== 'OWNER') {
+            return <p className="text-sm text-gray-400">{t('settings.ownerOnlyBilling')}</p>
+          }
+          if (canManage && profile.subscriptionStatus === 'PAUSED') {
+            return (
               <button
                 onClick={() => manageSubscription('resume')}
                 disabled={billingLoading !== null}
@@ -220,9 +207,36 @@ function SettingsPageInner() {
               >
                 {billingLoading === 'resume' ? t('common.loading') : t('settings.resumeSubscription')}
               </button>
-            )}
-          </div>
-        ) : (() => {
+            )
+          }
+          if (canManage) {
+            // Real, active Square subscription — swapping either up or down is
+            // a legitimate billing change (labeled "change to", never "upgrade").
+            return (
+              <div className="flex flex-wrap gap-2">
+                {PAID_PLANS.filter(p => p !== profile.plan).map(plan => (
+                  <button
+                    key={plan}
+                    onClick={() => manageSubscription('swap', plan)}
+                    disabled={billingLoading !== null}
+                    className="btn-primary disabled:opacity-50"
+                  >
+                    {billingLoading === 'swap' ? t('common.loading') : t('settings.changeTo').replace('{plan}', planLabels[plan])}
+                  </button>
+                ))}
+                <button
+                  onClick={() => manageSubscription('cancel')}
+                  disabled={billingLoading !== null}
+                  className="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50"
+                >
+                  {billingLoading === 'cancel' ? t('common.loading') : t('settings.cancelSubscription')}
+                </button>
+              </div>
+            )
+          }
+          return null
+        })()}
+        {accountRole === 'OWNER' && !(profile.hasSubscription && ['ACTIVE', 'PENDING', 'PAUSED'].includes(profile.subscriptionStatus || '')) && (() => {
           // No real Square subscription behind the current plan (e.g. an
           // admin-granted plan) — only offer checkout for plans that are
           // genuinely higher-tier. Never offer a lower/equal plan as an
