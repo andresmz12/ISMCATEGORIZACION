@@ -5,7 +5,12 @@ nixPkgs = ["nodejs_20"]
 cmds = ["npm ci"]
 
 [phases.build]
-cmds = ["npx prisma generate", "npx prisma db push --accept-data-loss", "npx next build", "npx tsc prisma/seed.ts --outDir dist/seed --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --resolveJsonModule || true"]
+# Schema sync (migrate-account-types, migrate-accounts, prisma db push) runs
+# in `npm start` (package.json), not here — the build container doesn't have
+# database network access on Railway, so a db push at build time either
+# fails outright or silently deploys against a stale schema. See the
+# "Move schema sync from build to start" commit for the incident this fixes.
+cmds = ["npx prisma generate", "npx next build", "npx tsc prisma/seed.ts --outDir dist/seed --module commonjs --moduleResolution node --esModuleInterop --skipLibCheck --resolveJsonModule || true"]
 
 [start]
 cmd = "(node dist/seed/seed.js 2>/dev/null || npx tsx prisma/seed.ts 2>/dev/null || true) && npm start"
