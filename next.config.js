@@ -31,9 +31,9 @@ const securityHeaders = [
 
 const nextConfig = {
   typescript: {
-    // Prisma client is generated at deploy time (postinstall: prisma generate).
-    // Type checking runs cleanly in the full deploy environment.
-    ignoreBuildErrors: true,
+    // `prisma generate` runs before `next build` in the deploy script, so
+    // Prisma's types exist by the time this type-checks — no reason to skip it.
+    ignoreBuildErrors: false,
   },
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],

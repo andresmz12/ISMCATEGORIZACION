@@ -77,7 +77,7 @@ export async function sendAssignmentEmail(opts: {
 export async function sendWelcomeEmail(opts: {
   to: string
   name: string
-  password: string
+  inviteUrl: string
   businessName: string
   inviterName: string
 }) {
@@ -89,18 +89,15 @@ export async function sendWelcomeEmail(opts: {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 
   const from = process.env.SENDGRID_FROM || 'noreply@myprofitandloss.com'
-  const appUrl = process.env.NEXTAUTH_URL || 'https://myprofitandloss.com'
 
   const name = escapeHtml(opts.name)
   const inviterName = escapeHtml(opts.inviterName)
   const businessName = escapeHtml(opts.businessName)
-  const email = escapeHtml(opts.to)
-  const password = escapeHtml(opts.password)
 
   const [response] = await sgMail.send({
     from: { email: from, name: 'My Profit & Loss' },
     to: opts.to,
-    subject: 'Bienvenido a My Profit & Loss – Tu cuenta ha sido creada',
+    subject: 'Bienvenido a My Profit & Loss – Configura tu cuenta',
     html: `
       <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
         <div style="background:#1B4965;padding:24px 32px;border-radius:8px 8px 0 0">
@@ -112,20 +109,10 @@ export async function sendWelcomeEmail(opts: {
             <strong>${inviterName}</strong> te ha invitado a unirte al equipo de
             <strong>${businessName}</strong> en My Profit &amp; Loss.
           </p>
-          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:20px 0">
-            <p style="color:#334155;font-size:14px;margin:0 0 8px"><strong>Tus credenciales de acceso:</strong></p>
-            <p style="color:#475569;font-size:14px;margin:4px 0"><strong>Usuario (correo):</strong> ${email}</p>
-            <p style="color:#475569;font-size:14px;margin:4px 0"><strong>Contraseña temporal:</strong> <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:14px">${password}</code></p>
-          </div>
-          <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:16px;margin:20px 0">
-            <p style="color:#92400e;font-size:13px;margin:0">
-              🔒 <strong>Por tu seguridad</strong>, te recomendamos cambiar tu contraseña
-              inmediatamente después de iniciar sesión por primera vez.
-            </p>
-          </div>
-          <a href="${appUrl}/signin"
-             style="display:inline-block;background:#1B4965;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
-            Iniciar sesión
+          <p style="color:#475569">Haz clic en el botón para elegir tu propia contraseña y activar tu cuenta. Este enlace es de un solo uso y expira en 7 días.</p>
+          <a href="${opts.inviteUrl}"
+             style="display:inline-block;background:#1B4965;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;margin-top:8px">
+            Configurar mi contraseña
           </a>
         </div>
       </div>

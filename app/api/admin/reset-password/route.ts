@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { logAudit } from '@/lib/audit'
 
 function secretsMatch(a: string, b: string): boolean {
   const bufA = Buffer.from(a)
@@ -43,11 +44,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
+  // Deliberately does NOT force isActive: true — a superadmin may have disabled
+  // this account on purpose (offboarding, suspected compromise, etc.), and a
+  // leaked ADMIN_RESET_SECRET must not be able to silently undo that.
   const hash = await bcrypt.hash(body.newPassword, 12)
   await prisma.user.update({
     where: { email },
-    data: { passwordHash: hash, isActive: true },
+    data: { passwordHash: hash },
   })
+
+  // No authenticated session exists for this break-glass path, so the entry
+  // is attributed to the affected account itself — anyone reviewing that
+  // user's audit trail sees their password was reset via the operator secret.
+  await logAudit({ userId: user.id, action: 'ADMIN_SECRET_PASSWORD_RESET', entity: 'User', entityId: user.id })
 
   return NextResponse.json({ ok: true, message: 'Password reset successfully' })
 }

@@ -68,6 +68,8 @@ model User {
   lastLogin       DateTime?
   termsAcceptedAt DateTime?
   termsVersion    String?
+  inviteToken           String?   @unique
+  inviteTokenExpiresAt  DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   businessUsers       BusinessUser[]

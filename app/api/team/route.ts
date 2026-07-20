@@ -3,11 +3,14 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
-import { validatePassword, validateEmail, getClientIp } from '@/lib/validate'
+import { validateEmail, getClientIp } from '@/lib/validate'
 import { logAudit } from '@/lib/audit'
 import { sendWelcomeEmail } from '@/lib/email'
 import { requirePlanFeature } from '@/lib/plan-limits'
+
+const INVITE_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -54,14 +57,12 @@ export async function POST(req: Request) {
   if (!rl.ok) return rateLimitResponse()
 
   const body = await req.json()
-  const { name, email, password, businessId } = body
+  const { name, email, businessId } = body
 
-  if (!name?.trim() || !email || !password) {
-    return NextResponse.json({ error: 'Nombre, correo y contraseña son requeridos' }, { status: 400 })
+  if (!name?.trim() || !email) {
+    return NextResponse.json({ error: 'Nombre y correo son requeridos' }, { status: 400 })
   }
   if (!validateEmail(email)) return NextResponse.json({ error: 'Correo inválido' }, { status: 400 })
-  const pwErr = validatePassword(password)
-  if (pwErr) return NextResponse.json({ error: pwErr }, { status: 400 })
 
   const ownerId = (session.user as any).id
 
@@ -94,7 +95,14 @@ export async function POST(req: Request) {
 
   const owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { plan: true } })
 
-  const passwordHash = await bcrypt.hash(password, 12)
+  // No one — not the owner creating this account, not this server's logs, not
+  // an email — ever knows this password. The new user sets their own via the
+  // invite link below; this hash exists only to satisfy the required column.
+  const unusablePassword = crypto.randomBytes(32).toString('hex')
+  const passwordHash = await bcrypt.hash(unusablePassword, 12)
+  const inviteToken = crypto.randomBytes(32).toString('hex')
+  const inviteTokenExpiresAt = new Date(Date.now() + INVITE_TOKEN_TTL_MS)
+
   const newUser = await prisma.user.create({
     data: {
       name: name.trim(),
@@ -102,6 +110,8 @@ export async function POST(req: Request) {
       passwordHash,
       accountType: 'TEAM_MEMBER',
       plan: owner?.plan ?? 'BASIC',
+      inviteToken,
+      inviteTokenExpiresAt,
       businessUsers: {
         create: targetBusinessIds.map(bId => ({ businessId: bId, role: 'VIEWER' })),
       },
@@ -111,7 +121,11 @@ export async function POST(req: Request) {
 
   await logAudit({ userId: ownerId, businessId: targetBusinessIds[0], action: 'CREATE_TEAM_MEMBER', entity: 'User', entityId: newUser.id })
 
-  // Send welcome email (non-blocking)
+  const appUrl = process.env.NEXTAUTH_URL || 'https://myprofitandloss.com'
+  const inviteUrl = `${appUrl}/invitar/${inviteToken}`
+
+  // Send welcome email (non-blocking) — inviteUrl is also returned below so
+  // the admin can share it directly if SendGrid isn't configured or the send fails.
   try {
     const [inviter, business] = await Promise.all([
       prisma.user.findUnique({ where: { id: ownerId }, select: { name: true } }),
@@ -120,7 +134,7 @@ export async function POST(req: Request) {
     await sendWelcomeEmail({
       to: newUser.email,
       name: newUser.name || newUser.email,
-      password,
+      inviteUrl,
       businessName: business?.name || 'tu equipo',
       inviterName: inviter?.name || 'Tu administrador',
     })
@@ -129,5 +143,5 @@ export async function POST(req: Request) {
     console.error('[email] welcome email failed:', JSON.stringify(detail))
   }
 
-  return NextResponse.json(newUser, { status: 201 })
+  return NextResponse.json({ ...newUser, inviteUrl }, { status: 201 })
 }

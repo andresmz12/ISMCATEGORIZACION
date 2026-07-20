@@ -16,9 +16,11 @@ export default function UsuariosPage() {
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '' })
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ name: '', password: '', isActive: true })
   const [saving, setSaving] = useState(false)
@@ -41,8 +43,7 @@ export default function UsuariosPage() {
 
   async function create() {
     setError('')
-    if (!form.name || !form.email || !form.password) { setError('Todos los campos son requeridos'); return }
-    if (form.password.length < 8 || !/[A-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { setError('Mín. 8 caracteres, una mayúscula y un número'); return }
+    if (!form.name || !form.email) { setError('Nombre y correo son requeridos'); return }
     setCreating(true)
     const res = await fetch('/api/team', {
       method: 'POST',
@@ -53,8 +54,16 @@ export default function UsuariosPage() {
     setCreating(false)
     if (!res.ok) { setError(data.error || 'Error al crear usuario'); return }
     setShowModal(false)
-    setForm({ name: '', email: '', password: '' })
+    setForm({ name: '', email: '' })
+    setInviteUrl(data.inviteUrl || null)
+    setCopied(false)
     load()
+  }
+
+  async function copyInviteUrl() {
+    if (!inviteUrl) return
+    await navigator.clipboard.writeText(inviteUrl)
+    setCopied(true)
   }
 
   async function saveEdit(id: string) {
@@ -223,19 +232,9 @@ export default function UsuariosPage() {
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña temporal</label>
-                <input
-                  className="input w-full"
-                  type="password"
-                  placeholder="Contraseña temporal"
-                  value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                />
-              </div>
               {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
               <div className="bg-blue-50 rounded-lg px-3 py-2.5">
-                <p className="text-xs text-blue-700">Este usuario podrá iniciar sesión con su correo y contraseña, y verá los mismos negocios que tú.</p>
+                <p className="text-xs text-blue-700">Le enviaremos un correo con un enlace para que elija su propia contraseña. Verá los mismos negocios que tú.</p>
               </div>
             </div>
             <div className="flex gap-2 mt-5 justify-end">
@@ -243,6 +242,28 @@ export default function UsuariosPage() {
               <button onClick={create} disabled={creating} className="btn-primary disabled:opacity-50">
                 {creating ? 'Creando...' : 'Crear usuario'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite link fallback — shown after creation in case the email fails
+          or isn't configured, so the admin always has a way to share access. */}
+      {inviteUrl && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Usuario creado</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Le enviamos un correo de invitación. Si no le llega, comparte este enlace directamente (válido por 7 días, un solo uso):
+            </p>
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+              <code className="text-xs text-gray-700 flex-1 break-all">{inviteUrl}</code>
+              <button onClick={copyInviteUrl} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-[#1B4965] text-white hover:bg-[#153d52] transition-colors flex-shrink-0">
+                {copied ? 'Copiado' : 'Copiar'}
+              </button>
+            </div>
+            <div className="flex justify-end mt-5">
+              <button onClick={() => setInviteUrl(null)} className="btn-secondary">Listo</button>
             </div>
           </div>
         </div>

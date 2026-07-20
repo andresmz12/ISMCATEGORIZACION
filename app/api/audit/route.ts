@@ -38,6 +38,14 @@ export async function GET(req: Request) {
   const limit = 50
   const skip = (page - 1) * limit
 
+  // A businessId filter must be backed by current access to that business —
+  // otherwise a user removed from a business could still page through their
+  // own historical actions there (transaction descriptions/amounts included
+  // in metadata) via this filter alone.
+  if (businessId && !await checkBusinessAccess(userId, businessId, accountType)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   // Build where clause — users only see their own logs unless SUPERADMIN
   const where: any = accountType === 'SUPERADMIN' ? {} : { userId }
   if (businessId) where.businessId = businessId
