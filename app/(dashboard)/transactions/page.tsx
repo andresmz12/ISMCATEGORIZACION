@@ -136,17 +136,17 @@ function TransactionsContent() {
   async function createTx() {
     setAddError('')
     if (!addForm.date || !addForm.description.trim() || !addForm.amount) {
-      setAddError('Fecha, descripción y monto son requeridos')
+      setAddError(t('tx.addRequiredFields'))
       return
     }
     const amountNum = Number(addForm.amount)
     if (!isFinite(amountNum) || amountNum <= 0) {
-      setAddError('El monto debe ser un número positivo')
+      setAddError(t('tx.addAmountPositive'))
       return
     }
     const repeatCountNum = addForm.recurring ? Math.max(2, Math.min(60, parseInt(addForm.repeatCount) || 2)) : 1
     if (addForm.recurring && (!addForm.repeatCount || repeatCountNum < 2)) {
-      setAddError('Ingresa cuántas veces se repite (mínimo 2)')
+      setAddError(t('tx.addRepeatMin'))
       return
     }
     setAddLoading(true)
@@ -168,15 +168,15 @@ function TransactionsContent() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) { setAddError(data.error || 'No se pudo crear la transacción'); return }
+      if (!res.ok) { setAddError(data.error || t('tx.addFailed')); return }
       setShowAddModal(false)
       setAddForm({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
       setPage(1)
       loadTransactions(1, false)
-      toast(data.count > 1 ? `${data.count} transacciones agregadas` : 'Transacción agregada', 'success')
+      toast(data.count > 1 ? t('tx.transactionsAdded').replace('{n}', String(data.count)) : t('tx.transactionAdded'), 'success')
     } catch (err) {
       console.error('Create failed:', err)
-      setAddError('Error de conexión')
+      setAddError(t('common.connectionError'))
     } finally {
       setAddLoading(false)
     }
@@ -458,14 +458,14 @@ function TransactionsContent() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Agregar transacción
+            {t('tx.addTransaction')}
           </button>
           <button onClick={selectPending} className="btn-secondary text-sm">{t('tx.selectPending')}</button>
           <button onClick={downloadPDF} disabled={pdfLoading} className="btn-secondary text-sm flex items-center gap-1.5 disabled:opacity-50">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
-            {pdfLoading ? 'Generando...' : 'PDF'}
+            {pdfLoading ? t('tx.generating') : 'PDF'}
           </button>
         </div>
       </div>
@@ -481,8 +481,8 @@ function TransactionsContent() {
       {/* Banner when viewing specific imported batch */}
       {idsFilter && (
         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 flex items-center justify-between gap-3">
-          <span>Mostrando solo las transacciones recién importadas ({total})</span>
-          <a href="/transactions" className="text-blue-600 font-medium hover:underline text-xs">Ver todas</a>
+          <span>{t('tx.showingImportedBatch').replace('{total}', String(total))}</span>
+          <a href="/transactions" className="text-blue-600 font-medium hover:underline text-xs">{t('dashboard.viewAll')}</a>
         </div>
       )}
 
@@ -509,9 +509,9 @@ function TransactionsContent() {
           />
         </div>
         <select className="input w-auto text-sm" value={filters.type} onChange={e => { setFilters(f => ({ ...f, type: e.target.value })); setPage(1) }}>
-          <option value="">Ingresos y Gastos</option>
-          <option value="CREDIT">Solo Ingresos</option>
-          <option value="DEBIT">Solo Gastos</option>
+          <option value="">{t('tx.allTypes')}</option>
+          <option value="CREDIT">{t('tx.creditsOnly')}</option>
+          <option value="DEBIT">{t('tx.debitsOnly')}</option>
         </select>
         <select className="input w-auto text-sm" value={filters.status} onChange={e => { setFilters(f => ({ ...f, status: e.target.value })); setPage(1) }}>
           <option value="">{t('tx.allStatus')}</option>
@@ -683,32 +683,32 @@ function TransactionsContent() {
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Agregar transacción manual</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">{t('tx.addManualTitle')}</h3>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Fecha</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.date')}</label>
                   <input type="date" className="input w-full text-sm" value={addForm.date} onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.type')}</label>
                   <select className="input w-full text-sm" value={addForm.type} onChange={e => setAddForm(f => ({ ...f, type: e.target.value }))}>
-                    <option value="DEBIT">Gasto (débito)</option>
-                    <option value="CREDIT">Ingreso (crédito)</option>
+                    <option value="DEBIT">{t('tx.typeDebit')}</option>
+                    <option value="CREDIT">{t('tx.typeCredit')}</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
-                <input className="input w-full text-sm" placeholder="Ej: Pago de renta oficina" value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} />
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.description')}</label>
+                <input className="input w-full text-sm" placeholder={t('tx.descriptionPlaceholder')} value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Monto</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.amount')}</label>
                   <input type="number" min="0" step="0.01" className="input w-full text-sm" placeholder="0.00" value={addForm.amount} onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Categoría (opcional)</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.categoryOptional')}</label>
                   <select className="input w-full text-sm" value={addForm.categoryId} onChange={e => setAddForm(f => ({ ...f, categoryId: e.target.value }))}>
                     <option value="">{t('tx.unassigned')}</option>
                     {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -716,7 +716,7 @@ function TransactionsContent() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Deducible (opcional)</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.deductibleOptional')}</label>
                 <select className="input w-full text-sm" value={addForm.deductibility} onChange={e => setAddForm(f => ({ ...f, deductibility: e.target.value }))}>
                   <option value="">—</option>
                   <option value="YES">{t('common.yes100')}</option>
@@ -725,8 +725,8 @@ function TransactionsContent() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Notas (opcional)</label>
-                <textarea className="input w-full text-sm" rows={2} placeholder="Notas adicionales" value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} />
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.notesOptional')}</label>
+                <textarea className="input w-full text-sm" rows={2} placeholder={t('tx.notesPlaceholder')} value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
 
               <div className="border-t border-gray-100 pt-3">
@@ -736,20 +736,20 @@ function TransactionsContent() {
                     checked={addForm.recurring}
                     onChange={e => setAddForm(f => ({ ...f, recurring: e.target.checked }))}
                   />
-                  Es un gasto/ingreso recurrente — repetirlo varias veces
+                  {t('tx.recurringLabel')}
                 </label>
                 {addForm.recurring && (
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Frecuencia</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.frequency')}</label>
                       <select className="input w-full text-sm" value={addForm.repeatFrequency} onChange={e => setAddForm(f => ({ ...f, repeatFrequency: e.target.value }))}>
-                        <option value="WEEKLY">Semanal</option>
-                        <option value="BIWEEKLY">Quincenal</option>
-                        <option value="MONTHLY">Mensual</option>
+                        <option value="WEEKLY">{t('tx.weekly')}</option>
+                        <option value="BIWEEKLY">{t('tx.biweekly')}</option>
+                        <option value="MONTHLY">{t('tx.monthly')}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Número de repeticiones</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.repeatCountLabel')}</label>
                       <input
                         type="number"
                         min="2"
@@ -760,7 +760,9 @@ function TransactionsContent() {
                       />
                     </div>
                     <p className="col-span-2 text-xs text-gray-400">
-                      Se crearán {Math.max(2, Math.min(60, parseInt(addForm.repeatCount) || 2))} transacciones idénticas, empezando en la fecha indicada arriba, cada {addForm.repeatFrequency === 'WEEKLY' ? 'semana' : addForm.repeatFrequency === 'BIWEEKLY' ? 'dos semanas' : 'mes'}.
+                      {t('tx.recurringPreview')
+                        .replace('{n}', String(Math.max(2, Math.min(60, parseInt(addForm.repeatCount) || 2))))
+                        .replace('{freq}', addForm.repeatFrequency === 'WEEKLY' ? t('tx.everyWeek') : addForm.repeatFrequency === 'BIWEEKLY' ? t('tx.everyTwoWeeks') : t('tx.everyMonth'))}
                     </p>
                   </div>
                 )}
@@ -769,9 +771,9 @@ function TransactionsContent() {
               {addError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{addError}</p>}
             </div>
             <div className="flex gap-2 mt-5 justify-end">
-              <button onClick={() => setShowAddModal(false)} className="btn-secondary">Cancelar</button>
+              <button onClick={() => setShowAddModal(false)} className="btn-secondary">{t('common.cancel')}</button>
               <button onClick={createTx} disabled={addLoading} className="btn-primary disabled:opacity-50">
-                {addLoading ? 'Guardando...' : 'Guardar transacción'}
+                {addLoading ? t('common.saving') : t('tx.saveTransaction')}
               </button>
             </div>
           </div>

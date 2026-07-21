@@ -4,15 +4,13 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/components/Toast'
 import { useActiveBiz } from '@/lib/use-active-biz'
+import { useTranslation } from '@/lib/i18n'
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 }
 
 const FIELD_KEYS = ['date', 'description', 'amount', 'debit', 'credit'] as const
-const FIELD_LABELS: Record<string, string> = {
-  date: 'Fecha *', description: 'Descripción *', amount: 'Monto', debit: 'Débito', credit: 'Crédito',
-}
 
 const CONFIDENCE_COLOR: Record<string, string> = {
   HIGH: 'bg-emerald-100 text-emerald-700',
@@ -23,8 +21,17 @@ const CONFIDENCE_COLOR: Record<string, string> = {
 export default function ClasificarPage() {
   const router = useRouter()
   const toast = useToast()
+  const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+
+  const FIELD_LABELS: Record<string, string> = {
+    date: t('clasificar.fieldDate'),
+    description: t('clasificar.fieldDescription'),
+    amount: t('clasificar.fieldAmount'),
+    debit: t('clasificar.fieldDebit'),
+    credit: t('clasificar.fieldCredit'),
+  }
 
   const { data: session } = useSession()
   const accountType = (session?.user as any)?.accountType
@@ -140,7 +147,7 @@ export default function ClasificarPage() {
       setHeaderRowNum(detectedHeaderRow)
       setHeaders(cols); setPreviewRows(rows); autoDetect(cols); setStep('map')
     } else {
-      setError('Solo se aceptan archivos CSV, XLSX o XLS.')
+      setError(t('clasificar.formatsError'))
     }
   }
 
@@ -232,17 +239,17 @@ export default function ClasificarPage() {
     if (!file || !activeBiz) return
     const hasAmount = mapping['amount'] || (mapping['debit'] && mapping['credit'])
     if (!mapping['date'] || !mapping['description'] || !hasAmount) {
-      setError('Debes mapear al menos: Fecha, Descripción y Monto (o Débito/Crédito).')
+      setError(t('clasificar.mapRequired'))
       return
     }
     setError('')
     setStep('processing')
     setProcessingPct(15)
-    setProcessingMsg('Leyendo archivo...')
+    setProcessingMsg(t('clasificar.readingFile'))
 
     const rows = await extractRows()
     if (!rows || rows.length === 0) {
-      setError('No se encontraron transacciones válidas en el archivo.')
+      setError(t('clasificar.noValidTx'))
       setStep('map'); return
     }
 
@@ -255,7 +262,7 @@ export default function ClasificarPage() {
     }
 
     setProcessingPct(35)
-    setProcessingMsg(`Clasificando ${rows.length} transacciones con IA...`)
+    setProcessingMsg(t('clasificar.classifyingCount', { n: rows.length }))
 
     const classifyRes = await fetch('/api/classify-preview', {
       method: 'POST',
@@ -264,7 +271,7 @@ export default function ClasificarPage() {
     })
     const classifyData = await classifyRes.json()
     if (!classifyRes.ok) {
-      setError(classifyData.error || 'Error al clasificar con IA')
+      setError(classifyData.error || t('clasificar.classifyError'))
       setStep('map'); return
     }
 
@@ -298,15 +305,15 @@ export default function ClasificarPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        toast(data.error || 'Error al guardar transacciones', 'error')
+        toast(data.error || t('clasificar.saveError'), 'error')
         return
       }
       setImportResult({ imported: data.created, duplicates: data.duplicates, total: data.total })
       setStep('done')
-      toast(`${data.created} transacciones guardadas`, 'success')
+      toast(t('clasificar.savedCount', { n: data.created }), 'success')
     } catch (err) {
       console.error('Save failed:', err)
-      toast('Error al guardar transacciones', 'error')
+      toast(t('clasificar.saveError'), 'error')
     } finally {
       setConfirming(false)
     }
@@ -319,15 +326,15 @@ export default function ClasificarPage() {
       const wb = new ExcelJS.Workbook()
       wb.created = new Date()
 
-      const ws = wb.addWorksheet('Transacciones')
+      const ws = wb.addWorksheet(t('nav.transactions'))
       ws.columns = [
-        { header: 'Fecha', key: 'date', width: 14 },
-        { header: 'Descripción', key: 'description', width: 40 },
-        { header: 'Monto', key: 'amount', width: 14 },
-        { header: 'Tipo', key: 'type', width: 10 },
-        { header: 'Categoría', key: 'category', width: 28 },
-        { header: 'Deducible', key: 'deductibility', width: 12 },
-        { header: 'Confianza IA', key: 'confidence', width: 14 },
+        { header: t('tx.date'), key: 'date', width: 14 },
+        { header: t('tx.description'), key: 'description', width: 40 },
+        { header: t('tx.amount'), key: 'amount', width: 14 },
+        { header: t('tx.type'), key: 'type', width: 10 },
+        { header: t('tx.category'), key: 'category', width: 28 },
+        { header: t('tx.deductible'), key: 'deductibility', width: 12 },
+        { header: t('clasificar.aiConfidenceHeader'), key: 'confidence', width: 14 },
       ]
       const headerRow = ws.getRow(1)
       headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
@@ -339,9 +346,9 @@ export default function ClasificarPage() {
           date: tx.date ? new Date(tx.date).toLocaleDateString('en-US') : '',
           description: tx.description,
           amount: typeof tx.amount === 'number' ? tx.amount : 0,
-          type: tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
-          category: tx.categoryName || tx.aiSuggestion || 'Sin categoría',
-          deductibility: tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? '50%' : 'No',
+          type: tx.type === 'CREDIT' ? t('reports.inflow') : t('reports.outflow'),
+          category: tx.categoryName || tx.aiSuggestion || t('reports.uncategorized'),
+          deductibility: tx.deductibility === 'YES' ? '100%' : tx.deductibility === 'FIFTY' ? t('common.fifty') : t('common.no'),
           confidence: tx.aiConfidence || '',
         })
         const amtCell = row.getCell('amount')
@@ -350,17 +357,17 @@ export default function ClasificarPage() {
       }
       ws.autoFilter = { from: 'A1', to: 'G1' }
 
-      const wsSummary = wb.addWorksheet('Resumen')
-      wsSummary.addRow([`Reporte — ${biz?.name || 'Negocio'}`])
+      const wsSummary = wb.addWorksheet(t('clasificar.summarySheet'))
+      wsSummary.addRow([t('clasificar.reportHeading', { name: biz?.name || t('clasificar.defaultBusinessName') })])
       wsSummary.getRow(1).font = { bold: true, size: 14, color: { argb: 'FF1B4965' } }
       wsSummary.addRow([new Date().toLocaleDateString('es', { month: 'long', year: 'numeric' })])
       wsSummary.addRow([])
-      wsSummary.addRow(['Concepto', 'Valor'])
+      wsSummary.addRow([t('reports.concept'), t('clasificar.value')])
       wsSummary.getRow(4).font = { bold: true }
       const income = transactions.filter(t => t.type === 'CREDIT').reduce((s, t) => s + t.amount, 0)
       const expenses = transactions.filter(t => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
       const totalDeductible = transactions.filter(t => t.deductibility === 'YES' || t.deductibility === 'FIFTY').reduce((s, t) => s + (t.deductibility === 'FIFTY' ? t.amount * 0.5 : t.amount), 0)
-      for (const [label, val] of [['Total Ingresos', income], ['Total Gastos', expenses], ['Ganancia Neta', income - expenses], ['Total Deducible', totalDeductible]]) {
+      for (const [label, val] of [[t('reports.totalIncome'), income], [t('reports.totalExpenses'), expenses], [t('reports.netProfit'), income - expenses], [t('reports.totalDeductible'), totalDeductible]]) {
         const r = wsSummary.addRow([label, val])
         if (typeof val === 'number') r.getCell(2).numFmt = '"$"#,##0.00'
       }
@@ -375,10 +382,10 @@ export default function ClasificarPage() {
       a.download = `reporte-${Date.now()}.xlsx`
       a.click()
       URL.revokeObjectURL(url)
-      toast('Descarga completada', 'success')
+      toast(t('clasificar.downloadComplete'), 'success')
     } catch (err) {
       console.error('Download Excel failed:', err)
-      toast('Error al descargar reporte', 'error')
+      toast(t('clasificar.downloadError'), 'error')
     }
   }
 
@@ -396,7 +403,7 @@ export default function ClasificarPage() {
     doc.setTextColor(255, 255, 255)
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
-    doc.text(`${biz?.name || ''} — Reporte de Clasificación`, 14, 9)
+    doc.text(t('clasificar.pdfTitle', { name: biz?.name || '' }), 14, 9)
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
     doc.text(now.toLocaleDateString(), 14, 17)
@@ -409,7 +416,7 @@ export default function ClasificarPage() {
     // Category totals
     const catMap = new Map<string, number>()
     transactions.forEach(tx => {
-      const cat = tx.categoryName || tx.aiSuggestion || 'Sin categoría'
+      const cat = tx.categoryName || tx.aiSuggestion || t('reports.uncategorized')
       catMap.set(cat, (catMap.get(cat) || 0) + tx.amount)
     })
     const catRows = Array.from(catMap.entries()).sort((a, b) => b[1] - a[1])
@@ -417,13 +424,13 @@ export default function ClasificarPage() {
     // Summary table
     autoTable(doc, {
       startY: 28,
-      head: [['Resumen General', '']],
+      head: [[t('clasificar.summaryGeneral'), '']],
       body: [
-        ['Total Ingresos', fmt(income)],
-        ['Total Gastos', fmt(expenses)],
-        ['Ganancia Neta', fmt(income - expenses)],
-        ['Total Deducible', fmt(deductible)],
-        ['N° Transacciones', String(transactions.length)],
+        [t('reports.totalIncome'), fmt(income)],
+        [t('reports.totalExpenses'), fmt(expenses)],
+        [t('reports.netProfit'), fmt(income - expenses)],
+        [t('reports.totalDeductible'), fmt(deductible)],
+        [t('clasificar.txCountLabel'), String(transactions.length)],
       ],
       headStyles: { fillColor: [27, 73, 101], fontSize: 8, halign: 'center' },
       bodyStyles: { fontSize: 8 },
@@ -443,7 +450,7 @@ export default function ClasificarPage() {
     // Category breakdown table
     autoTable(doc, {
       startY: 28,
-      head: [['Categoría', 'Total']],
+      head: [[t('tx.category'), t('reports.total')]],
       body: catRows.map(([cat, total]) => [cat, fmt(total)]),
       headStyles: { fillColor: [27, 73, 101], fontSize: 8, halign: 'center' },
       bodyStyles: { fontSize: 7.5 },
@@ -458,12 +465,12 @@ export default function ClasificarPage() {
     // Transactions table
     autoTable(doc, {
       startY: summaryEndY,
-      head: [['Fecha', 'Descripción', 'Monto', 'Tipo', 'Categoría']],
+      head: [[t('tx.date'), t('tx.description'), t('tx.amount'), t('tx.type'), t('tx.category')]],
       body: transactions.map(tx => [
         tx.date ? new Date(tx.date).toLocaleDateString('es') : '',
         tx.description?.substring(0, 55) || '',
         fmt(tx.amount),
-        tx.type === 'CREDIT' ? 'Ingreso' : 'Gasto',
+        tx.type === 'CREDIT' ? t('reports.inflow') : t('reports.outflow'),
         tx.categoryName || tx.aiSuggestion || '—',
       ]),
       headStyles: { fillColor: [27, 73, 101], fontSize: 7, halign: 'center' },
@@ -499,8 +506,8 @@ export default function ClasificarPage() {
     return (
       <div className="max-w-3xl mx-auto space-y-5">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Clasificar con IA</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Sube tu estado de cuenta y la IA lo clasifica automáticamente</p>
+          <h1 className="text-xl font-bold text-gray-900">{t('nav.classify')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t('clasificar.subtitle')}</p>
         </div>
         <div className="card p-8 text-center space-y-4">
           <div className="flex justify-center">
@@ -511,14 +518,13 @@ export default function ClasificarPage() {
             </div>
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-800">Función disponible en plan Plus o superior</h2>
+            <h2 className="text-lg font-semibold text-gray-800">{t('clasificar.planRequiredTitle')}</h2>
             <p className="text-sm text-gray-500 mt-1">
-              La clasificación automática con IA requiere plan <strong>Plus</strong>, <strong>Enterprise</strong> o <strong>Custom</strong>.
-              Tu plan actual es <strong>{plan}</strong>.
+              {t('clasificar.planRequiredDesc')} <strong>{plan}</strong>.
             </p>
           </div>
           <p className="text-xs text-gray-400">
-            Contacta a tu administrador para actualizar tu plan.
+            {t('clasificar.contactAdmin')}
           </p>
         </div>
       </div>
@@ -529,14 +535,14 @@ export default function ClasificarPage() {
     <div className="max-w-6xl mx-auto space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Clasificar con IA</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Sube tu estado de cuenta y la IA lo clasifica automáticamente</p>
+          <h1 className="text-xl font-bold text-gray-900">{t('nav.classify')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t('clasificar.subtitle')}</p>
         </div>
         {aiUsage && (
           aiUsage.limit ? (
             <div className="w-44 flex-shrink-0">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                <span>Este mes</span>
+                <span>{t('clasificar.thisMonth')}</span>
                 <span className="font-medium text-[#1B4965]">{aiUsage.classifiedCount} / {aiUsage.limit}</span>
               </div>
               <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -548,7 +554,7 @@ export default function ClasificarPage() {
             </div>
           ) : (
             <div className="text-xs px-3 py-1.5 rounded-lg bg-[#1B4965]/10 text-[#1B4965] font-medium whitespace-nowrap">
-              {aiUsage.classifiedCount} clasificadas este mes
+              {t('clasificar.classifiedThisMonth', { n: aiUsage.classifiedCount })}
             </div>
           )
         )}
@@ -558,7 +564,7 @@ export default function ClasificarPage() {
       {step !== 'done' && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {(['upload', 'map', 'processing', 'review'] as const).map((s, i) => {
-            const labels = ['Subir', 'Mapear', 'Clasificando', 'Revisar']
+            const labels = [t('clasificar.stepUpload'), t('clasificar.stepMap'), t('clasificar.stepClassifying'), t('clasificar.stepReview')]
             const idx = ['upload', 'map', 'processing', 'review'].indexOf(step)
             const done = i < idx
             const active = s === step
@@ -584,7 +590,7 @@ export default function ClasificarPage() {
         <div className="card p-6 space-y-5">
           {savedMappings.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-gray-500 mb-2">FORMATOS GUARDADOS</p>
+              <p className="text-xs font-medium text-gray-500 mb-2">{t('clasificar.savedFormatsLabel')}</p>
               <div className="flex flex-wrap gap-2">
                 {savedMappings.map((m: any) => (
                   <button key={m.id} onClick={() => loadSavedMapping(m)} className="text-xs px-3 py-1.5 rounded-lg bg-[#1B4965]/10 text-[#1B4965] font-medium hover:bg-[#1B4965]/20 transition-colors">
@@ -608,8 +614,8 @@ export default function ClasificarPage() {
                 </svg>
               </div>
             </div>
-            <p className="text-base font-semibold text-gray-700 mb-1">Sube tu estado de cuenta</p>
-            <p className="text-sm text-gray-400 mb-3 hidden sm:block">Arrastra el archivo aquí o usa el botón</p>
+            <p className="text-base font-semibold text-gray-700 mb-1">{t('clasificar.dropzoneTitle')}</p>
+            <p className="text-sm text-gray-400 mb-3 hidden sm:block">{t('clasificar.dropzoneHint')}</p>
             <div className="flex justify-center gap-2 mb-5">
               {['CSV', 'XLSX', 'XLS'].map(ext => (
                 <span key={ext} className="text-xs px-2 py-1 bg-gray-100 text-gray-500 rounded font-mono">.{ext.toLowerCase()}</span>
@@ -623,7 +629,7 @@ export default function ClasificarPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
-              Seleccionar archivo
+              {t('clasificar.chooseFile')}
             </button>
           </div>
 
@@ -638,8 +644,8 @@ export default function ClasificarPage() {
           {previewRows.length > 0 && (
             <div className="card overflow-hidden">
               <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-700">Vista previa — {file?.name}</h2>
-                <span className="text-xs text-gray-400">{previewRows.length} filas de muestra</span>
+                <h2 className="text-sm font-semibold text-gray-700">{t('clasificar.previewTitle', { name: file?.name || '' })}</h2>
+                <span className="text-xs text-gray-400">{t('clasificar.sampleRows', { n: previewRows.length })}</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
@@ -672,14 +678,14 @@ export default function ClasificarPage() {
           )}
 
           <div className="card p-6 space-y-5">
-            <h2 className="text-base font-semibold text-gray-800">Mapeo de columnas</h2>
+            <h2 className="text-base font-semibold text-gray-800">{t('clasificar.columnMapping')}</h2>
             <div>
-              <label className="label">Nombre del banco (opcional)</label>
-              <input className="input" placeholder="Chase, Bank of America, Wells Fargo..." value={bankName} onChange={e => setBankName(e.target.value)} />
-              <p className="text-xs text-gray-400 mt-1">Si lo guardas, lo usaremos automáticamente la próxima vez.</p>
+              <label className="label">{t('clasificar.bankNameLabel')}</label>
+              <input className="input" placeholder={t('clasificar.bankNamePlaceholder')} value={bankName} onChange={e => setBankName(e.target.value)} />
+              <p className="text-xs text-gray-400 mt-1">{t('clasificar.bankNameHint')}</p>
             </div>
             <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-700">¿Cuál columna corresponde a cada campo?</p>
+              <p className="text-sm font-medium text-gray-700">{t('clasificar.whichColumn')}</p>
               {FIELD_KEYS.map(field => (
                 <div key={field} className="flex items-center gap-4">
                   <label className="text-sm font-medium text-gray-600 w-28">{FIELD_LABELS[field]}</label>
@@ -688,19 +694,19 @@ export default function ClasificarPage() {
                     value={mapping[field] || ''}
                     onChange={e => setMapping(m => ({ ...m, [field]: e.target.value }))}
                   >
-                    <option value="">— No usar —</option>
+                    <option value="">{t('clasificar.notUsed')}</option>
                     {headers.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
               ))}
             </div>
             <div className="flex gap-3">
-              <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]) }} className="btn-secondary">← Volver</button>
+              <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]) }} className="btn-secondary">{t('clasificar.backArrow')}</button>
               <button onClick={runClassify} className="btn-primary flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                Importar y Clasificar con IA
+                {t('clasificar.importAndClassify')}
               </button>
             </div>
           </div>
@@ -720,7 +726,7 @@ export default function ClasificarPage() {
           </div>
           <div>
             <p className="text-lg font-semibold text-gray-800 mb-1">{processingMsg}</p>
-            <p className="text-sm text-gray-400">Esto puede tomar unos segundos...</p>
+            <p className="text-sm text-gray-400">{t('clasificar.processingHint')}</p>
           </div>
           <div className="max-w-md mx-auto">
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -744,9 +750,9 @@ export default function ClasificarPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>
-                <strong>{importResult.imported}</strong> transacciones importadas
-                {importResult.duplicates > 0 && ` · ${importResult.duplicates} duplicadas omitidas`}
-                {' · '}<strong>{totalTx}</strong> en esta revisión
+                <strong>{importResult.imported}</strong> {t('clasificar.txImportedSuffix')}
+                {importResult.duplicates > 0 && ` · ${t('clasificar.duplicatesSkippedCount', { n: importResult.duplicates })}`}
+                {' · '}<strong>{totalTx}</strong> {t('clasificar.inThisReviewSuffix')}
               </span>
             </div>
           )}
@@ -754,10 +760,10 @@ export default function ClasificarPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: 'Total', value: totalTx, type: 'count', color: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-100' },
-              { label: 'Auto-clasificadas', value: autoClassified, type: 'count', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-              { label: 'Para revisar', value: needsReview, type: 'count', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-100' },
-              { label: 'Total Gastos', value: totalExpenses, type: 'money', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-100' },
+              { label: t('reports.total'), value: totalTx, type: 'count', color: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-100' },
+              { label: t('clasificar.autoClassified'), value: autoClassified, type: 'count', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+              { label: t('clasificar.toReview'), value: needsReview, type: 'count', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-100' },
+              { label: t('reports.totalExpenses'), value: totalExpenses, type: 'money', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-100' },
             ].map(card => (
               <div key={card.label} className={`rounded-xl border p-3 ${card.bg} ${card.border}`}>
                 <p className="text-xs text-gray-500 font-medium mb-1">{card.label}</p>
@@ -773,7 +779,7 @@ export default function ClasificarPage() {
               <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.072 16.5C2.302 18.333 3.264 20 4.804 20z" />
               </svg>
-              <span>Las filas en <strong>amarillo</strong> tienen confianza MEDIUM o LOW — revisa y ajusta la categoría si es necesario.</span>
+              <span>{t('clasificar.confidenceWarningPre')} <strong>{t('clasificar.yellow')}</strong> {t('clasificar.confidenceWarningPost')}</span>
             </div>
           )}
 
@@ -783,11 +789,11 @@ export default function ClasificarPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase w-28">Fecha</th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Descripción</th>
-                    <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase w-28">Monto</th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase w-44">Categoría</th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-24">Confianza</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase w-28">{t('tx.date')}</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('tx.description')}</th>
+                    <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase w-28">{t('tx.amount')}</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase w-44">{t('tx.category')}</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase w-24">{t('clasificar.confidence')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -810,7 +816,7 @@ export default function ClasificarPage() {
                             value={tx.categoryId || ''}
                             onChange={e => updateTxCategory(idx, e.target.value)}
                           >
-                            <option value="">Sin categoría</option>
+                            <option value="">{t('reports.uncategorized')}</option>
                             {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                         </td>
@@ -832,7 +838,7 @@ export default function ClasificarPage() {
           {/* Action buttons */}
           <div className="space-y-3">
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-              Las transacciones <strong>aún no están guardadas</strong>. Revisa las categorías y haz clic en "Guardar en transacciones" cuando estés listo.
+              {t('clasificar.notSavedPre')} <strong>{t('clasificar.notSavedBold')}</strong>. {t('clasificar.notSavedPost')}
             </div>
             <button
               onClick={saveToTransactions}
@@ -842,7 +848,7 @@ export default function ClasificarPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
               </svg>
-              {confirming ? 'Guardando...' : `Guardar ${totalTx} transacciones`}
+              {confirming ? t('common.saving') : t('clasificar.saveCount', { n: totalTx })}
             </button>
             <div className="flex gap-3">
               <button onClick={downloadExcel} className="flex-1 btn-secondary text-sm flex items-center justify-center gap-2">
@@ -861,7 +867,7 @@ export default function ClasificarPage() {
                 onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]) }}
                 className="flex-1 btn-secondary text-sm"
               >
-                Otro archivo
+                {t('clasificar.anotherFile')}
               </button>
             </div>
           </div>
@@ -879,11 +885,11 @@ export default function ClasificarPage() {
             </div>
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-1">¡Clasificación completa!</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">{t('clasificar.classificationComplete')}</h2>
             <p className="text-gray-500">
-              {importResult?.imported ?? totalTx} transacciones guardadas
-              {importResult?.duplicates ? ` · ${importResult.duplicates} duplicadas omitidas` : ''}
-              {' · '}{fmt(totalExpenses)} en gastos totales
+              {t('clasificar.savedCount', { n: importResult?.imported ?? totalTx })}
+              {importResult?.duplicates ? ` · ${t('clasificar.duplicatesSkippedCount', { n: importResult.duplicates })}` : ''}
+              {' · '}{t('clasificar.totalExpensesAmount', { amount: fmt(totalExpenses) })}
             </p>
           </div>
           <div className="flex flex-wrap gap-3 justify-center">
@@ -891,19 +897,19 @@ export default function ClasificarPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
-              Descargar PDF
+              {t('clasificar.downloadPDFBtn')}
             </button>
             <button onClick={downloadExcel} className="btn-secondary flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Descargar Excel
+              {t('clasificar.downloadExcelBtn')}
             </button>
             <button onClick={() => router.push('/transactions')} className="btn-secondary flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              Ver en Transacciones
+              {t('clasificar.viewInTransactions')}
             </button>
             <button
               onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setTransactions([]); setImportResult(null) }}
@@ -912,7 +918,7 @@ export default function ClasificarPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              Clasificar otro archivo
+              {t('clasificar.classifyAnother')}
             </button>
           </div>
         </div>
