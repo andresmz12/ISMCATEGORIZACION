@@ -1,6 +1,5 @@
 import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
-import { effectivePlan } from './lib/billing-access'
 
 export default withAuth(
   function middleware(req) {
@@ -21,17 +20,17 @@ export default withAuth(
       }
     }
 
-    // No active plan (never paid, nothing granted by an admin, and no
-    // signup trial still running) — block the whole app except /settings,
-    // where they can see billing and pay, or see "ask your account owner"
-    // if they're a team member. Superadmins don't have their own
-    // plan/billing, so they're exempt.
-    const accountType = (token as any)?.accountType
-    const plan = (token as any)?.plan
-    const trialEndsAt = (token as any)?.trialEndsAt
-    if (accountType !== 'SUPERADMIN' && effectivePlan(plan, trialEndsAt) === 'NONE' && !path.startsWith('/settings')) {
-      return NextResponse.redirect(new URL('/settings?blocked=1', req.url))
-    }
+    // The "no active plan" block used to live here too, but a middleware
+    // redirect forces a full hard page reload even when the navigation was
+    // a client-side <Link> click — every attempted navigation looked like
+    // the whole app refreshing and the sidebar snapping back to the top.
+    // That gate now lives in app/(dashboard)/layout.tsx as a client-side
+    // router.replace, which Next.js can do as a soft transition. This is
+    // safe to drop from here because it was only ever a UX nicety (redirect
+    // straight to billing) — every actual paid feature already enforces its
+    // own plan check server-side (requirePlanFeature, checkAiBudget, the
+    // per-account business-count limit), so a blocked account browsing the
+    // dashboard shell without hitting this gate can't do anything with it.
 
     // Security headers are set globally via next.config.js headers().
     // Middleware only handles auth-gated redirects.

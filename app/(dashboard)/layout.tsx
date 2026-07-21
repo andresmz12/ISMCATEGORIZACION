@@ -7,6 +7,7 @@ import { useTranslation } from '@/lib/i18n'
 import { BusinessSwitcher } from '@/components/BusinessSwitcher'
 import { ChatWidget } from '@/components/ChatWidget'
 import { useActiveBiz } from '@/lib/use-active-biz'
+import { effectivePlan } from '@/lib/billing-access'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
@@ -20,6 +21,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [pendingAssignments, setPendingAssignments] = useState(0)
 
   const accountType = (session?.user as any)?.accountType
+  const plan = (session?.user as any)?.plan
+  const trialEndsAt = (session?.user as any)?.trialEndsAt
+
+  // No active plan (never paid, nothing granted by an admin, no signup
+  // trial still running) — send them to billing. This used to be a
+  // middleware redirect, but that forces a full hard page reload on every
+  // blocked <Link> click (the whole app visibly "refreshes" and the sidebar
+  // snaps back to the top); router.replace here is a normal client-side
+  // transition instead. Not a security boundary — every paid feature
+  // already enforces its own plan check server-side.
+  useEffect(() => {
+    if (!session?.user) return
+    if (accountType === 'SUPERADMIN') return
+    if (effectivePlan(plan, trialEndsAt) !== 'NONE') return
+    if (pathname.startsWith('/settings')) return
+    router.replace('/settings?blocked=1')
+  }, [session, accountType, plan, trialEndsAt, pathname, router])
 
   useEffect(() => {
     if (!activeBizId) return
