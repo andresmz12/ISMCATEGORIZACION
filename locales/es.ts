@@ -387,7 +387,7 @@ const es = {
   'settings.accessLevel': 'Nivel de acceso',
   'settings.billing': 'Facturación',
   'settings.aiUsageThisMonth': 'Transacciones clasificadas con IA este mes',
-  'settings.aiUsageUnlimited': '{n} clasificadas con IA este mes',
+  'settings.aiUsageUnlimited': '{n} clasificadas con IA este mes — sin límite configurado',
   'settings.trialActive': 'Estás en tu prueba gratuita — te quedan {days} día(s). Elige un plan abajo para seguir teniendo acceso cuando termine.',
   'settings.upgradeTo': 'Actualizar a {plan}',
   'settings.changeTo': 'Cambiar a {plan}',
