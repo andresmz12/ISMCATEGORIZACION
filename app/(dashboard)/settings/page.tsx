@@ -22,6 +22,7 @@ function SettingsPageInner() {
     name: '', firmName: '', email: '', plan: '', createdAt: '',
     subscriptionStatus: null as string | null, hasSubscription: false,
     trialEndsAt: null as string | null,
+    aiUsage: null as { classifiedCount: number; limit: number | null } | null,
   })
   const [profileLoading, setProfileLoading] = useState(false)
   const [billingLoading, setBillingLoading] = useState<string | null>(null)
@@ -39,6 +40,7 @@ function SettingsPageInner() {
           name: d.name || '', firmName: d.firmName || '', email: d.email, plan: d.plan, createdAt: d.createdAt,
           subscriptionStatus: d.subscriptionStatus ?? null, hasSubscription: !!d.hasSubscription,
           trialEndsAt: d.trialEndsAt ?? null,
+          aiUsage: d.aiUsage ?? null,
         })
       })
       .catch(() => {})
@@ -168,6 +170,27 @@ function SettingsPageInner() {
       {/* Billing */}
       <div className="card p-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('settings.billing')}</h2>
+
+        {profile.aiUsage && (
+          profile.aiUsage.limit ? (
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>{t('settings.aiUsageThisMonth')}</span>
+                <span className="font-medium text-[#1B4965]">{profile.aiUsage.classifiedCount} / {profile.aiUsage.limit}</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${profile.aiUsage.classifiedCount >= profile.aiUsage.limit ? 'bg-red-500' : 'bg-[#1B4965]'}`}
+                  style={{ width: `${Math.min(100, (profile.aiUsage.classifiedCount / profile.aiUsage.limit) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4 text-xs px-3 py-1.5 rounded-lg bg-[#1B4965]/10 text-[#1B4965] font-medium inline-block">
+              {t('settings.aiUsageUnlimited').replace('{n}', String(profile.aiUsage.classifiedCount))}
+            </div>
+          )
+        )}
 
         {inTrial && (
           <div className="mb-4 p-3 bg-[#2EC4B6]/10 border border-[#2EC4B6]/20 rounded-lg text-[#146d64] text-sm">

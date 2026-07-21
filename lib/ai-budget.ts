@@ -88,17 +88,13 @@ export async function recordAiUsage(
   }
 }
 
-// Transaction-count summary for the business's own users (never exposes cost/budget in $).
-// This reflects the whole account's usage this period (shared across every business
-// the account owns), not just this one business. `limit` is the admin-configured $
-// budget translated into an estimated transaction count, or null if unlimited.
-export async function getClassifiedCount(
-  businessId: string
+// Transaction-count summary for an account's own users (never exposes cost/budget in $).
+// `limit` is the admin-configured $ budget translated into an estimated
+// transaction count, or null if unlimited.
+export async function getAccountClassifiedCount(
+  accountId: string
 ): Promise<{ classifiedCount: number; limit: number | null; period: string }> {
   const period = currentPeriod()
-  const accountId = await getBusinessAccountId(businessId)
-  if (!accountId) return { classifiedCount: 0, limit: null, period }
-
   const [usage, account] = await Promise.all([
     prisma.aiUsage.findUnique({ where: { accountId_period: { accountId, period } }, select: { classifiedCount: true } }),
     prisma.billingAccount.findUnique({ where: { id: accountId }, select: { aiMonthlyBudgetCents: true } }),
@@ -108,4 +104,15 @@ export async function getClassifiedCount(
     limit: estimateTransactionLimit(account?.aiMonthlyBudgetCents),
     period,
   }
+}
+
+// Same as above, but resolved from a business rather than an already-known
+// accountId — this reflects the whole account's usage this period (shared
+// across every business the account owns), not just this one business.
+export async function getClassifiedCount(
+  businessId: string
+): Promise<{ classifiedCount: number; limit: number | null; period: string }> {
+  const accountId = await getBusinessAccountId(businessId)
+  if (!accountId) return { classifiedCount: 0, limit: null, period: currentPeriod() }
+  return getAccountClassifiedCount(accountId)
 }

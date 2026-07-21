@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { validatePassword } from '@/lib/validate'
 import { logAudit } from '@/lib/audit'
+import { getAccountClassifiedCount } from '@/lib/ai-budget'
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions)
@@ -83,6 +84,7 @@ export async function GET() {
   })
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const { billingAccount, ...rest } = user
+  const aiUsage = await getAccountClassifiedCount((session.user as any).accountId)
   return NextResponse.json({
     ...rest,
     plan: billingAccount.plan,
@@ -90,5 +92,6 @@ export async function GET() {
     subscriptionStatus: billingAccount.subscriptionStatus,
     hasSubscription: !!billingAccount.squareSubscriptionId,
     trialEndsAt: billingAccount.trialEndsAt,
+    aiUsage: { classifiedCount: aiUsage.classifiedCount, limit: aiUsage.limit },
   })
 }
