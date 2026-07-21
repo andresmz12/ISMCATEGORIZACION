@@ -122,7 +122,7 @@ export async function POST(req: Request) {
 
   await logAudit({ userId: ownerId, businessId: targetBusinessIds[0], action: 'CREATE_TEAM_MEMBER', entity: 'User', entityId: newUser.id })
 
-  const appUrl = process.env.NEXTAUTH_URL || 'https://myprofitandloss.com'
+  const appUrl = process.env.NEXTAUTH_URL || 'https://www.myprofitandloss.com'
   const inviteUrl = `${appUrl}/invitar/${inviteToken}`
 
   // Send welcome email (non-blocking) — inviteUrl is also returned below so

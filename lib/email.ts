@@ -63,7 +63,7 @@ export async function sendAssignmentEmail(opts: {
             ${description ? `<p style="color:#64748b;font-size:14px;margin:0">${description}</p>` : ''}
             ${dueLine}
           </div>
-          <a href="${process.env.NEXTAUTH_URL || 'https://myprofitandloss.com'}/asignaciones"
+          <a href="${process.env.NEXTAUTH_URL || 'https://www.myprofitandloss.com'}/asignaciones"
              style="display:inline-block;background:#1B4965;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px">
             Ver mis asignaciones
           </a>

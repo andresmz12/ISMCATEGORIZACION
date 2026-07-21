@@ -7,7 +7,7 @@ export default withAuth(
     const host = req.headers.get('host') || ''
     if (host.includes('railway.app') || host.includes('up.railway.app')) {
       const url = req.nextUrl.clone()
-      url.host = 'myprofitandloss.com'
+      url.host = 'www.myprofitandloss.com'
       url.port = ''
       return NextResponse.redirect(url, { status: 301 })
     }

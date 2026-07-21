@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   }
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
-  const appUrl = process.env.NEXTAUTH_URL || 'https://myprofitandloss.com'
+  const appUrl = process.env.NEXTAUTH_URL || 'https://www.myprofitandloss.com'
   const { priceCents } = SQUARE_PAID_PLANS[plan]
 
   try {
