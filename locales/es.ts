@@ -676,6 +676,31 @@ const es = {
   'documentos.selectDocType': 'Selecciona el tipo de documento',
   'documentos.uploadError': 'Error al subir',
   'documentos.deleteDocConfirm': '¿Eliminar este documento?',
+
+  // Team (Usuarios)
+  'team.title': 'Usuarios del equipo',
+  'team.subtitle': 'Crea accesos para tu personal. Cada usuario tiene su propio login y ve los mismos negocios que tú.',
+  'team.addUser': '+ Agregar usuario',
+  'team.noMembers': 'No tienes usuarios en tu equipo',
+  'team.noMembersHint': 'Agrega miembros para que puedan acceder a la plataforma con su propio usuario y contraseña.',
+  'team.addFirstUser': '+ Agregar primer usuario',
+  'team.colEmail': 'Correo',
+  'team.lastAccess': 'Último acceso',
+  'team.superadmin': 'Superadmin',
+  'team.inactive': 'Inactivo',
+  'team.addModalTitle': 'Agregar usuario al equipo',
+  'team.inviteInfo': 'Le enviaremos un correo con un enlace para que elija su propia contraseña. Verá los mismos negocios que tú.',
+  'team.creating': 'Creando...',
+  'team.createUser': 'Crear usuario',
+  'team.userCreatedTitle': 'Usuario creado',
+  'team.inviteSentText': 'Le enviamos un correo de invitación. Si no le llega, comparte este enlace directamente (válido por 7 días, un solo uso):',
+  'team.copied': 'Copiado',
+  'team.copy': 'Copiar',
+  'team.done': 'Listo',
+  'team.nameEmailRequired': 'Nombre y correo son requeridos',
+  'team.createError': 'Error al crear usuario',
+  'team.passwordRequirements': 'Mín. 8 caracteres, una mayúscula y un número',
+  'team.deleteConfirm': '¿Eliminar al usuario "{name}"? Esta acción no se puede deshacer.',
 } as const
 
 export type TranslationKey = keyof typeof es

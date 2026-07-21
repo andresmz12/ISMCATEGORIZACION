@@ -676,6 +676,31 @@ const en = {
   'documentos.selectDocType': 'Select the document type',
   'documentos.uploadError': 'Upload failed',
   'documentos.deleteDocConfirm': 'Delete this document?',
+
+  // Team (Usuarios)
+  'team.title': 'Team Members',
+  'team.subtitle': "Create access for your staff. Each user has their own login and sees the same businesses you do.",
+  'team.addUser': '+ Add user',
+  'team.noMembers': 'You have no team members',
+  'team.noMembersHint': 'Add members so they can access the platform with their own username and password.',
+  'team.addFirstUser': '+ Add first user',
+  'team.colEmail': 'Email',
+  'team.lastAccess': 'Last access',
+  'team.superadmin': 'Superadmin',
+  'team.inactive': 'Inactive',
+  'team.addModalTitle': 'Add user to team',
+  'team.inviteInfo': "We'll send them an email with a link to choose their own password. They will see the same businesses you do.",
+  'team.creating': 'Creating...',
+  'team.createUser': 'Create user',
+  'team.userCreatedTitle': 'User created',
+  'team.inviteSentText': "We sent an invitation email. If it doesn't arrive, share this link directly (valid for 7 days, single use):",
+  'team.copied': 'Copied',
+  'team.copy': 'Copy',
+  'team.done': 'Done',
+  'team.nameEmailRequired': 'Name and email are required',
+  'team.createError': 'Error creating user',
+  'team.passwordRequirements': 'Min 8 characters, one uppercase letter and one number',
+  'team.deleteConfirm': 'Delete user "{name}"? This action cannot be undone.',
 } as const
 
 export type TranslationKey = keyof typeof en

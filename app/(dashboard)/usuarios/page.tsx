@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useTranslation } from '@/lib/i18n'
 
 interface TeamMember {
   id: string
@@ -13,6 +14,7 @@ interface TeamMember {
 }
 
 export default function UsuariosPage() {
+  const { t } = useTranslation()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -43,7 +45,7 @@ export default function UsuariosPage() {
 
   async function create() {
     setError('')
-    if (!form.name || !form.email) { setError('Nombre y correo son requeridos'); return }
+    if (!form.name || !form.email) { setError(t('team.nameEmailRequired')); return }
     setCreating(true)
     const res = await fetch('/api/team', {
       method: 'POST',
@@ -52,7 +54,7 @@ export default function UsuariosPage() {
     })
     const data = await res.json()
     setCreating(false)
-    if (!res.ok) { setError(data.error || 'Error al crear usuario'); return }
+    if (!res.ok) { setError(data.error || t('team.createError')); return }
     setShowModal(false)
     setForm({ name: '', email: '' })
     setInviteUrl(data.inviteUrl || null)
@@ -68,7 +70,7 @@ export default function UsuariosPage() {
 
   async function saveEdit(id: string) {
     setEditError('')
-    if (editForm.password && (editForm.password.length < 8 || !/[A-Z]/.test(editForm.password) || !/[0-9]/.test(editForm.password))) { setEditError('Mín. 8 caracteres, una mayúscula y un número'); return }
+    if (editForm.password && (editForm.password.length < 8 || !/[A-Z]/.test(editForm.password) || !/[0-9]/.test(editForm.password))) { setEditError(t('team.passwordRequirements')); return }
     setSaving(true)
     const body: any = {}
     if (editForm.name) body.name = editForm.name
@@ -82,7 +84,7 @@ export default function UsuariosPage() {
     setSaving(false)
     if (!res.ok) {
       const data = await res.json()
-      setEditError(data.error || 'Error al guardar')
+      setEditError(data.error || t('biz.saveFailed'))
       return
     }
     setEditId(null)
@@ -90,7 +92,7 @@ export default function UsuariosPage() {
   }
 
   async function remove(id: string, name: string) {
-    if (!confirm(`¿Eliminar al usuario "${name}"? Esta acción no se puede deshacer.`)) return
+    if (!confirm(t('team.deleteConfirm').replace('{name}', name))) return
     await fetch(`/api/team/${id}`, { method: 'DELETE' })
     load()
   }
@@ -99,23 +101,23 @@ export default function UsuariosPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Usuarios del equipo</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Crea accesos para tu personal. Cada usuario tiene su propio login y ve los mismos negocios que tú.</p>
+          <h1 className="text-xl font-bold text-gray-900">{t('team.title')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t('team.subtitle')}</p>
         </div>
         <button onClick={() => { setShowModal(true); setError('') }} className="btn-primary">
-          + Agregar usuario
+          {t('team.addUser')}
         </button>
       </div>
 
       {loading ? (
-        <div className="card p-8 text-center text-gray-400 text-sm">Cargando...</div>
+        <div className="card p-8 text-center text-gray-400 text-sm">{t('common.loading')}</div>
       ) : members.length === 0 ? (
         <div className="card p-10 text-center">
           <div className="text-4xl mb-3">👥</div>
-          <p className="text-gray-600 font-medium">No tienes usuarios en tu equipo</p>
-          <p className="text-sm text-gray-400 mt-1">Agrega miembros para que puedan acceder a la plataforma con su propio usuario y contraseña.</p>
+          <p className="text-gray-600 font-medium">{t('team.noMembers')}</p>
+          <p className="text-sm text-gray-400 mt-1">{t('team.noMembersHint')}</p>
           <button onClick={() => { setShowModal(true); setError('') }} className="btn-primary mt-5">
-            + Agregar primer usuario
+            {t('team.addFirstUser')}
           </button>
         </div>
       ) : (
@@ -123,12 +125,12 @@ export default function UsuariosPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Nombre</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Tipo</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Correo</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estado</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Último acceso</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Acciones</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('cat.name')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('tx.type')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('team.colEmail')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('admin.status')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('team.lastAccess')}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -139,13 +141,13 @@ export default function UsuariosPage() {
                       <div className="flex flex-wrap items-center gap-3">
                         <input
                           className="input text-sm w-48"
-                          placeholder="Nombre"
+                          placeholder={t('cat.name')}
                           value={editForm.name}
                           onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                         />
                         <input
                           className="input text-sm w-48"
-                          placeholder="Nueva contraseña"
+                          placeholder={t('settings.newPassword')}
                           type="password"
                           value={editForm.password}
                           onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
@@ -156,12 +158,12 @@ export default function UsuariosPage() {
                             checked={editForm.isActive}
                             onChange={e => setEditForm(f => ({ ...f, isActive: e.target.checked }))}
                           />
-                          Activo
+                          {t('admin.active')}
                         </label>
                         <button onClick={() => saveEdit(m.id)} disabled={saving} className="btn-primary text-sm py-1.5 px-3 disabled:opacity-50">
-                          {saving ? 'Guardando...' : 'Guardar'}
+                          {saving ? t('common.saving') : t('common.save')}
                         </button>
-                        <button onClick={() => { setEditId(null); setEditError('') }} className="btn-secondary text-sm py-1.5 px-3">Cancelar</button>
+                        <button onClick={() => { setEditId(null); setEditError('') }} className="btn-secondary text-sm py-1.5 px-3">{t('common.cancel')}</button>
                         {editError && <span className="text-xs text-red-600">{editError}</span>}
                       </div>
                     </td>
@@ -170,17 +172,17 @@ export default function UsuariosPage() {
                       <td className="px-4 py-3 font-medium text-gray-800">{m.name}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.accountType === 'TEAM_MEMBER' ? 'bg-purple-100 text-purple-700' : m.accountType === 'SUPERADMIN' ? 'bg-red-100 text-red-700' : 'bg-[#1B4965]/10 text-[#1B4965]'}`}>
-                          {m.accountType === 'TEAM_MEMBER' ? 'Miembro de equipo' : m.accountType === 'SUPERADMIN' ? 'Superadmin' : 'Contador'}
+                          {m.accountType === 'TEAM_MEMBER' ? t('role.team_member') : m.accountType === 'SUPERADMIN' ? t('team.superadmin') : t('role.accountant')}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-500">{m.email}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {m.isActive ? 'Activo' : 'Inactivo'}
+                          {m.isActive ? t('admin.active') : t('team.inactive')}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs">
-                        {m.lastLogin ? new Date(m.lastLogin).toLocaleString() : 'Nunca'}
+                        {m.lastLogin ? new Date(m.lastLogin).toLocaleString() : t('admin.never')}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-3">
@@ -188,13 +190,13 @@ export default function UsuariosPage() {
                             onClick={() => { setEditId(m.id); setEditForm({ name: m.name, password: '', isActive: m.isActive }) }}
                             className="text-xs text-[#1B4965] hover:underline font-medium"
                           >
-                            Editar
+                            {t('common.edit')}
                           </button>
                           <button
                             onClick={() => remove(m.id, m.name)}
                             className="text-xs text-red-500 hover:text-red-700 font-medium"
                           >
-                            Eliminar
+                            {t('common.delete')}
                           </button>
                         </div>
                       </td>
@@ -211,36 +213,36 @@ export default function UsuariosPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Agregar usuario al equipo</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">{t('team.addModalTitle')}</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Nombre completo</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('auth.name')}</label>
                 <input
                   className="input w-full"
-                  placeholder="Nombre completo"
+                  placeholder={t('auth.name')}
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Correo electrónico</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('auth.email')}</label>
                 <input
                   className="input w-full"
                   type="email"
-                  placeholder="Correo electrónico"
+                  placeholder={t('auth.email')}
                   value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                 />
               </div>
               {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
               <div className="bg-blue-50 rounded-lg px-3 py-2.5">
-                <p className="text-xs text-blue-700">Le enviaremos un correo con un enlace para que elija su propia contraseña. Verá los mismos negocios que tú.</p>
+                <p className="text-xs text-blue-700">{t('team.inviteInfo')}</p>
               </div>
             </div>
             <div className="flex gap-2 mt-5 justify-end">
-              <button onClick={() => { setShowModal(false); setError('') }} className="btn-secondary">Cancelar</button>
+              <button onClick={() => { setShowModal(false); setError('') }} className="btn-secondary">{t('common.cancel')}</button>
               <button onClick={create} disabled={creating} className="btn-primary disabled:opacity-50">
-                {creating ? 'Creando...' : 'Crear usuario'}
+                {creating ? t('team.creating') : t('team.createUser')}
               </button>
             </div>
           </div>
@@ -252,18 +254,18 @@ export default function UsuariosPage() {
       {inviteUrl && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Usuario creado</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">{t('team.userCreatedTitle')}</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Le enviamos un correo de invitación. Si no le llega, comparte este enlace directamente (válido por 7 días, un solo uso):
+              {t('team.inviteSentText')}
             </p>
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
               <code className="text-xs text-gray-700 flex-1 break-all">{inviteUrl}</code>
               <button onClick={copyInviteUrl} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-[#1B4965] text-white hover:bg-[#153d52] transition-colors flex-shrink-0">
-                {copied ? 'Copiado' : 'Copiar'}
+                {copied ? t('team.copied') : t('team.copy')}
               </button>
             </div>
             <div className="flex justify-end mt-5">
-              <button onClick={() => setInviteUrl(null)} className="btn-secondary">Listo</button>
+              <button onClick={() => setInviteUrl(null)} className="btn-secondary">{t('team.done')}</button>
             </div>
           </div>
         </div>
