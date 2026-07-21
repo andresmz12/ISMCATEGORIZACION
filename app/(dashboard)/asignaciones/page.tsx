@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useActiveBiz } from '@/lib/use-active-biz'
+import { useTranslation } from '@/lib/i18n'
 
 type Status = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 
@@ -32,11 +33,11 @@ interface Assignment {
   notes: AssignmentNote[]
 }
 
-const STATUS_LABELS: Record<Status, string> = {
-  PENDING: 'Pendiente',
-  IN_PROGRESS: 'En progreso',
-  COMPLETED: 'Completada',
-  CANCELLED: 'Cancelada',
+const STATUS_LABEL_KEYS: Record<Status, 'asignaciones.statusPending' | 'asignaciones.statusInProgress' | 'asignaciones.statusCompleted' | 'asignaciones.statusCancelled'> = {
+  PENDING: 'asignaciones.statusPending',
+  IN_PROGRESS: 'asignaciones.statusInProgress',
+  COMPLETED: 'asignaciones.statusCompleted',
+  CANCELLED: 'asignaciones.statusCancelled',
 }
 
 const STATUS_COLORS: Record<Status, string> = {
@@ -61,6 +62,7 @@ const STATUS_ICONS: Record<Status, string> = {
 }
 
 function StatusPicker({ current, onChange, disabled }: { current: Status; onChange: (s: Status) => void; disabled?: boolean }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -81,12 +83,12 @@ function StatusPicker({ current, onChange, disabled }: { current: Status; onChan
         className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors ${STATUS_COLORS[current]} ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}`}
       >
         <span>{STATUS_ICONS[current]}</span>
-        <span>{STATUS_LABELS[current]}</span>
+        <span>{t(STATUS_LABEL_KEYS[current])}</span>
         {!disabled && <span className="opacity-60 text-[10px]">▾</span>}
       </button>
       {open && (
         <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden min-w-[160px]">
-          {(Object.keys(STATUS_LABELS) as Status[]).map(s => (
+          {(Object.keys(STATUS_LABEL_KEYS) as Status[]).map(s => (
             <button
               key={s}
               type="button"
@@ -94,7 +96,7 @@ function StatusPicker({ current, onChange, disabled }: { current: Status; onChan
               className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-gray-50 transition-colors text-left ${s === current ? 'bg-gray-50' : ''}`}
             >
               <span>{STATUS_ICONS[s]}</span>
-              <span>{STATUS_LABELS[s]}</span>
+              <span>{t(STATUS_LABEL_KEYS[s])}</span>
               {s === current && <span className="ml-auto text-[#1B4965]">✓</span>}
             </button>
           ))}
@@ -117,6 +119,7 @@ function NotesPanel({
   onNoteAdded: (note: AssignmentNote) => void
   onNoteDeleted: (noteId: string) => void
 }) {
+  const { t } = useTranslation()
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -137,12 +140,12 @@ function NotesPanel({
       setText('')
     } else {
       const d = await res.json()
-      setError(d.error || 'Error al guardar nota')
+      setError(d.error || t('asignaciones.noteSaveError'))
     }
   }
 
   async function deleteNote(noteId: string) {
-    if (!confirm('¿Eliminar esta nota?')) return
+    if (!confirm(t('asignaciones.deleteNoteConfirm'))) return
     const res = await fetch(`/api/assignments/${assignment.id}/notes?noteId=${noteId}`, { method: 'DELETE' })
     if (res.ok) onNoteDeleted(noteId)
   }
@@ -151,7 +154,7 @@ function NotesPanel({
     <div className="mt-3 pt-3 border-t border-gray-100">
       {/* Notes list */}
       {assignment.notes.length === 0 ? (
-        <p className="text-xs text-gray-400 italic mb-3">Sin notas aún.</p>
+        <p className="text-xs text-gray-400 italic mb-3">{t('asignaciones.noNotesYet')}</p>
       ) : (
         <div className="space-y-2 mb-3">
           {assignment.notes.map(n => (
@@ -187,7 +190,7 @@ function NotesPanel({
           <textarea
             rows={2}
             className="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#1B4965] focus:ring-1 focus:ring-[#1B4965]/20 resize-none placeholder-gray-300"
-            placeholder="Agregar nota o comentario..."
+            placeholder={t('asignaciones.addNotePlaceholder')}
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) addNote() }}
@@ -197,17 +200,18 @@ function NotesPanel({
             disabled={saving || !text.trim()}
             className="px-3 py-2 bg-[#1B4965] text-white rounded-lg text-xs font-semibold hover:bg-[#143A52] disabled:opacity-40 transition-colors self-end"
           >
-            {saving ? '...' : 'Agregar'}
+            {saving ? '...' : t('asignaciones.addNoteBtn')}
           </button>
         </div>
       )}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      {canEdit && <p className="text-[10px] text-gray-300 mt-1">Ctrl+Enter para enviar</p>}
+      {canEdit && <p className="text-[10px] text-gray-300 mt-1">{t('asignaciones.ctrlEnterHint')}</p>}
     </div>
   )
 }
 
 export default function AsignacionesPage() {
+  const { t } = useTranslation()
   const { data: session } = useSession()
   const { activeBizId, activeRole } = useActiveBiz()
   const isViewer = activeRole === 'VIEWER'
@@ -261,7 +265,7 @@ export default function AsignacionesPage() {
   }
 
   async function save() {
-    if (!form.title.trim()) { setFormError('El título es requerido'); return }
+    if (!form.title.trim()) { setFormError(t('asignaciones.titleRequired')); return }
     setSaving(true)
     setFormError('')
 
@@ -283,7 +287,7 @@ export default function AsignacionesPage() {
     setSaving(false)
     if (!res.ok) {
       const d = await res.json()
-      setFormError(d.error || 'Error al guardar')
+      setFormError(d.error || t('asignaciones.saveError'))
       return
     }
     setShowModal(false)
@@ -300,7 +304,7 @@ export default function AsignacionesPage() {
   }
 
   async function deleteAssignment(id: string) {
-    if (!confirm('¿Eliminar esta asignación?')) return
+    if (!confirm(t('asignaciones.deleteConfirm'))) return
     await fetch(`/api/assignments/${id}`, { method: 'DELETE' })
     setAssignments(prev => prev.filter(a => a.id !== id))
   }
@@ -324,7 +328,7 @@ export default function AsignacionesPage() {
   const pendingCount = assignments.filter(a => a.status === 'PENDING' || a.status === 'IN_PROGRESS').length
 
   if (!activeBizId) {
-    return <div className="card p-10 text-center text-gray-500">Selecciona un negocio para ver sus asignaciones.</div>
+    return <div className="card p-10 text-center text-gray-500">{t('asignaciones.selectBusiness')}</div>
   }
 
   return (
@@ -332,14 +336,14 @@ export default function AsignacionesPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-gray-900">Asignaciones</h1>
+            <h1 className="text-xl font-bold text-gray-900">{t('asignaciones.title')}</h1>
             {pendingCount > 0 && (
               <span className="bg-[#1B4965] text-white text-xs font-bold px-2 py-0.5 rounded-full">{pendingCount}</span>
             )}
           </div>
-          <p className="text-sm text-gray-500 mt-0.5">Asigna y da seguimiento a tareas contables de tu equipo.</p>
+          <p className="text-sm text-gray-500 mt-0.5">{t('asignaciones.subtitle')}</p>
         </div>
-        {!isViewer && <button onClick={openNew} className="btn-primary">+ Nueva asignación</button>}
+        {!isViewer && <button onClick={openNew} className="btn-primary">{t('asignaciones.new')}</button>}
       </div>
 
       {/* Status filter */}
@@ -354,20 +358,20 @@ export default function AsignacionesPage() {
                 filterStatus === s ? 'bg-[#1B4965] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {s === 'all' ? 'Todas' : STATUS_LABELS[s]} ({count})
+              {s === 'all' ? t('asignaciones.filterAll') : t(STATUS_LABEL_KEYS[s])} ({count})
             </button>
           )
         })}
       </div>
 
       {loading ? (
-        <div className="card p-8 text-center text-gray-400 text-sm">Cargando...</div>
+        <div className="card p-8 text-center text-gray-400 text-sm">{t('asignaciones.loading')}</div>
       ) : filtered.length === 0 ? (
         <div className="card p-10 text-center">
           <div className="text-4xl mb-3">📋</div>
-          <p className="text-gray-600 font-medium">Sin asignaciones</p>
-          <p className="text-sm text-gray-400 mt-1">{isViewer ? 'No tienes asignaciones pendientes.' : 'Crea una asignación para empezar a delegar trabajo.'}</p>
-          {!isViewer && <button onClick={openNew} className="btn-primary mt-5">+ Nueva asignación</button>}
+          <p className="text-gray-600 font-medium">{t('asignaciones.empty')}</p>
+          <p className="text-sm text-gray-400 mt-1">{isViewer ? t('asignaciones.emptyViewer') : t('asignaciones.emptyEditor')}</p>
+          {!isViewer && <button onClick={openNew} className="btn-primary mt-5">{t('asignaciones.new')}</button>}
         </div>
       ) : (
         <div className="space-y-3">
@@ -390,7 +394,7 @@ export default function AsignacionesPage() {
                         />
                         {isOverdue && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
-                            ⚠ Vencida
+                            {t('asignaciones.overdue')}
                           </span>
                         )}
                         {a.dueDate && !isOverdue && (
@@ -407,11 +411,11 @@ export default function AsignacionesPage() {
                       <h3 className="font-semibold text-gray-800 mt-1.5">{a.title}</h3>
                       {a.description && <p className="text-sm text-gray-500 mt-0.5">{a.description}</p>}
                       <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 flex-wrap">
-                        <span>Por <strong className="text-gray-600">{a.createdBy.name || a.createdBy.email}</strong></span>
+                        <span>{t('asignaciones.byPrefix')} <strong className="text-gray-600">{a.createdBy.name || a.createdBy.email}</strong></span>
                         {a.assignedTo ? (
                           <span>→ <strong className="text-[#1B4965]">{a.assignedTo.name || a.assignedTo.email}</strong></span>
                         ) : (
-                          <span className="text-orange-500 font-medium">Sin asignar</span>
+                          <span className="text-orange-500 font-medium">{t('asignaciones.unassigned')}</span>
                         )}
                         <span>{new Date(a.createdAt).toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                       </div>
@@ -424,13 +428,13 @@ export default function AsignacionesPage() {
                         className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
                           isExpanded ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
-                        title="Ver / agregar notas"
+                        title={t('asignaciones.notesTooltip')}
                       >
-                        💬 Notas
+                        {t('asignaciones.notesToggle')}
                       </button>
                       {!isViewer && (
                         <>
-                          <button onClick={() => openEdit(a)} className="text-xs text-[#1B4965] hover:underline font-medium px-1">Editar</button>
+                          <button onClick={() => openEdit(a)} className="text-xs text-[#1B4965] hover:underline font-medium px-1">{t('asignaciones.edit')}</button>
                           <button onClick={() => deleteAssignment(a.id)} className="text-xs text-red-400 hover:text-red-600 font-medium px-1">✕</button>
                         </>
                       )}
@@ -458,37 +462,37 @@ export default function AsignacionesPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">{editId ? 'Editar asignación' : 'Nueva asignación'}</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">{editId ? t('asignaciones.editModalTitle') : t('asignaciones.newModalTitle')}</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Título *</label>
-                <input className="input w-full" placeholder="Título de la asignación" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('asignaciones.titleLabel')}</label>
+                <input className="input w-full" placeholder={t('asignaciones.titlePlaceholder')} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
-                <textarea className="input w-full min-h-[70px] resize-none" placeholder="Detalles de la tarea..." value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('asignaciones.descriptionLabel')}</label>
+                <textarea className="input w-full min-h-[70px] resize-none" placeholder={t('asignaciones.descriptionPlaceholder')} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Asignar a</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('asignaciones.assignToLabel')}</label>
                   <select className="input w-full" value={form.assignedToId} onChange={e => setForm(f => ({ ...f, assignedToId: e.target.value }))}>
-                    <option value="">Sin asignar</option>
-                    <option value={myId}>Yo mismo</option>
+                    <option value="">{t('asignaciones.unassigned')}</option>
+                    <option value={myId}>{t('asignaciones.myself')}</option>
                     {team.filter(m => m.id !== myId).map(m => (
                       <option key={m.id} value={m.id}>{m.name || m.email}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Fecha límite</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('asignaciones.dueDateLabel')}</label>
                   <input type="date" className="input w-full" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
                 </div>
               </div>
               {editId && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Estado</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('asignaciones.statusLabel')}</label>
                   <div className="flex gap-2 flex-wrap">
-                    {(Object.keys(STATUS_LABELS) as Status[]).map(s => (
+                    {(Object.keys(STATUS_LABEL_KEYS) as Status[]).map(s => (
                       <button
                         key={s}
                         type="button"
@@ -499,7 +503,7 @@ export default function AsignacionesPage() {
                             : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
                         }`}
                       >
-                        {STATUS_ICONS[s]} {STATUS_LABELS[s]}
+                        {STATUS_ICONS[s]} {t(STATUS_LABEL_KEYS[s])}
                       </button>
                     ))}
                   </div>
@@ -508,14 +512,14 @@ export default function AsignacionesPage() {
               {formError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{formError}</p>}
               {!editId && form.assignedToId && form.assignedToId !== myId && (
                 <div className="bg-blue-50 rounded-lg px-3 py-2.5">
-                  <p className="text-xs text-blue-700">📧 Se enviará un correo de notificación al usuario asignado.</p>
+                  <p className="text-xs text-blue-700">{t('asignaciones.notifyEmail')}</p>
                 </div>
               )}
             </div>
             <div className="flex gap-2 mt-5 justify-end">
-              <button onClick={() => setShowModal(false)} className="btn-secondary">Cancelar</button>
+              <button onClick={() => setShowModal(false)} className="btn-secondary">{t('common.cancel')}</button>
               <button onClick={save} disabled={saving} className="btn-primary disabled:opacity-50">
-                {saving ? 'Guardando...' : editId ? 'Guardar cambios' : 'Crear asignación'}
+                {saving ? t('asignaciones.saving') : editId ? t('asignaciones.saveChanges') : t('asignaciones.createBtn')}
               </button>
             </div>
           </div>
