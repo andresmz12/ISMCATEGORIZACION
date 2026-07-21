@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { useActiveBiz } from '@/lib/use-active-biz'
+import { useTranslation } from '@/lib/i18n'
 
 interface DocType {
   id: string
@@ -22,6 +23,7 @@ interface Doc {
 }
 
 export default function DocumentosPage() {
+  const { t } = useTranslation()
   const { activeBizId } = useActiveBiz()
   const [docTypes, setDocTypes] = useState<DocType[]>([])
   const [docs, setDocs] = useState<Doc[]>([])
@@ -76,7 +78,7 @@ export default function DocumentosPage() {
   }
 
   async function saveType() {
-    if (!typeForm.name.trim()) { setTypeError('El nombre es requerido'); return }
+    if (!typeForm.name.trim()) { setTypeError(t('documentos.nameRequired')); return }
     setTypeSaving(true)
     setTypeError('')
     const url = editTypeId ? `/api/documents/types/${editTypeId}` : '/api/documents/types'
@@ -89,7 +91,7 @@ export default function DocumentosPage() {
     setTypeSaving(false)
     if (!res.ok) {
       const d = await res.json()
-      setTypeError(d.error || 'Error al guardar')
+      setTypeError(d.error || t('documentos.saveTypeError'))
       return
     }
     setShowTypeModal(false)
@@ -97,16 +99,16 @@ export default function DocumentosPage() {
   }
 
   async function deleteType(id: string, name: string, count: number) {
-    if (count > 0 && !confirm(`Este tipo tiene ${count} documento(s). ¿Eliminar de todas formas? Los documentos también se eliminarán.`)) return
-    if (count === 0 && !confirm(`¿Eliminar el tipo "${name}"?`)) return
+    if (count > 0 && !confirm(t('documentos.deleteTypeConfirmWithDocs').replace('{n}', String(count)))) return
+    if (count === 0 && !confirm(t('documentos.deleteTypeConfirm').replace('{name}', name))) return
     await fetch(`/api/documents/types/${id}`, { method: 'DELETE' })
     loadAll()
   }
 
   // --- Document Upload ---
   async function upload() {
-    if (!uploadFile) { setUploadError('Selecciona un archivo'); return }
-    if (!uploadForm.documentTypeId) { setUploadError('Selecciona el tipo de documento'); return }
+    if (!uploadFile) { setUploadError(t('documentos.selectFile')); return }
+    if (!uploadForm.documentTypeId) { setUploadError(t('documentos.selectDocType')); return }
     setUploading(true)
     setUploadError('')
 
@@ -128,7 +130,7 @@ export default function DocumentosPage() {
       setUploading(false)
       if (!res.ok) {
         const d = await res.json()
-        setUploadError(d.error || 'Error al subir')
+        setUploadError(d.error || t('documentos.uploadError'))
         return
       }
       setShowUploadModal(false)
@@ -150,7 +152,7 @@ export default function DocumentosPage() {
   }
 
   async function deleteDoc(id: string) {
-    if (!confirm('¿Eliminar este documento?')) return
+    if (!confirm(t('documentos.deleteDocConfirm'))) return
     await fetch(`/api/documents/${id}`, { method: 'DELETE' })
     loadAll()
   }
@@ -160,7 +162,7 @@ export default function DocumentosPage() {
   if (!activeBizId) {
     return (
       <div className="card p-10 text-center text-gray-500">
-        Selecciona un negocio para ver sus documentos.
+        {t('documentos.selectBusiness')}
       </div>
     )
   }
@@ -169,12 +171,12 @@ export default function DocumentosPage() {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Documentos</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Gestiona los documentos del negocio: W-2, 1099, estados de cuenta y más.</p>
+          <h1 className="text-xl font-bold text-gray-900">{t('documentos.title')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t('documentos.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => { setShowUploadModal(true); setUploadError('') }} className="btn-primary">
-            + Subir documento
+            {t('documentos.uploadBtn')}
           </button>
         </div>
       </div>
@@ -191,36 +193,36 @@ export default function DocumentosPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {tab === 'archivos' ? 'Archivos subidos' : 'Tipos de documento'}
+            {tab === 'archivos' ? t('documentos.tabFiles') : t('documentos.tabTypes')}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="card p-8 text-center text-gray-400 text-sm">Cargando...</div>
+        <div className="card p-8 text-center text-gray-400 text-sm">{t('common.loading')}</div>
       ) : activeTab === 'tipos' ? (
         /* --- TIPOS DE DOCUMENTO --- */
         <div className="space-y-4">
           <div className="flex justify-end">
-            <button onClick={openNewType} className="btn-secondary text-sm">+ Nuevo tipo</button>
+            <button onClick={openNewType} className="btn-secondary text-sm">{t('documentos.newType')}</button>
           </div>
           {docTypes.length === 0 ? (
             <div className="card p-10 text-center">
               <div className="text-4xl mb-3">📁</div>
-              <p className="text-gray-600 font-medium">Sin tipos de documento</p>
-              <p className="text-sm text-gray-400 mt-1">Crea tipos como "W-2", "1099", "Estado de cuenta", etc.</p>
-              <button onClick={openNewType} className="btn-primary mt-5">+ Crear primer tipo</button>
+              <p className="text-gray-600 font-medium">{t('documentos.noTypes')}</p>
+              <p className="text-sm text-gray-400 mt-1">{t('documentos.noTypesHint')}</p>
+              <button onClick={openNewType} className="btn-primary mt-5">{t('documentos.createFirstType')}</button>
             </div>
           ) : (
             <div className="card overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Nombre</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Descripción</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Requerido</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Archivos</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Acciones</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('cat.name')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">{t('tx.description')}</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">{t('common.required')}</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">{t('documentos.colFiles')}</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -230,14 +232,14 @@ export default function DocumentosPage() {
                       <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">{dt.description || '—'}</td>
                       <td className="px-4 py-3 text-center">
                         {dt.required
-                          ? <span className="text-xs font-medium bg-red-50 text-red-600 px-2 py-0.5 rounded-full">Sí</span>
-                          : <span className="text-xs text-gray-400">No</span>}
+                          ? <span className="text-xs font-medium bg-red-50 text-red-600 px-2 py-0.5 rounded-full">{t('common.yes')}</span>
+                          : <span className="text-xs text-gray-400">{t('common.no')}</span>}
                       </td>
                       <td className="px-4 py-3 text-center text-gray-600">{dt._count.documents}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-3">
-                          <button onClick={() => openEditType(dt)} className="text-xs text-[#1B4965] hover:underline font-medium">Editar</button>
-                          <button onClick={() => deleteType(dt.id, dt.name, dt._count.documents)} className="text-xs text-red-500 hover:text-red-700 font-medium">Eliminar</button>
+                          <button onClick={() => openEditType(dt)} className="text-xs text-[#1B4965] hover:underline font-medium">{t('common.edit')}</button>
+                          <button onClick={() => deleteType(dt.id, dt.name, dt._count.documents)} className="text-xs text-red-500 hover:text-red-700 font-medium">{t('common.delete')}</button>
                         </div>
                       </td>
                     </tr>
@@ -257,7 +259,7 @@ export default function DocumentosPage() {
                 onClick={() => setFilterTypeId('all')}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${filterTypeId === 'all' ? 'bg-[#1B4965] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
               >
-                Todos ({docs.length})
+                {t('documentos.allCount').replace('{n}', String(docs.length))}
               </button>
               {docTypes.map(dt => (
                 <button
@@ -275,19 +277,19 @@ export default function DocumentosPage() {
           {filteredDocs.length === 0 ? (
             <div className="card p-10 text-center">
               <div className="text-4xl mb-3">📄</div>
-              <p className="text-gray-600 font-medium">Sin documentos</p>
-              <p className="text-sm text-gray-400 mt-1">Sube el primer documento con el botón de arriba.</p>
+              <p className="text-gray-600 font-medium">{t('documentos.noDocs')}</p>
+              <p className="text-sm text-gray-400 mt-1">{t('documentos.noDocsHint')}</p>
             </div>
           ) : (
             <div className="card overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Archivo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Tipo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Subido por</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden md:table-cell">Fecha</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Acciones</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('documentos.colFile')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{t('tx.type')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">{t('documentos.colUploadedBy')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase hidden md:table-cell">{t('tx.date')}</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -309,8 +311,8 @@ export default function DocumentosPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-3">
-                          <button onClick={() => downloadDoc(doc.id, doc.filename)} className="text-xs text-[#1B4965] hover:underline font-medium">Descargar</button>
-                          <button onClick={() => deleteDoc(doc.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">Eliminar</button>
+                          <button onClick={() => downloadDoc(doc.id, doc.filename)} className="text-xs text-[#1B4965] hover:underline font-medium">{t('documentos.download')}</button>
+                          <button onClick={() => deleteDoc(doc.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">{t('common.delete')}</button>
                         </div>
                       </td>
                     </tr>
@@ -326,26 +328,26 @@ export default function DocumentosPage() {
       {showTypeModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">{editTypeId ? 'Editar tipo' : 'Nuevo tipo de documento'}</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">{editTypeId ? t('documentos.editTypeTitle') : t('documentos.newTypeTitle')}</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
-                <input className="input w-full" placeholder="Nombre del tipo de documento" value={typeForm.name} onChange={e => setTypeForm(f => ({ ...f, name: e.target.value }))} />
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('documentos.nameLabel')}</label>
+                <input className="input w-full" placeholder={t('documentos.namePlaceholder')} value={typeForm.name} onChange={e => setTypeForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Descripción (opcional)</label>
-                <input className="input w-full" placeholder="Descripción" value={typeForm.description} onChange={e => setTypeForm(f => ({ ...f, description: e.target.value }))} />
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('documentos.descriptionOptionalLabel')}</label>
+                <input className="input w-full" placeholder={t('tx.description')} value={typeForm.description} onChange={e => setTypeForm(f => ({ ...f, description: e.target.value }))} />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={typeForm.required} onChange={e => setTypeForm(f => ({ ...f, required: e.target.checked }))} className="rounded" />
-                <span className="text-sm text-gray-700">Documento requerido</span>
+                <span className="text-sm text-gray-700">{t('documentos.requiredCheckbox')}</span>
               </label>
               {typeError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{typeError}</p>}
             </div>
             <div className="flex gap-2 mt-5 justify-end">
-              <button onClick={() => setShowTypeModal(false)} className="btn-secondary">Cancelar</button>
+              <button onClick={() => setShowTypeModal(false)} className="btn-secondary">{t('common.cancel')}</button>
               <button onClick={saveType} disabled={typeSaving} className="btn-primary disabled:opacity-50">
-                {typeSaving ? 'Guardando...' : 'Guardar'}
+                {typeSaving ? t('common.saving') : t('common.save')}
               </button>
             </div>
           </div>
@@ -356,41 +358,41 @@ export default function DocumentosPage() {
       {showUploadModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Subir documento</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">{t('documentos.uploadModalTitle')}</h3>
             {docTypes.length === 0 ? (
               <div className="text-center py-6">
-                <p className="text-gray-500 text-sm">Primero crea al menos un tipo de documento.</p>
+                <p className="text-gray-500 text-sm">{t('documentos.needTypeFirst')}</p>
                 <button onClick={() => { setShowUploadModal(false); setActiveTab('tipos'); openNewType() }} className="btn-primary mt-4">
-                  Crear tipo de documento
+                  {t('documentos.createTypeBtn')}
                 </button>
               </div>
             ) : (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Tipo de documento *</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('documentos.typeLabel')}</label>
                   <select className="input w-full" value={uploadForm.documentTypeId} onChange={e => setUploadForm(f => ({ ...f, documentTypeId: e.target.value }))}>
-                    <option value="">Seleccionar...</option>
+                    <option value="">{t('documentos.selectPlaceholder')}</option>
                     {docTypes.map(dt => <option key={dt.id} value={dt.id}>{dt.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Archivo *</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('documentos.fileLabel')}</label>
                   <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv" className="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#1B4965] file:text-white hover:file:bg-[#163d52] cursor-pointer"
                     onChange={e => setUploadFile(e.target.files?.[0] || null)} />
-                  <p className="text-xs text-gray-400 mt-1">PDF, imágenes, Word, Excel — máx. 10 MB</p>
+                  <p className="text-xs text-gray-400 mt-1">{t('documentos.fileHint')}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Notas (opcional)</label>
-                  <input className="input w-full" placeholder="Notas" value={uploadForm.notes} onChange={e => setUploadForm(f => ({ ...f, notes: e.target.value }))} />
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{t('documentos.notesOptionalLabel')}</label>
+                  <input className="input w-full" placeholder={t('documentos.notesPlaceholder')} value={uploadForm.notes} onChange={e => setUploadForm(f => ({ ...f, notes: e.target.value }))} />
                 </div>
                 {uploadError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{uploadError}</p>}
               </div>
             )}
             {docTypes.length > 0 && (
               <div className="flex gap-2 mt-5 justify-end">
-                <button onClick={() => { setShowUploadModal(false); setUploadFile(null) }} className="btn-secondary">Cancelar</button>
+                <button onClick={() => { setShowUploadModal(false); setUploadFile(null) }} className="btn-secondary">{t('common.cancel')}</button>
                 <button onClick={upload} disabled={uploading} className="btn-primary disabled:opacity-50">
-                  {uploading ? 'Subiendo...' : 'Subir'}
+                  {uploading ? t('documentos.uploading') : t('documentos.uploadSubmitBtn')}
                 </button>
               </div>
             )}
