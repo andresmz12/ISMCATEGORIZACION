@@ -28,6 +28,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin', label: t('nav.accounts'), icon: '👥' },
     { href: '/admin/categorias', label: 'Categorías', icon: '🏷️' },
     { href: '/admin/negocios', label: 'Negocios', icon: '🏢' },
+    { href: '/admin/contratos', label: 'Contratos', icon: '✍️' },
     { href: '/admin/plans', label: t('nav.plans'), icon: '📋' },
     { href: '/admin/logs', label: t('nav.logs'), icon: '📄' },
   ]

@@ -129,6 +129,8 @@ model User {
   assignmentsAssigned Assignment[] @relation("AssignedTo")
   assignmentsCreated  Assignment[] @relation("CreatedBy")
   assignmentNotes     AssignmentNote[]
+  contractsCreated       Contract[] @relation("ContractCreatedBy")
+  contractsCounterSigned Contract[] @relation("ContractCounterSignedBy")
 
   @@index([accountId])
 }
@@ -413,4 +415,111 @@ model PlaidAccount {
   connection   PlaidConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@unique([connectionId, plaidId])
+}
+
+enum ContractStatus {
+  SENT          // draft generated, waiting on the client's public-link signature
+  CLIENT_SIGNED // client signed; waiting on staff countersignature
+  COMPLETED     // both signatures present, final PDF + hash generated
+}
+
+// A service agreement between "El Proveedor" (this platform's own operating
+// company, see ContractSettings) and "El Cliente" (an external company —
+// deliberately NOT a foreign key to Business, since contracts are often sent
+// before the client has any account here). Signing is sequential: the client
+// signs first via the public /sign/[signToken] link, then staff countersigns
+// from the admin panel. The PDF is fully regenerated (not patched) at each
+// status transition, so every field needed to render it lives on this row.
+model Contract {
+  id     String         @id @default(cuid())
+  status ContractStatus @default(SENT)
+
+  // signToken is the entire authorization for the public /sign/[token] route
+  // — there is no other credential check on that path, so it must be
+  // unguessable and never logged or echoed back in list endpoints.
+  signToken String @unique @default(uuid())
+
+  createdById String
+  createdBy   User   @relation("ContractCreatedBy", fields: [createdById], references: [id])
+
+  // Client company data. Nullable because the admin may not know all of it
+  // yet when the contract is first created — the client fills in whatever is
+  // missing on their own signing screen.
+  clientCompanyName String?
+  clientAddress     String?
+  clientState       String?
+  clientEmail       String?
+
+  // Client's signature. Stored here (not only baked into the PDF) because the
+  // countersignature step regenerates the PDF from scratch and needs to draw
+  // both signatures — there would be no way to recover the client's mark
+  // otherwise.
+  clientFirstName String?
+  clientLastName  String?
+  clientSignature String?   @db.Text // PNG, base64 data URL
+  clientSignedAt  DateTime?
+  clientSignedIp  String?
+
+  // Provider (staff) countersignature.
+  providerFirstName   String?
+  providerLastName    String?
+  providerSignature   String?   @db.Text // PNG, base64 data URL
+  providerSignedAt    DateTime?
+  providerSignedById  String?
+  providerSignedBy    User?     @relation("ContractCounterSignedBy", fields: [providerSignedById], references: [id])
+
+  // Variable terms dropped into the legal text.
+  servicesScope    String?   @db.Text
+  monthlyFeeCents  Int?
+  startDate        DateTime?
+  additionalTerms  String?   @db.Text
+
+  // PDF versions. No object storage is configured for this app (uploaded
+  // Documents already store bytes as base64 in Postgres, see Document.data),
+  // so contract PDFs follow the same convention rather than introducing a
+  // second storage mechanism for one feature.
+  pdfData      String? @db.Text // current draft/working version, base64
+  finalPdfData String? @db.Text // both signatures present, base64
+  pdfHash      String? // SHA-256 of finalPdfData, for integrity verification
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stores ContractStore[]
+
+  @@index([status])
+  @@index([createdById])
+}
+
+// A contract can cover more than one client location (store, branch, site).
+// Free-text rather than a foreign key, matching Contract's own client fields
+// — there's no existing "location" model these could point to.
+model ContractStore {
+  id         String   @id @default(cuid())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  name       String
+  address    String?
+  createdAt  DateTime @default(now())
+
+  @@index([contractId])
+}
+
+// Single-row table (id is always 1) holding the Proveedor's own fixed data —
+// editable from the admin UI instead of environment variables, so changing
+// the business address doesn't require a redeploy.
+model ContractSettings {
+  id                  Int      @id @default(1)
+  providerCompanyName String?
+  providerAddress     String?
+  providerCity        String?
+  providerState       String?
+  providerZip         String?
+  providerEmail       String?
+  providerPhone       String?
+  providerTaxId       String?
+  // Internal address notified when a client finishes signing and a contract
+  // is ready to be countersigned. Falls back to the creator's email when unset.
+  notifyEmail         String?
+  updatedAt           DateTime @updatedAt
 }

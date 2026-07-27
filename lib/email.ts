@@ -120,3 +120,119 @@ export async function sendWelcomeEmail(opts: {
   })
   if (response.statusCode >= 400) console.error('[email] SendGrid welcome email failed:', response.statusCode)
 }
+
+export async function sendContractSignRequestEmail(opts: {
+  to: string
+  signUrl: string
+  providerCompanyName: string
+}) {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.warn('[email] SENDGRID_API_KEY not configured, skipping contract sign-request email')
+    return
+  }
+
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+  const from = process.env.SENDGRID_FROM || 'noreply@myprofitandloss.com'
+  const providerCompanyName = escapeHtml(opts.providerCompanyName)
+
+  const [response] = await sgMail.send({
+    from: { email: from, name: 'My Profit & Loss' },
+    to: opts.to,
+    subject: `Contrato de servicios de ${providerCompanyName} — firma requerida`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+        <div style="background:#1B4965;padding:24px 32px;border-radius:8px 8px 0 0">
+          <h1 style="color:#fff;font-size:20px;margin:0">My Profit &amp; Loss</h1>
+        </div>
+        <div style="background:#f8fafc;padding:32px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;border-top:none">
+          <p style="color:#334155;font-size:16px">Hola,</p>
+          <p style="color:#475569"><strong>${providerCompanyName}</strong> te ha enviado un contrato de servicios para firmar electrónicamente.</p>
+          <a href="${opts.signUrl}"
+             style="display:inline-block;background:#1B4965;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;margin-top:8px">
+            Revisar y firmar contrato
+          </a>
+          <p style="color:#94a3b8;font-size:12px;margin-top:20px">Si no esperabas este correo, puedes ignorarlo.</p>
+        </div>
+      </div>
+    `,
+  })
+  if (response.statusCode >= 400) console.error('[email] SendGrid contract sign-request email failed:', response.statusCode)
+}
+
+export async function sendContractReadyForCountersignEmail(opts: {
+  to: string
+  contractId: string
+  clientCompanyName: string
+  panelUrl: string
+}) {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.warn('[email] SENDGRID_API_KEY not configured, skipping contract countersign-ready email')
+    return
+  }
+
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+  const from = process.env.SENDGRID_FROM || 'noreply@myprofitandloss.com'
+  const clientCompanyName = escapeHtml(opts.clientCompanyName || 'Cliente')
+
+  const [response] = await sgMail.send({
+    from: { email: from, name: 'My Profit & Loss' },
+    to: opts.to,
+    subject: `Contrato firmado por ${clientCompanyName} — falta tu contrafirma`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+        <div style="background:#1B4965;padding:24px 32px;border-radius:8px 8px 0 0">
+          <h1 style="color:#fff;font-size:20px;margin:0">My Profit &amp; Loss</h1>
+        </div>
+        <div style="background:#f8fafc;padding:32px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;border-top:none">
+          <p style="color:#475569"><strong>${clientCompanyName}</strong> ya firmó el contrato #${opts.contractId}. Está listo para tu contrafirma.</p>
+          <a href="${opts.panelUrl}"
+             style="display:inline-block;background:#1B4965;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;margin-top:8px">
+            Ir al contrato
+          </a>
+        </div>
+      </div>
+    `,
+  })
+  if (response.statusCode >= 400) console.error('[email] SendGrid contract countersign-ready email failed:', response.statusCode)
+}
+
+export async function sendContractCompletedEmail(opts: {
+  to: string
+  contractId: string
+  providerCompanyName: string
+  finalPdfBase64: string // raw base64, no data: prefix
+}) {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.warn('[email] SENDGRID_API_KEY not configured, skipping contract completed email')
+    return
+  }
+
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+  const from = process.env.SENDGRID_FROM || 'noreply@myprofitandloss.com'
+  const providerCompanyName = escapeHtml(opts.providerCompanyName)
+
+  const [response] = await sgMail.send({
+    from: { email: from, name: 'My Profit & Loss' },
+    to: opts.to,
+    subject: `Tu contrato con ${providerCompanyName} está completo`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+        <div style="background:#1B4965;padding:24px 32px;border-radius:8px 8px 0 0">
+          <h1 style="color:#fff;font-size:20px;margin:0">My Profit &amp; Loss</h1>
+        </div>
+        <div style="background:#f8fafc;padding:32px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;border-top:none">
+          <p style="color:#475569">El contrato quedó firmado por ambas partes. Adjuntamos la copia final en PDF.</p>
+        </div>
+      </div>
+    `,
+    attachments: [
+      {
+        content: opts.finalPdfBase64,
+        filename: `contrato-${opts.contractId}.pdf`,
+        type: 'application/pdf',
+        disposition: 'attachment',
+      },
+    ],
+  })
+  if (response.statusCode >= 400) console.error('[email] SendGrid contract completed email failed:', response.statusCode)
+}
