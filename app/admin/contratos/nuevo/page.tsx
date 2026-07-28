@@ -4,9 +4,6 @@ import { useRouter } from 'next/navigation'
 
 export default function NewContractPage() {
   const router = useRouter()
-  const [clientCompanyName, setClientCompanyName] = useState('')
-  const [clientAddress, setClientAddress] = useState('')
-  const [clientState, setClientState] = useState('')
   const [clientEmail, setClientEmail] = useState('')
   const [monthlyFee, setMonthlyFee] = useState('')
   const [paymentDueDay, setPaymentDueDay] = useState('')
@@ -22,9 +19,6 @@ export default function NewContractPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clientCompanyName,
-          clientAddress,
-          clientState,
           clientEmail,
           monthlyFeeCents: monthlyFee ? Math.round(parseFloat(monthlyFee) * 100) : null,
           paymentDueDay: paymentDueDay ? parseInt(paymentDueDay, 10) : null,
@@ -46,7 +40,7 @@ export default function NewContractPage() {
         <div className="card p-8 text-center space-y-4">
           <p className="text-2xl">✓</p>
           <p className="font-semibold text-gray-900">Contrato creado</p>
-          <p className="text-sm text-gray-500">Se envió un correo a {clientEmail} con el enlace de firma y el PDF adjunto.</p>
+          <p className="text-sm text-gray-500">Se envió un correo a {clientEmail} con el enlace de firma y el PDF adjunto. El cliente completa sus propios datos (empresa, dirección, estado) al abrirlo.</p>
           <input readOnly className="input text-xs" value={result.signUrl} onClick={e => (e.target as HTMLInputElement).select()} />
           <button className="btn-primary" onClick={() => router.push('/admin/contratos')}>Ver contratos</button>
         </div>
@@ -58,28 +52,19 @@ export default function NewContractPage() {
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Nuevo contrato</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Contrato de Servicio de Software "MyProfitandLoss". El texto legal es fijo — solo se completan los datos del cliente y el precio.</p>
+        <p className="text-sm text-gray-500 mt-0.5">
+          Contrato de Servicio de Software "MyProfitandLoss". El texto legal es fijo. Solo necesitas el email del
+          cliente y los términos de precio — el cliente completa su propia empresa, dirección y estado al abrir el
+          enlace de firma.
+        </p>
       </div>
 
       <div className="card p-6 space-y-4">
-        <h2 className="section-title">Datos del cliente (opcional — se le pedirá lo que falte al firmar)</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label">Empresa</label>
-            <input className="input" value={clientCompanyName} onChange={e => setClientCompanyName(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Estado</label>
-            <input className="input" value={clientState} onChange={e => setClientState(e.target.value)} />
-          </div>
-          <div className="col-span-2">
-            <label className="label">Dirección</label>
-            <input className="input" value={clientAddress} onChange={e => setClientAddress(e.target.value)} />
-          </div>
-          <div className="col-span-2">
-            <label className="label">Email *</label>
-            <input type="email" required className="input" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
-          </div>
+        <h2 className="section-title">Cliente</h2>
+        <div>
+          <label className="label">Email *</label>
+          <input type="email" required className="input" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="cliente@empresa.com" />
+          <p className="text-xs text-gray-400 mt-1">A este correo se le envía el enlace de firma y el PDF del contrato.</p>
         </div>
       </div>
 
