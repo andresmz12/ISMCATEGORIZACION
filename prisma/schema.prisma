@@ -445,9 +445,18 @@ model Contract {
   createdById String
   createdBy   User   @relation("ContractCreatedBy", fields: [createdById], references: [id])
 
+  // Snapshot of ContractSettings taken at creation time — deliberately NOT
+  // re-read from ContractSettings on every render. If the Proveedor's
+  // address changes later, contracts already generated must keep showing
+  // the address that was actually in effect when they were sent.
+  providerCompanyNameSnapshot String?
+  providerAddressSnapshot     String?
+
   // Client company data. Nullable because the admin may not know all of it
   // yet when the contract is first created — the client fills in whatever is
-  // missing on their own signing screen.
+  // missing on their own signing screen. clientEmail is the one exception:
+  // it's required at creation (enforced in the API, not here) since it's
+  // how the signing link and every subsequent notification get delivered.
   clientCompanyName String?
   clientAddress     String?
   clientState       String?
@@ -473,9 +482,10 @@ model Contract {
 
   // §3 PRECIO Y FORMA DE PAGO — the only two variable terms in the price
   // clause: the monthly subscription amount and the day of the month it's
-  // due ("a más tardar el día ___ de cada mes").
+  // due ("a más tardar el día ___ de cada mes"). Capped at 28 so it's a
+  // real calendar day in every month, not just the ones with 29-31 days.
   monthlyFeeCents Int?
-  paymentDueDay   Int? // 1-31
+  paymentDueDay   Int? // 1-28
 
   // PDF versions. No object storage is configured for this app (uploaded
   // Documents already store bytes as base64 in Postgres, see Document.data),
@@ -505,6 +515,18 @@ model ContractSettings {
   providerEmail       String?
   providerPhone       String?
   providerTaxId       String?
+
+  // A saved, reusable Proveedor signature. When both of these are present,
+  // the client's own signature auto-completes the contract in the same
+  // request (both signatures get stamped and the final PDF is emailed
+  // immediately) instead of waiting on a staff member to countersign
+  // manually. Only PUT-ing a freshly-drawn signature updates
+  // providerSignatureDataUrl — saving other settings fields (e.g. just the
+  // address) must never clear it.
+  providerSignerFirstName String?
+  providerSignerLastName  String?
+  providerSignatureDataUrl String? @db.Text // PNG, base64 data URL
+
   // Internal address notified when a client finishes signing and a contract
   // is ready to be countersigned. Falls back to the creator's email when unset.
   notifyEmail         String?

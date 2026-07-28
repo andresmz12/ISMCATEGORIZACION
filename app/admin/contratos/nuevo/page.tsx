@@ -46,11 +46,7 @@ export default function NewContractPage() {
         <div className="card p-8 text-center space-y-4">
           <p className="text-2xl">✓</p>
           <p className="font-semibold text-gray-900">Contrato creado</p>
-          {clientEmail ? (
-            <p className="text-sm text-gray-500">Se envió un correo a {clientEmail} con el enlace de firma.</p>
-          ) : (
-            <p className="text-sm text-gray-500">No se envió correo (sin email de cliente). Comparte este enlace manualmente:</p>
-          )}
+          <p className="text-sm text-gray-500">Se envió un correo a {clientEmail} con el enlace de firma y el PDF adjunto.</p>
           <input readOnly className="input text-xs" value={result.signUrl} onClick={e => (e.target as HTMLInputElement).select()} />
           <button className="btn-primary" onClick={() => router.push('/admin/contratos')}>Ver contratos</button>
         </div>
@@ -81,8 +77,8 @@ export default function NewContractPage() {
             <input className="input" value={clientAddress} onChange={e => setClientAddress(e.target.value)} />
           </div>
           <div className="col-span-2">
-            <label className="label">Email (si lo tienes, se le enviará el enlace automáticamente)</label>
-            <input type="email" className="input" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+            <label className="label">Email *</label>
+            <input type="email" required className="input" value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
           </div>
         </div>
       </div>
@@ -95,15 +91,15 @@ export default function NewContractPage() {
             <input type="number" step="0.01" className="input" value={monthlyFee} onChange={e => setMonthlyFee(e.target.value)} />
           </div>
           <div>
-            <label className="label">Día de pago de cada mes (1-31)</label>
-            <input type="number" min={1} max={31} className="input" value={paymentDueDay} onChange={e => setPaymentDueDay(e.target.value)} />
+            <label className="label">Día de pago de cada mes (1-28)</label>
+            <input type="number" min={1} max={28} className="input" value={paymentDueDay} onChange={e => setPaymentDueDay(e.target.value)} />
           </div>
         </div>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <button className="btn-primary w-full" disabled={saving} onClick={handleSubmit}>
+      <button className="btn-primary w-full" disabled={saving || !clientEmail.trim()} onClick={handleSubmit}>
         {saving ? 'Creando...' : 'Crear y enviar contrato'}
       </button>
     </div>

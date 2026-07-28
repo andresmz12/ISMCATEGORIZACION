@@ -118,8 +118,11 @@ export default function SignContractPage({ params }: { params: { token: string }
           </div>
         ) : (
           <>
-            <div className="card p-0 overflow-hidden">
-              <iframe src={`/api/contracts/sign/${params.token}/pdf`} className="w-full" style={{ height: 500 }} title="Contrato" />
+            <div className="card p-4 flex items-center justify-between">
+              <p className="text-sm text-gray-600">Revisa el contrato antes de firmarlo.</p>
+              <a href={`/api/contracts/sign/${params.token}/pdf`} target="_blank" rel="noreferrer" className="btn-secondary">
+                Ver el contrato → Abrir en pestaña nueva
+              </a>
             </div>
 
             <div className="card p-6 space-y-4">

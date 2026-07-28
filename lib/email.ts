@@ -125,6 +125,9 @@ export async function sendContractSignRequestEmail(opts: {
   to: string
   signUrl: string
   providerCompanyName: string
+  contractId: string
+  pdfBase64?: string // raw base64, no data: prefix — attaches the current draft if provided
+  isResend?: boolean
 }) {
   if (!process.env.SENDGRID_API_KEY) {
     console.warn('[email] SENDGRID_API_KEY not configured, skipping contract sign-request email')
@@ -138,7 +141,7 @@ export async function sendContractSignRequestEmail(opts: {
   const [response] = await sgMail.send({
     from: { email: from, name: 'My Profit & Loss' },
     to: opts.to,
-    subject: `Contrato de servicios de ${providerCompanyName} — firma requerida`,
+    subject: `${opts.isResend ? 'Recordatorio: ' : ''}Contrato de servicios de ${providerCompanyName} — firma requerida`,
     html: `
       <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
         <div style="background:#1B4965;padding:24px 32px;border-radius:8px 8px 0 0">
@@ -146,7 +149,7 @@ export async function sendContractSignRequestEmail(opts: {
         </div>
         <div style="background:#f8fafc;padding:32px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;border-top:none">
           <p style="color:#334155;font-size:16px">Hola,</p>
-          <p style="color:#475569"><strong>${providerCompanyName}</strong> te ha enviado un contrato de servicios para firmar electrónicamente.</p>
+          <p style="color:#475569"><strong>${providerCompanyName}</strong> te ha enviado un contrato de servicios para firmar electrónicamente. Adjuntamos una copia en PDF.</p>
           <a href="${opts.signUrl}"
              style="display:inline-block;background:#1B4965;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;margin-top:8px">
             Revisar y firmar contrato
@@ -155,6 +158,16 @@ export async function sendContractSignRequestEmail(opts: {
         </div>
       </div>
     `,
+    attachments: opts.pdfBase64
+      ? [
+          {
+            content: opts.pdfBase64,
+            filename: `contrato-${opts.contractId}.pdf`,
+            type: 'application/pdf',
+            disposition: 'attachment',
+          },
+        ]
+      : undefined,
   })
   if (response.statusCode >= 400) console.error('[email] SendGrid contract sign-request email failed:', response.statusCode)
 }

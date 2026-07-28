@@ -61,15 +61,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const contract = await prisma.contract.findUniqueOrThrow({
     where: { id: params.id },
-    select: { finalPdfData: true, clientEmail: true, pdfHash: true },
+    select: { finalPdfData: true, clientEmail: true, pdfHash: true, providerCompanyNameSnapshot: true },
   })
-  const settings = await prisma.contractSettings.findUnique({ where: { id: 1 } })
 
   if (contract.clientEmail && contract.finalPdfData) {
     await sendContractCompletedEmail({
       to: contract.clientEmail,
       contractId: params.id,
-      providerCompanyName: settings?.providerCompanyName || 'nuestra empresa',
+      providerCompanyName: contract.providerCompanyNameSnapshot || 'nuestra empresa',
       finalPdfBase64: contract.finalPdfData,
     })
   }

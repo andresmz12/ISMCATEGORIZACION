@@ -2,14 +2,18 @@ import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { renderContractPdf, pdfToBase64, type ContractPdfData } from '@/lib/contract-pdf'
 
-async function getSettings() {
+export async function getContractSettings() {
   return prisma.contractSettings.findUnique({ where: { id: 1 } })
 }
 
-function toPdfData(
-  contract: NonNullable<Awaited<ReturnType<typeof prisma.contract.findUnique>>>,
-  settings: Awaited<ReturnType<typeof getSettings>>
-): ContractPdfData {
+// True once the Proveedor has a saved signature + signer name to reuse —
+// the signal that lets a client's own signature auto-complete a contract
+// instead of waiting on a staff countersignature.
+export function hasReusableProviderSignature(settings: Awaited<ReturnType<typeof getContractSettings>>): boolean {
+  return !!(settings?.providerSignatureDataUrl && settings?.providerSignerFirstName?.trim() && settings?.providerSignerLastName?.trim())
+}
+
+function toPdfData(contract: NonNullable<Awaited<ReturnType<typeof prisma.contract.findUnique>>>): ContractPdfData {
   return {
     id: contract.id,
     clientCompanyName: contract.clientCompanyName,
@@ -25,27 +29,26 @@ function toPdfData(
     providerSignedAt: contract.providerSignedAt,
     monthlyFeeCents: contract.monthlyFeeCents,
     paymentDueDay: contract.paymentDueDay,
-    settings: settings
-      ? {
-          providerCompanyName: settings.providerCompanyName,
-          providerAddress: settings.providerAddress,
-        }
-      : null,
+    // Uses the snapshot taken at creation time, not a live ContractSettings
+    // lookup — a later address change must not retroactively alter contracts
+    // that were already sent out.
+    settings: {
+      providerCompanyName: contract.providerCompanyNameSnapshot,
+      providerAddress: contract.providerAddressSnapshot,
+    },
   }
 }
 
 // Regenerates the contract PDF from the current DB row and persists it —
-// called after creation, after the client signs, and after countersigning.
-// `final` also writes finalPdfData + a SHA-256 integrity hash; it's kept
-// separate from pdfData (the always-current draft/working copy) so the
-// pre-signature version stays available even after completion.
+// called after creation, after the client signs, and after countersigning
+// (manual or auto-complete). `final` also writes finalPdfData + a SHA-256
+// integrity hash; kept separate from pdfData (the always-current
+// draft/working copy) so the pre-signature version stays available even
+// after completion.
 export async function regenerateContractPdf(contractId: string, opts: { final: boolean }) {
-  const [contract, settings] = await Promise.all([
-    prisma.contract.findUniqueOrThrow({ where: { id: contractId } }),
-    getSettings(),
-  ])
+  const contract = await prisma.contract.findUniqueOrThrow({ where: { id: contractId } })
 
-  const doc = renderContractPdf(toPdfData(contract, settings))
+  const doc = renderContractPdf(toPdfData(contract))
   const base64 = pdfToBase64(doc)
 
   const data: { pdfData: string; finalPdfData?: string; pdfHash?: string } = { pdfData: base64 }
@@ -59,7 +62,7 @@ export async function regenerateContractPdf(contractId: string, opts: { final: b
 }
 
 export async function requireProviderSettings() {
-  const settings = await getSettings()
+  const settings = await getContractSettings()
   if (!settings?.providerCompanyName?.trim() || !settings?.providerAddress?.trim()) {
     return null
   }

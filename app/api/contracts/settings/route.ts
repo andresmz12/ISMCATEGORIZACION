@@ -27,32 +27,48 @@ export async function GET() {
       providerEmail: null,
       providerPhone: null,
       providerTaxId: null,
+      providerSignerFirstName: null,
+      providerSignerLastName: null,
+      providerSignatureDataUrl: null,
       notifyEmail: null,
     }
   )
 }
+
+const TEXT_FIELDS = [
+  'providerCompanyName',
+  'providerAddress',
+  'providerCity',
+  'providerState',
+  'providerZip',
+  'providerEmail',
+  'providerPhone',
+  'providerTaxId',
+  'providerSignerFirstName',
+  'providerSignerLastName',
+  'notifyEmail',
+] as const
 
 export async function PUT(req: Request) {
   const session = await requireSuperadmin()
   if (!session) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
-  const fields = [
-    'providerCompanyName',
-    'providerAddress',
-    'providerCity',
-    'providerState',
-    'providerZip',
-    'providerEmail',
-    'providerPhone',
-    'providerTaxId',
-    'notifyEmail',
-  ] as const
 
   const data: Record<string, string | null> = {}
-  for (const f of fields) {
+  for (const f of TEXT_FIELDS) {
     const v = body[f]
     data[f] = typeof v === 'string' && v.trim() ? sanitizeString(v, 300) : null
+  }
+
+  // The signature is only ever replaced when the admin actually redrew it —
+  // saving the rest of the form (e.g. just the address) must not wipe out a
+  // signature that's already on file, since it's meant to be drawn once and
+  // reused across every contract.
+  if (typeof body.providerSignatureDataUrl === 'string' && body.providerSignatureDataUrl.startsWith('data:image/')) {
+    data.providerSignatureDataUrl = body.providerSignatureDataUrl
+  } else if (body.providerSignatureDataUrl === null) {
+    data.providerSignatureDataUrl = null // explicit "cambiar firma" clear
   }
 
   if (data.providerEmail && !validateEmail(data.providerEmail)) {

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sanitizeString, validateEmail, getClientIp } from '@/lib/validate'
-import { regenerateContractPdf } from '@/lib/contract-service'
-import { sendContractReadyForCountersignEmail } from '@/lib/email'
+import { regenerateContractPdf, getContractSettings, hasReusableProviderSignature } from '@/lib/contract-service'
+import { sendContractReadyForCountersignEmail, sendContractCompletedEmail } from '@/lib/email'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { logAudit } from '@/lib/audit'
 
@@ -14,8 +14,6 @@ export async function GET(req: Request, { params }: { params: { token: string } 
   const contract = await prisma.contract.findUnique({ where: { signToken: params.token } })
   if (!contract) return NextResponse.json({ error: 'Enlace inválido' }, { status: 404 })
 
-  const settings = await prisma.contractSettings.findUnique({ where: { id: 1 } })
-
   return NextResponse.json({
     id: contract.id,
     status: contract.status,
@@ -26,7 +24,7 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     monthlyFeeCents: contract.monthlyFeeCents,
     paymentDueDay: contract.paymentDueDay,
     clientSignedAt: contract.clientSignedAt,
-    providerCompanyName: settings?.providerCompanyName ?? null,
+    providerCompanyName: contract.providerCompanyNameSnapshot,
   })
 }
 
@@ -60,6 +58,9 @@ export async function POST(req: Request, { params }: { params: { token: string }
     return NextResponse.json({ error: 'Se requiere un email de contacto válido' }, { status: 400 })
   }
 
+  // Atomic guard: only a request that actually transitions SENT -> CLIENT_SIGNED
+  // wins. A double-click or a retried submit that loses this race gets a 409
+  // instead of silently producing a second signature on the same contract.
   const result = await prisma.contract.updateMany({
     where: { signToken: params.token, status: 'SENT' },
     data: {
@@ -80,14 +81,51 @@ export async function POST(req: Request, { params }: { params: { token: string }
     return NextResponse.json({ error: 'Este contrato ya fue firmado.' }, { status: 409 })
   }
 
-  await regenerateContractPdf(contract.id, { final: false })
-
   // Auditing is attributed to whoever created the contract — the external
   // signer has no account in this system, so there's no other user to log
   // the event against without redesigning AuditLog.userId to be nullable.
   await logAudit({ userId: contract.createdById, action: 'CLIENT_SIGN_CONTRACT', entity: 'Contract', entityId: contract.id, metadata: { ip } })
 
-  const settings = await prisma.contractSettings.findUnique({ where: { id: 1 } })
+  const settings = await getContractSettings()
+
+  // Only the client needs to sign for this contract to be valid in the US.
+  // If the Proveedor already has a saved signature + signer name on file,
+  // stamp both signatures and complete the contract in this same request —
+  // no one has to open the admin panel. Otherwise fall back to the
+  // two-step flow: CLIENT_SIGNED + notify staff to countersign manually.
+  if (hasReusableProviderSignature(settings)) {
+    await prisma.contract.update({
+      where: { id: contract.id },
+      data: {
+        status: 'COMPLETED',
+        providerFirstName: settings!.providerSignerFirstName,
+        providerLastName: settings!.providerSignerLastName,
+        providerSignature: settings!.providerSignatureDataUrl,
+        providerSignedAt: new Date(),
+      },
+    })
+
+    await regenerateContractPdf(contract.id, { final: true })
+
+    const finalContract = await prisma.contract.findUniqueOrThrow({
+      where: { id: contract.id },
+      select: { finalPdfData: true },
+    })
+
+    await sendContractCompletedEmail({
+      to: finalEmail,
+      contractId: contract.id,
+      providerCompanyName: contract.providerCompanyNameSnapshot || 'nuestra empresa',
+      finalPdfBase64: finalContract.finalPdfData!,
+    })
+
+    await logAudit({ userId: contract.createdById, action: 'AUTO_COMPLETE_CONTRACT', entity: 'Contract', entityId: contract.id })
+
+    return NextResponse.json({ status: 'COMPLETED' })
+  }
+
+  await regenerateContractPdf(contract.id, { final: false })
+
   const notifyTo = settings?.notifyEmail
   if (notifyTo) {
     const panelUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/admin/contratos/${contract.id}`

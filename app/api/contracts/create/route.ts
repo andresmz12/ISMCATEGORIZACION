@@ -29,16 +29,16 @@ export async function POST(req: Request) {
   const body = await req.json()
   const { clientCompanyName, clientAddress, clientState, clientEmail, monthlyFeeCents, paymentDueDay } = body
 
-  if (clientEmail && !validateEmail(clientEmail)) {
-    return NextResponse.json({ error: 'Email del cliente inválido' }, { status: 400 })
+  if (!clientEmail?.trim() || !validateEmail(clientEmail)) {
+    return NextResponse.json({ error: 'El email del cliente es obligatorio y debe ser válido' }, { status: 400 })
   }
 
   if (monthlyFeeCents != null && (typeof monthlyFeeCents !== 'number' || monthlyFeeCents < 0)) {
     return NextResponse.json({ error: 'Tarifa mensual inválida' }, { status: 400 })
   }
 
-  if (paymentDueDay != null && (typeof paymentDueDay !== 'number' || paymentDueDay < 1 || paymentDueDay > 31)) {
-    return NextResponse.json({ error: 'Día de pago inválido (debe ser entre 1 y 31)' }, { status: 400 })
+  if (paymentDueDay != null && (typeof paymentDueDay !== 'number' || paymentDueDay < 1 || paymentDueDay > 28)) {
+    return NextResponse.json({ error: 'Día de pago inválido (debe ser entre 1 y 28)' }, { status: 400 })
   }
 
   const userId = (session.user as any).id
@@ -46,26 +46,30 @@ export async function POST(req: Request) {
   const contract = await prisma.contract.create({
     data: {
       createdById: userId,
+      // Snapshot the Proveedor's identity now — later edits to
+      // ContractSettings must not retroactively change contracts already sent.
+      providerCompanyNameSnapshot: settings.providerCompanyName,
+      providerAddressSnapshot: settings.providerAddress,
       clientCompanyName: clientCompanyName?.trim() ? sanitizeString(clientCompanyName, 200) : null,
       clientAddress: clientAddress?.trim() ? sanitizeString(clientAddress, 300) : null,
       clientState: clientState?.trim() ? sanitizeString(clientState, 100) : null,
-      clientEmail: clientEmail?.trim() ? sanitizeString(clientEmail, 200).toLowerCase() : null,
+      clientEmail: sanitizeString(clientEmail, 200).toLowerCase(),
       monthlyFeeCents: monthlyFeeCents ?? null,
       paymentDueDay: paymentDueDay ?? null,
     },
   })
 
-  await regenerateContractPdf(contract.id, { final: false })
+  const { pdfData } = await regenerateContractPdf(contract.id, { final: false })
 
   const signUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/sign/${contract.signToken}`
 
-  if (contract.clientEmail) {
-    await sendContractSignRequestEmail({
-      to: contract.clientEmail,
-      signUrl,
-      providerCompanyName: settings.providerCompanyName || 'nuestra empresa',
-    })
-  }
+  await sendContractSignRequestEmail({
+    to: contract.clientEmail!,
+    signUrl,
+    contractId: contract.id,
+    pdfBase64: pdfData,
+    providerCompanyName: settings.providerCompanyName || 'nuestra empresa',
+  })
 
   await logAudit({ userId, action: 'CREATE_CONTRACT', entity: 'Contract', entityId: contract.id })
 
