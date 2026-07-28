@@ -423,13 +423,16 @@ enum ContractStatus {
   COMPLETED     // both signatures present, final PDF + hash generated
 }
 
-// A service agreement between "El Proveedor" (this platform's own operating
-// company, see ContractSettings) and "El Cliente" (an external company —
-// deliberately NOT a foreign key to Business, since contracts are often sent
-// before the client has any account here). Signing is sequential: the client
-// signs first via the public /sign/[signToken] link, then staff countersigns
-// from the admin panel. The PDF is fully regenerated (not patched) at each
-// status transition, so every field needed to render it lives on this row.
+// The "Contrato de Servicio de Software — MyProfitandLoss" between "El
+// Proveedor" (ISM Consulting Services LLC, see ContractSettings) and "El
+// Cliente" (an external accounting firm — deliberately NOT a foreign key to
+// Business, since contracts are often sent before the client has any account
+// here). Signing is sequential: the client signs first via the public
+// /sign/[signToken] link, then staff countersigns from the admin panel. The
+// PDF is fully regenerated (not patched) at each status transition, so every
+// field needed to render it lives on this row. The legal clauses themselves
+// (license, service nature, confidentiality, term, governing law — Illinois)
+// are fixed text baked into lib/contract-pdf.ts; only the fields below vary.
 model Contract {
   id     String         @id @default(cuid())
   status ContractStatus @default(SENT)
@@ -468,11 +471,11 @@ model Contract {
   providerSignedById  String?
   providerSignedBy    User?     @relation("ContractCounterSignedBy", fields: [providerSignedById], references: [id])
 
-  // Variable terms dropped into the legal text.
-  servicesScope    String?   @db.Text
-  monthlyFeeCents  Int?
-  startDate        DateTime?
-  additionalTerms  String?   @db.Text
+  // §3 PRECIO Y FORMA DE PAGO — the only two variable terms in the price
+  // clause: the monthly subscription amount and the day of the month it's
+  // due ("a más tardar el día ___ de cada mes").
+  monthlyFeeCents Int?
+  paymentDueDay   Int? // 1-31
 
   // PDF versions. No object storage is configured for this app (uploaded
   // Documents already store bytes as base64 in Postgres, see Document.data),
@@ -485,24 +488,8 @@ model Contract {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  stores ContractStore[]
-
   @@index([status])
   @@index([createdById])
-}
-
-// A contract can cover more than one client location (store, branch, site).
-// Free-text rather than a foreign key, matching Contract's own client fields
-// — there's no existing "location" model these could point to.
-model ContractStore {
-  id         String   @id @default(cuid())
-  contractId String
-  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  name       String
-  address    String?
-  createdAt  DateTime @default(now())
-
-  @@index([contractId])
 }
 
 // Single-row table (id is always 1) holding the Proveedor's own fixed data —

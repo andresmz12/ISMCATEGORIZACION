@@ -16,14 +16,11 @@ interface ContractDetail {
   providerFirstName: string | null
   providerLastName: string | null
   providerSignedAt: string | null
-  servicesScope: string | null
   monthlyFeeCents: number | null
-  startDate: string | null
-  additionalTerms: string | null
+  paymentDueDay: number | null
   pdfHash: string | null
   createdAt: string
   createdBy: { name: string | null; email: string }
-  stores: { name: string; address: string | null }[]
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -99,17 +96,9 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
           <div><p className="text-gray-400 text-xs mb-0.5">Email</p><p className="font-medium">{contract.clientEmail || '—'}</p></div>
           <div><p className="text-gray-400 text-xs mb-0.5">Dirección</p><p className="font-medium">{contract.clientAddress || '—'}</p></div>
           <div><p className="text-gray-400 text-xs mb-0.5">Estado</p><p className="font-medium">{contract.clientState || '—'}</p></div>
-          <div><p className="text-gray-400 text-xs mb-0.5">Tarifa mensual</p><p className="font-medium">{contract.monthlyFeeCents != null ? `$${(contract.monthlyFeeCents / 100).toFixed(2)}` : '—'}</p></div>
-          <div><p className="text-gray-400 text-xs mb-0.5">Fecha de inicio</p><p className="font-medium">{contract.startDate ? new Date(contract.startDate).toLocaleDateString('es-CO') : '—'}</p></div>
+          <div><p className="text-gray-400 text-xs mb-0.5">Suscripción mensual</p><p className="font-medium">{contract.monthlyFeeCents != null ? `$${(contract.monthlyFeeCents / 100).toFixed(2)}` : '—'}</p></div>
+          <div><p className="text-gray-400 text-xs mb-0.5">Día de pago</p><p className="font-medium">{contract.paymentDueDay != null ? `Día ${contract.paymentDueDay} de cada mes` : '—'}</p></div>
         </div>
-        {contract.stores.length > 0 && (
-          <div>
-            <p className="text-gray-400 text-xs mb-1">Ubicaciones</p>
-            <ul className="list-disc list-inside space-y-0.5">
-              {contract.stores.map((s, i) => <li key={i}>{s.name}{s.address ? ` — ${s.address}` : ''}</li>)}
-            </ul>
-          </div>
-        )}
       </div>
 
       {contract.status === 'CLIENT_SIGNED' && (

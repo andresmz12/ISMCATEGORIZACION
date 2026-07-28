@@ -27,17 +27,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json()
-  const {
-    clientCompanyName,
-    clientAddress,
-    clientState,
-    clientEmail,
-    servicesScope,
-    monthlyFeeCents,
-    startDate,
-    additionalTerms,
-    stores,
-  } = body
+  const { clientCompanyName, clientAddress, clientState, clientEmail, monthlyFeeCents, paymentDueDay } = body
 
   if (clientEmail && !validateEmail(clientEmail)) {
     return NextResponse.json({ error: 'Email del cliente inválido' }, { status: 400 })
@@ -47,11 +37,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Tarifa mensual inválida' }, { status: 400 })
   }
 
-  const storeList: { name: string; address: string | null }[] = Array.isArray(stores)
-    ? stores
-        .filter((s: any) => s?.name?.trim())
-        .map((s: any) => ({ name: sanitizeString(s.name, 200), address: s.address?.trim() ? sanitizeString(s.address, 300) : null }))
-    : []
+  if (paymentDueDay != null && (typeof paymentDueDay !== 'number' || paymentDueDay < 1 || paymentDueDay > 31)) {
+    return NextResponse.json({ error: 'Día de pago inválido (debe ser entre 1 y 31)' }, { status: 400 })
+  }
 
   const userId = (session.user as any).id
 
@@ -62,11 +50,8 @@ export async function POST(req: Request) {
       clientAddress: clientAddress?.trim() ? sanitizeString(clientAddress, 300) : null,
       clientState: clientState?.trim() ? sanitizeString(clientState, 100) : null,
       clientEmail: clientEmail?.trim() ? sanitizeString(clientEmail, 200).toLowerCase() : null,
-      servicesScope: servicesScope?.trim() ? sanitizeString(servicesScope, 4000) : null,
       monthlyFeeCents: monthlyFeeCents ?? null,
-      startDate: startDate ? new Date(startDate) : null,
-      additionalTerms: additionalTerms?.trim() ? sanitizeString(additionalTerms, 4000) : null,
-      stores: { create: storeList },
+      paymentDueDay: paymentDueDay ?? null,
     },
   })
 

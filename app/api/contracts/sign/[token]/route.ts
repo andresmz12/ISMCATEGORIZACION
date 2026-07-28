@@ -11,10 +11,7 @@ const MAX_SIGNATURE_LENGTH = 400_000 // ~300KB of PNG bytes as base64
 // Public route — no session. signToken is the entire credential; anyone
 // with the link can view and, once, sign this contract.
 export async function GET(req: Request, { params }: { params: { token: string } }) {
-  const contract = await prisma.contract.findUnique({
-    where: { signToken: params.token },
-    include: { stores: true },
-  })
+  const contract = await prisma.contract.findUnique({ where: { signToken: params.token } })
   if (!contract) return NextResponse.json({ error: 'Enlace inválido' }, { status: 404 })
 
   const settings = await prisma.contractSettings.findUnique({ where: { id: 1 } })
@@ -26,12 +23,9 @@ export async function GET(req: Request, { params }: { params: { token: string } 
     clientAddress: contract.clientAddress,
     clientState: contract.clientState,
     clientEmail: contract.clientEmail,
-    servicesScope: contract.servicesScope,
     monthlyFeeCents: contract.monthlyFeeCents,
-    startDate: contract.startDate,
-    additionalTerms: contract.additionalTerms,
+    paymentDueDay: contract.paymentDueDay,
     clientSignedAt: contract.clientSignedAt,
-    stores: contract.stores.map(s => ({ name: s.name, address: s.address })),
     providerCompanyName: settings?.providerCompanyName ?? null,
   })
 }

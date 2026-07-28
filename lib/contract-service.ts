@@ -2,22 +2,19 @@ import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { renderContractPdf, pdfToBase64, type ContractPdfData } from '@/lib/contract-pdf'
 
-const CONTRACT_INCLUDE = { stores: true } as const
-
-type ContractWithStores = Awaited<ReturnType<typeof prisma.contract.findUniqueOrThrow<{ where: { id: string }; include: typeof CONTRACT_INCLUDE }>>>
-
 async function getSettings() {
   return prisma.contractSettings.findUnique({ where: { id: 1 } })
 }
 
-function toPdfData(contract: ContractWithStores, settings: Awaited<ReturnType<typeof getSettings>>): ContractPdfData {
+function toPdfData(
+  contract: NonNullable<Awaited<ReturnType<typeof prisma.contract.findUnique>>>,
+  settings: Awaited<ReturnType<typeof getSettings>>
+): ContractPdfData {
   return {
     id: contract.id,
-    createdAt: contract.createdAt,
     clientCompanyName: contract.clientCompanyName,
     clientAddress: contract.clientAddress,
     clientState: contract.clientState,
-    clientEmail: contract.clientEmail,
     clientFirstName: contract.clientFirstName,
     clientLastName: contract.clientLastName,
     clientSignature: contract.clientSignature,
@@ -26,21 +23,12 @@ function toPdfData(contract: ContractWithStores, settings: Awaited<ReturnType<ty
     providerLastName: contract.providerLastName,
     providerSignature: contract.providerSignature,
     providerSignedAt: contract.providerSignedAt,
-    servicesScope: contract.servicesScope,
     monthlyFeeCents: contract.monthlyFeeCents,
-    startDate: contract.startDate,
-    additionalTerms: contract.additionalTerms,
-    stores: contract.stores.map(s => ({ name: s.name, address: s.address })),
+    paymentDueDay: contract.paymentDueDay,
     settings: settings
       ? {
           providerCompanyName: settings.providerCompanyName,
           providerAddress: settings.providerAddress,
-          providerCity: settings.providerCity,
-          providerState: settings.providerState,
-          providerZip: settings.providerZip,
-          providerEmail: settings.providerEmail,
-          providerPhone: settings.providerPhone,
-          providerTaxId: settings.providerTaxId,
         }
       : null,
   }
@@ -53,7 +41,7 @@ function toPdfData(contract: ContractWithStores, settings: Awaited<ReturnType<ty
 // pre-signature version stays available even after completion.
 export async function regenerateContractPdf(contractId: string, opts: { final: boolean }) {
   const [contract, settings] = await Promise.all([
-    prisma.contract.findUniqueOrThrow({ where: { id: contractId }, include: CONTRACT_INCLUDE }),
+    prisma.contract.findUniqueOrThrow({ where: { id: contractId } }),
     getSettings(),
   ])
 

@@ -9,12 +9,9 @@ interface ContractPublicData {
   clientAddress: string | null
   clientState: string | null
   clientEmail: string | null
-  servicesScope: string | null
   monthlyFeeCents: number | null
-  startDate: string | null
-  additionalTerms: string | null
+  paymentDueDay: number | null
   clientSignedAt: string | null
-  stores: { name: string; address: string | null }[]
   providerCompanyName: string | null
 }
 

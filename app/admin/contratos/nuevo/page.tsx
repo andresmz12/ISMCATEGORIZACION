@@ -2,32 +2,17 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-interface StoreInput { name: string; address: string }
-
 export default function NewContractPage() {
   const router = useRouter()
   const [clientCompanyName, setClientCompanyName] = useState('')
   const [clientAddress, setClientAddress] = useState('')
   const [clientState, setClientState] = useState('')
   const [clientEmail, setClientEmail] = useState('')
-  const [servicesScope, setServicesScope] = useState('')
   const [monthlyFee, setMonthlyFee] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [additionalTerms, setAdditionalTerms] = useState('')
-  const [stores, setStores] = useState<StoreInput[]>([])
+  const [paymentDueDay, setPaymentDueDay] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<{ signUrl: string } | null>(null)
-
-  function addStore() {
-    setStores([...stores, { name: '', address: '' }])
-  }
-  function updateStore(i: number, field: keyof StoreInput, value: string) {
-    setStores(stores.map((s, idx) => (idx === i ? { ...s, [field]: value } : s)))
-  }
-  function removeStore(i: number) {
-    setStores(stores.filter((_, idx) => idx !== i))
-  }
 
   async function handleSubmit() {
     setSaving(true)
@@ -41,11 +26,8 @@ export default function NewContractPage() {
           clientAddress,
           clientState,
           clientEmail,
-          servicesScope,
           monthlyFeeCents: monthlyFee ? Math.round(parseFloat(monthlyFee) * 100) : null,
-          startDate: startDate || null,
-          additionalTerms,
-          stores: stores.filter(s => s.name.trim()),
+          paymentDueDay: paymentDueDay ? parseInt(paymentDueDay, 10) : null,
         }),
       })
       const data = await res.json()
@@ -78,7 +60,10 @@ export default function NewContractPage() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Nuevo contrato</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Nuevo contrato</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Contrato de Servicio de Software "MyProfitandLoss". El texto legal es fijo — solo se completan los datos del cliente y el precio.</p>
+      </div>
 
       <div className="card p-6 space-y-4">
         <h2 className="section-title">Datos del cliente (opcional — se le pedirá lo que falte al firmar)</h2>
@@ -103,39 +88,17 @@ export default function NewContractPage() {
       </div>
 
       <div className="card p-6 space-y-4">
-        <h2 className="section-title">Términos</h2>
+        <h2 className="section-title">Precio y forma de pago</h2>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="label">Tarifa mensual (USD)</label>
+            <label className="label">Suscripción mensual (USD)</label>
             <input type="number" step="0.01" className="input" value={monthlyFee} onChange={e => setMonthlyFee(e.target.value)} />
           </div>
           <div>
-            <label className="label">Fecha de inicio</label>
-            <input type="date" className="input" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <label className="label">Día de pago de cada mes (1-31)</label>
+            <input type="number" min={1} max={31} className="input" value={paymentDueDay} onChange={e => setPaymentDueDay(e.target.value)} />
           </div>
         </div>
-        <div>
-          <label className="label">Alcance de los servicios</label>
-          <textarea className="input" rows={4} value={servicesScope} onChange={e => setServicesScope(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Términos adicionales</label>
-          <textarea className="input" rows={3} value={additionalTerms} onChange={e => setAdditionalTerms(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="section-title">Ubicaciones cubiertas (opcional)</h2>
-          <button type="button" className="text-xs font-medium text-[#1B4965] hover:underline" onClick={addStore}>+ Agregar</button>
-        </div>
-        {stores.map((s, i) => (
-          <div key={i} className="flex gap-2 items-start">
-            <input className="input flex-1" placeholder="Nombre (ej. Tienda Centro)" value={s.name} onChange={e => updateStore(i, 'name', e.target.value)} />
-            <input className="input flex-1" placeholder="Dirección" value={s.address} onChange={e => updateStore(i, 'address', e.target.value)} />
-            <button type="button" onClick={() => removeStore(i)} className="btn-secondary px-3">✕</button>
-          </div>
-        ))}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
