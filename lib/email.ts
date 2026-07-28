@@ -10,6 +10,7 @@ function escapeHtml(value: string): string {
 }
 
 const FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+const APP_URL = process.env.NEXTAUTH_URL || 'https://www.myprofitandloss.com'
 
 // Full HTML document (not just a fragment) with explicit color-scheme /
 // supported-color-schemes meta tags — without these, Apple Mail's dark-mode
@@ -36,10 +37,10 @@ function emailShell(opts: { previewText: string; bodyHtml: string }): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f6;">
 <tr><td align="center" style="padding:40px 16px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,43,60,0.10);">
-<tr><td style="background-color:#153F58;padding:28px 32px;">
+<tr><td style="background-color:#153F58;padding:24px 32px;">
 <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-<td style="width:36px;height:36px;background-color:#2EC4B6;border-radius:9px;text-align:center;vertical-align:middle;">
-<span style="font-family:${FONT_STACK};font-size:14px;font-weight:700;color:#ffffff;line-height:36px;">MP</span>
+<td style="width:40px;height:40px;">
+<img src="${APP_URL}/logo-email.png" width="40" height="40" alt="My Profit & Loss" style="display:block;border:0;outline:none;width:40px;height:40px;">
 </td>
 <td style="padding-left:12px;">
 <span style="font-family:${FONT_STACK};font-size:17px;font-weight:700;color:#ffffff;">My Profit &amp; Loss</span>
