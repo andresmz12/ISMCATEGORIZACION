@@ -24,10 +24,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const base64 = contract.status === 'COMPLETED' ? contract.finalPdfData : contract.pdfData
   if (!base64) return NextResponse.json({ error: 'PDF no disponible' }, { status: 404 })
 
+  const filename = contract.status === 'COMPLETED' ? 'Contrato Firmado - My Profit and Loss.pdf' : 'Contrato - My Profit and Loss.pdf'
+
   return new NextResponse(Buffer.from(base64, 'base64'), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="contrato-${params.id}.pdf"`,
+      'Content-Disposition': `inline; filename="${filename}"`,
       'Cache-Control': 'private, no-store',
     },
   })
