@@ -6,7 +6,7 @@ import { SignatureCanvas } from '@/components/SignatureCanvas'
 interface ContractDetail {
   id: string
   status: 'SENT' | 'CLIENT_SIGNED' | 'COMPLETED'
-  signToken: string
+  signUrl: string
   clientCompanyName: string | null
   clientAddress: string | null
   clientState: string | null
@@ -123,7 +123,7 @@ export default function ContractDetailPage({ params }: { params: { id: string } 
   if (loading) return <div className="p-6 text-gray-400 text-sm">Cargando...</div>
   if (!contract) return <div className="p-6 text-gray-400 text-sm">No encontrado</div>
 
-  const signUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/sign/${contract.signToken}`
+  const signUrl = contract.signUrl
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">

@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { requirePlanFeature } from '@/lib/plan-limits'
-import { checkAiBudget, recordAiUsage } from '@/lib/ai-budget'
+import { checkAiBudget, withAiBudget } from '@/lib/ai-budget'
 import { getActiveRules, matchRule } from '@/lib/classification-rules'
 
 // Classifies raw transaction rows with AI WITHOUT saving to DB.
@@ -94,11 +94,6 @@ Respond with a JSON array matching the input order. Use only category names from
     const BATCH = 20
 
     for (let i = 0; i < remainingRows.length; i += BATCH) {
-      if (i > 0 && await checkAiBudget(businessId)) {
-        warnings.push(`Se alcanzó el presupuesto mensual de IA — ${remainingRows.length - i} filas restantes no fueron clasificadas`)
-        break
-      }
-
       const batch = remainingRows.slice(i, i + BATCH)
       const txList = batch.map((t: any, idx: number) => ({
         index: idx,
@@ -110,17 +105,25 @@ Respond with a JSON array matching the input order. Use only category names from
 
       let classifications: any[] = []
       try {
-        const response = await client.messages.create({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 4096,
-          system: prompt,
-          messages: [{
-            role: 'user',
-            content: `Classify these ${batch.length} transactions:\n\n${JSON.stringify(txList, null, 2)}\n\nReturn a JSON array with ${batch.length} objects.`,
-          }],
+        const budgetResult = await withAiBudget(businessId, async () => {
+          const response = await client.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 4096,
+            system: prompt,
+            messages: [{
+              role: 'user',
+              content: `Classify these ${batch.length} transactions:\n\n${JSON.stringify(txList, null, 2)}\n\nReturn a JSON array with ${batch.length} objects.`,
+            }],
+          })
+          return { result: response, inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens, classifiedCount: batch.length }
         })
-        await recordAiUsage(businessId, response.usage.input_tokens, response.usage.output_tokens, batch.length)
-        const text = response.content?.[0]?.type === 'text' ? response.content[0].text : ''
+
+        if (!budgetResult.ok) {
+          warnings.push(`Se alcanzó el presupuesto mensual de IA — ${remainingRows.length - i} filas restantes no fueron clasificadas`)
+          break
+        }
+
+        const text = budgetResult.result.content?.[0]?.type === 'text' ? budgetResult.result.content[0].text : ''
         const match = text.match(/\[[\s\S]*\]/)
         if (match) classifications = JSON.parse(match[0])
       } catch (e) {

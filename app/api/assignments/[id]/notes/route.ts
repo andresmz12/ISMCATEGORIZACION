@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkBusinessAccess } from '@/lib/check-business-access'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -39,10 +40,20 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const noteId = searchParams.get('noteId')
   if (!noteId) return NextResponse.json({ error: 'noteId required' }, { status: 400 })
 
-  const note = await prisma.assignmentNote.findUnique({ where: { id: noteId } })
+  const note = await prisma.assignmentNote.findUnique({
+    where: { id: noteId },
+    include: { assignment: { select: { businessId: true } } },
+  })
   if (!note) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (note.userId !== userId && (session.user as any).accountType !== 'SUPERADMIN') {
+  const accountType = (session.user as any).accountType
+  if (note.userId !== userId && accountType !== 'SUPERADMIN') {
     return NextResponse.json({ error: 'Only the author can delete a note' }, { status: 403 })
+  }
+  // Authorship alone isn't enough — the author may since have lost access to
+  // the note's business (removed from the team) and must not retain the
+  // ability to delete historical notes there.
+  if (!await checkBusinessAccess(userId, note.assignment.businessId, accountType)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   await prisma.assignmentNote.delete({ where: { id: noteId } })

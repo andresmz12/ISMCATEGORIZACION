@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess } from '@/lib/check-business-access'
+import { logAudit } from '@/lib/audit'
 
 export async function DELETE(req: Request) {
   const session = await getServerSession(authOptions)
@@ -23,6 +24,9 @@ export async function DELETE(req: Request) {
   }
 
   const { count } = await prisma.auditLog.deleteMany({ where: { businessId } })
+  // Logged after the purge (so it isn't itself deleted by the deleteMany above) —
+  // this is the only record left that the audit trail was ever cleared and by whom.
+  await logAudit({ userId, businessId, action: 'PURGE_AUDIT_LOG', entity: 'AuditLog', metadata: { deletedCount: count } })
   return NextResponse.json({ deleted: count })
 }
 

@@ -15,8 +15,7 @@ function getKey(): Buffer | null {
 export function encryptSecret(plaintext: string): string {
   const key = getKey()
   if (!key) {
-    console.warn('[crypto] PLAID_TOKEN_ENCRYPTION_KEY not set — storing secret unencrypted')
-    return plaintext
+    throw new Error('PLAID_TOKEN_ENCRYPTION_KEY is not set — refusing to store a secret unencrypted')
   }
   const iv = crypto.randomBytes(12)
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv)

@@ -7,7 +7,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
-import { checkAiBudget, recordAiUsage } from '@/lib/ai-budget'
+import { withAiBudget } from '@/lib/ai-budget'
 import { noon } from '@/lib/date'
 
 const CATEGORIES = [
@@ -46,9 +46,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const budgetDenied = await checkAiBudget(businessId)
-    if (budgetDenied) return budgetDenied
-
     const buffer = Buffer.from(await file.arrayBuffer())
     if (buffer.length > 5 * 1024 * 1024) {
       return NextResponse.json({ error: 'File too large (max 5 MB)' }, { status: 400 })
@@ -69,16 +66,17 @@ export async function POST(req: Request) {
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
       : { type: 'image', source: { type: 'base64', media_type: claudeMime, data: base64Data } }
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      messages: [{
-        role: 'user',
-        content: [
-          imageContent,
-          {
-            type: 'text',
-            text: `Analyze this receipt and return ONLY a JSON object (no markdown, no backticks, no explanation):
+    const budgetResult = await withAiBudget(businessId, async () => {
+      const response = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: [
+            imageContent,
+            {
+              type: 'text',
+              text: `Analyze this receipt and return ONLY a JSON object (no markdown, no backticks, no explanation):
 {
   "merchant": "store or merchant name",
   "date": "YYYY-MM-DD or null",
@@ -92,12 +90,14 @@ export async function POST(req: Request) {
   "confidence": "HIGH/MEDIUM/LOW"
 }
 Use null for any field you cannot read. Receipt may be in English or Spanish.`,
-          },
-        ],
-      }],
+            },
+          ],
+        }],
+      })
+      return { result: response, inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens, classifiedCount: 1 }
     })
-
-    await recordAiUsage(businessId, response.usage.input_tokens, response.usage.output_tokens, 1)
+    if (!budgetResult.ok) return budgetResult.response
+    const response = budgetResult.result
 
     const raw = response.content[0].type === 'text' ? response.content[0].text : ''
     let extracted: any = {}

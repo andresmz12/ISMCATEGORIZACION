@@ -13,10 +13,24 @@ function currentPeriod(): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
-// Checks whether the account that owns this business has exceeded its
-// configured monthly AI budget. The budget is shared across every business
-// the account owns, not scoped to just this one. Returns a 403 response if
-// blocked, otherwise null.
+// A $0 budget blocks immediately, even before any AiUsage row exists yet
+// (e.g. a brand-new account never used AI this period). null/undefined
+// budget = no budget configured (unlimited).
+function isBudgetBlocked(
+  usage: { blocked: boolean; unblockedByAdmin: boolean } | null | undefined,
+  budgetCents: number | null | undefined
+): boolean {
+  if (budgetCents == null) return false
+  if (budgetCents === 0) return !usage?.unblockedByAdmin
+  if (!usage) return false
+  return usage.blocked && !usage.unblockedByAdmin
+}
+
+// Read-only budget check for callers that just need current status (e.g. a
+// pre-flight UI check) without gating an actual AI call — for anything that
+// actually calls the Anthropic API, use withAiBudget() instead, which closes
+// the TOCTOU race this function alone can't: two concurrent requests can
+// both call checkAiBudget and both pass before either records its spend.
 export async function checkAiBudget(businessId: string): Promise<NextResponse | null> {
   const accountId = await getBusinessAccountId(businessId)
   // Fail closed: a business with no resolvable owning account is a data
@@ -32,24 +46,73 @@ export async function checkAiBudget(businessId: string): Promise<NextResponse | 
     where: { id: accountId },
     select: { aiMonthlyBudgetCents: true },
   })
-  // null/undefined = no budget configured (unlimited). A budget of exactly 0
-  // is a valid "fully blocked" setting and must not be treated as unlimited.
-  if (account?.aiMonthlyBudgetCents == null) return null
-
   const usage = await prisma.aiUsage.findUnique({
     where: { accountId_period: { accountId, period: currentPeriod() } },
   })
-  // A $0 budget blocks immediately, even before any AiUsage row exists yet
-  // (e.g. a brand-new account never used AI this period).
-  if (account.aiMonthlyBudgetCents === 0 && !usage?.unblockedByAdmin) {
-    return NextResponse.json({ error: BUDGET_MESSAGE }, { status: 403 })
-  }
-  if (!usage) return null
+  return isBudgetBlocked(usage, account?.aiMonthlyBudgetCents) ? NextResponse.json({ error: BUDGET_MESSAGE }, { status: 403 }) : null
+}
 
-  if (usage.blocked && !usage.unblockedByAdmin) {
-    return NextResponse.json({ error: BUDGET_MESSAGE }, { status: 403 })
+// Runs `fn` (an Anthropic call plus whatever else needs the resulting tokens)
+// gated by the account's AI budget, with the check-then-spend sequence made
+// atomic: checkAiBudget() and recordAiUsage() used to be two separate,
+// non-locked steps, so concurrent requests for the same account (multiple
+// tabs, or classify-ai + receipts/scan + chat firing together) could all
+// pass the check before any of them recorded cost, letting the account
+// overshoot its budget by roughly N× one request's cost. A Postgres
+// transaction-scoped advisory lock keyed on the account serializes the
+// check+call+record sequence per account (auto-released on commit/rollback,
+// so it can never leak even if `fn` throws or the connection drops) — the
+// cost is that concurrent AI requests for the same account queue up instead
+// of running in parallel, which is the right tradeoff for a hard budget cap.
+export async function withAiBudget<T>(
+  businessId: string,
+  fn: () => Promise<{ result: T; inputTokens: number; outputTokens: number; classifiedCount?: number }>
+): Promise<{ ok: true; result: T } | { ok: false; response: NextResponse }> {
+  const accountId = await getBusinessAccountId(businessId)
+  if (!accountId) {
+    return { ok: false, response: NextResponse.json({ error: BUDGET_MESSAGE }, { status: 403 }) }
   }
-  return null
+
+  let outcome!: { ok: true; result: T } | { ok: false; response: NextResponse }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${accountId}))`
+
+    const period = currentPeriod()
+    const [account, usage] = await Promise.all([
+      tx.billingAccount.findUnique({ where: { id: accountId }, select: { aiMonthlyBudgetCents: true } }),
+      tx.aiUsage.findUnique({ where: { accountId_period: { accountId, period } } }),
+    ])
+    const budget = account?.aiMonthlyBudgetCents
+
+    if (isBudgetBlocked(usage, budget)) {
+      outcome = { ok: false, response: NextResponse.json({ error: BUDGET_MESSAGE }, { status: 403 }) }
+      return
+    }
+
+    const { result, inputTokens, outputTokens, classifiedCount = 0 } = await fn()
+
+    if (inputTokens > 0 || outputTokens > 0) {
+      const costCents = tokensToCents(inputTokens, outputTokens)
+      const updated = await tx.aiUsage.upsert({
+        where: { accountId_period: { accountId, period } },
+        create: { accountId, period, inputTokens, outputTokens, costCents, classifiedCount },
+        update: {
+          inputTokens: { increment: inputTokens },
+          outputTokens: { increment: outputTokens },
+          costCents: { increment: costCents },
+          classifiedCount: { increment: classifiedCount },
+        },
+      })
+      if (budget != null && updated.costCents >= budget && !updated.blocked) {
+        await tx.aiUsage.update({ where: { id: updated.id }, data: { blocked: true } })
+      }
+    }
+
+    outcome = { ok: true, result }
+  }, { timeout: 120_000, maxWait: 10_000 })
+
+  return outcome
 }
 
 // Records token usage/cost against the account that owns this business, for

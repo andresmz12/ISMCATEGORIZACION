@@ -10,8 +10,15 @@ import { decryptSecret } from '@/lib/crypto'
 import { noon } from '@/lib/date'
 import crypto from 'crypto'
 
-function makeChecksum(date: string, description: string, amount: number): string {
-  return crypto.createHash('md5').update(`${date}|${description}|${amount}`).digest('hex')
+// Plaid's own transaction_id is already globally unique per transaction, so
+// the checksum here is derived from it (not from date|description|amount)
+// purely to satisfy the businessId+checksum unique constraint the column
+// requires — it must never collide between two genuinely distinct
+// transactions the way a content hash would (e.g. two same-day, same-amount,
+// same-merchant charges), which would otherwise cause the second one to be
+// silently dropped as a "duplicate".
+function makeChecksum(plaidTransactionId: string): string {
+  return crypto.createHash('md5').update(`plaid:${plaidTransactionId}`).digest('hex')
 }
 
 export async function POST(req: Request) {
@@ -75,21 +82,18 @@ export async function POST(req: Request) {
         // Plaid: positive amount = money out (debit), negative = money in (credit)
         const type = tx.amount > 0 ? 'DEBIT' : 'CREDIT'
         const date = noon(dateStr)
-        const checksum = makeChecksum(dateStr, description, amount)
+        const checksum = makeChecksum(tx.transaction_id)
 
         // Find source account name
         const account = connection.accounts.find((a: { plaidId: string; name: string }) => a.plaidId === tx.account_id)
         const sourceFile = `Plaid - ${account?.name ?? connection.institutionName}`
 
-        // Check duplicate by plaidTransactionId first, then checksum
+        // Dedup solely by Plaid's own stable transaction_id — a content-based
+        // (date|description|amount) checksum match would wrongly treat two
+        // genuinely distinct same-day/same-amount/same-merchant transactions
+        // as duplicates and silently drop the second one.
         const existing = await prisma.transaction.findFirst({
-          where: {
-            businessId,
-            OR: [
-              { plaidTransactionId: tx.transaction_id },
-              { checksum, businessId },
-            ],
-          },
+          where: { businessId, plaidTransactionId: tx.transaction_id },
           select: { id: true },
         })
 

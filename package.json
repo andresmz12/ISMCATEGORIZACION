@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "(tsx scripts/migrate-account-types.ts || true) && (tsx scripts/migrate-accounts.ts || true) && prisma db push --accept-data-loss && next start -p $PORT",
+    "start": "tsx scripts/migrate-account-types.ts && tsx scripts/migrate-accounts.ts && prisma db push --accept-data-loss && next start -p $PORT",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",

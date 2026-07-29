@@ -375,14 +375,18 @@ model AssignmentNote {
 
 model AuditLog {
   id         String   @id @default(cuid())
-  userId     String
+  // Nullable + SetNull (not Cascade): deleting the acting User must never
+  // delete the log rows that record what they did — that would erase the
+  // audit trail exactly when it matters most (e.g. removing a departing
+  // employee). The row survives with userId cleared instead.
+  userId     String?
   businessId String?
   action     String
   entity     String?
   entityId   String?
   metadata   Json?
   createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([businessId])

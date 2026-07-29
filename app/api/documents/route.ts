@@ -42,6 +42,27 @@ export async function GET(req: Request) {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 
+// Matches the file picker's `accept` list in app/(dashboard)/documentos/page.tsx.
+// Magic-byte signatures are only checked for formats that have a reliable one;
+// legacy Office/CSV files are allowlisted by declared type only.
+const MAGIC_BYTES: Record<string, string[]> = {
+  'application/pdf': ['25504446'], // %PDF
+  'image/png': ['89504e47'],
+  'image/jpeg': ['ffd8ff'],
+  'application/msword': ['d0cf11e0'], // legacy OLE (.doc/.xls)
+  'application/vnd.ms-excel': ['d0cf11e0'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['504b0304'], // zip (.docx/.xlsx)
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['504b0304'],
+}
+const ALLOWED_MIME_TYPES = new Set([...Object.keys(MAGIC_BYTES), 'text/csv', 'text/plain'])
+
+function contentMatchesMimeType(base64: string, mimeType: string): boolean {
+  const signatures = MAGIC_BYTES[mimeType]
+  if (!signatures) return true // no known signature for this type (e.g. CSV) — allowlist membership is the only check
+  const header = Buffer.from(base64.slice(0, 16), 'base64').toString('hex')
+  return signatures.some(sig => header.startsWith(sig))
+}
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -56,6 +77,13 @@ export async function POST(req: Request) {
   // Validate file size (base64 is ~33% larger than binary)
   if (data.length > MAX_FILE_SIZE * 1.4) {
     return NextResponse.json({ error: 'Archivo demasiado grande (máx 10 MB)' }, { status: 400 })
+  }
+
+  if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+    return NextResponse.json({ error: 'Tipo de archivo no permitido' }, { status: 400 })
+  }
+  if (!contentMatchesMimeType(data, mimeType)) {
+    return NextResponse.json({ error: 'El contenido del archivo no coincide con su tipo declarado' }, { status: 400 })
   }
 
   const userId = (session.user as any).id

@@ -7,7 +7,7 @@ import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
-import { checkAiBudget, recordAiUsage } from '@/lib/ai-budget'
+import { checkAiBudget, withAiBudget } from '@/lib/ai-budget'
 import { getActiveRules, matchRule } from '@/lib/classification-rules'
 
 export async function POST(req: Request) {
@@ -95,11 +95,6 @@ Respond with a JSON array matching the input order. Use only category names from
     const warnings: string[] = []
 
     for (let i = 0; i < transactions.length; i += BATCH) {
-      if (i > 0 && await checkAiBudget(businessId)) {
-        warnings.push(`Se alcanzó el presupuesto mensual de IA — ${transactions.length - i} transacciones restantes fueron omitidas`)
-        break
-      }
-
       const batch = transactions.slice(i, i + BATCH)
       const txList = batch.map((t: any, idx: number) => ({
         index: idx,
@@ -109,18 +104,26 @@ Respond with a JSON array matching the input order. Use only category names from
         type: t.type,
       }))
 
-      const response = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        messages: [
-          {
-            role: 'user',
-            content: `Classify these ${batch.length} transactions:\n\n${JSON.stringify(txList, null, 2)}\n\nReturn a JSON array with ${batch.length} objects.`,
-          },
-        ],
-        system: dynamicPrompt,
+      const budgetResult = await withAiBudget(businessId, async () => {
+        const response = await client.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 4096,
+          messages: [
+            {
+              role: 'user',
+              content: `Classify these ${batch.length} transactions:\n\n${JSON.stringify(txList, null, 2)}\n\nReturn a JSON array with ${batch.length} objects.`,
+            },
+          ],
+          system: dynamicPrompt,
+        })
+        return { result: response, inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens, classifiedCount: batch.length }
       })
-      await recordAiUsage(businessId, response.usage.input_tokens, response.usage.output_tokens, batch.length)
+
+      if (!budgetResult.ok) {
+        warnings.push(`Se alcanzó el presupuesto mensual de IA — ${transactions.length - i} transacciones restantes fueron omitidas`)
+        break
+      }
+      const response = budgetResult.result
 
       let classifications: any[] = []
       try {

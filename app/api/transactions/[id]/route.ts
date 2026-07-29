@@ -22,8 +22,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (notes && notes.length > 1000) return NextResponse.json({ error: 'Notes too long' }, { status: 400 })
 
   if (categoryId) {
+    // isSystem, not businessId: null — see app/api/transactions/route.ts for why.
     const validCategory = await prisma.category.findFirst({
-      where: { id: categoryId, OR: [{ businessId: tx.businessId }, { businessId: null }] },
+      where: { id: categoryId, OR: [{ businessId: tx.businessId }, { isSystem: true }] },
       select: { id: true },
     })
     if (!validCategory) return NextResponse.json({ error: 'Category does not exist for this business' }, { status: 400 })
@@ -41,7 +42,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     const categoryIds = splits.map((s: any) => s.categoryId)
     const validCats = await prisma.category.findMany({
-      where: { id: { in: categoryIds }, OR: [{ businessId: tx.businessId }, { businessId: null }] },
+      where: { id: { in: categoryIds }, OR: [{ businessId: tx.businessId }, { isSystem: true }] },
       select: { id: true },
     })
     if (validCats.length !== categoryIds.length) {

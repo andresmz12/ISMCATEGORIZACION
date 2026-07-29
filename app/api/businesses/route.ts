@@ -8,6 +8,8 @@ import { getPlanLimits, countOwnedBusinesses } from '@/lib/plan-limits'
 
 const cuid = customAlphabet('36ghjkmnpqrtvwxyz2468', 24)
 
+class BusinessLimitError extends Error {}
+
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -54,30 +56,40 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Los miembros del equipo no pueden crear negocios' }, { status: 403 })
     }
 
-    if (accountType === 'ACCOUNTANT') {
-      const limits = getPlanLimits(plan, trialEndsAt)
-      const existingCount = await countOwnedBusinesses(accountId)
-      if (existingCount >= limits.businesses) {
-        const planLabel = plan ?? 'BASIC'
-        const cap = limits.businesses === Infinity ? 'ilimitados' : limits.businesses
-        return NextResponse.json({
-          error: `Tu plan ${planLabel} permite hasta ${cap} negocio(s)`,
-        }, { status: 403 })
-      }
-    }
-
     const businessId = cuid()
     const now = new Date()
-    await prisma.$transaction([
-      prisma.$executeRaw`
-        INSERT INTO "Business" (id, name, industry, "entityType", "taxYear", "createdAt", "updatedAt")
-        VALUES (${businessId}, ${name}, ${industry || null}, ${entityType || null}, ${taxYear ? Number(taxYear) : null}, ${now}, ${now})
-      `,
-      prisma.$executeRaw`
-        INSERT INTO "BusinessUser" (id, "userId", "businessId", role, "createdAt")
-        VALUES (${cuid()}, ${userId}, ${businessId}, 'OWNER', ${now})
-      `,
-    ])
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (accountType === 'ACCOUNTANT') {
+          // Serialize concurrent creates for the same account so two requests
+          // can't both read the pre-insert count and both slip past the plan
+          // limit — the lock is held for the rest of this transaction and
+          // released automatically on commit/rollback.
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${accountId}))`
+          const limits = getPlanLimits(plan, trialEndsAt)
+          const existingCount = await countOwnedBusinesses(accountId, tx)
+          if (existingCount >= limits.businesses) {
+            const planLabel = plan ?? 'BASIC'
+            const cap = limits.businesses === Infinity ? 'ilimitados' : limits.businesses
+            throw new BusinessLimitError(`Tu plan ${planLabel} permite hasta ${cap} negocio(s)`)
+          }
+        }
+
+        await tx.$executeRaw`
+          INSERT INTO "Business" (id, name, industry, "entityType", "taxYear", "createdAt", "updatedAt")
+          VALUES (${businessId}, ${name}, ${industry || null}, ${entityType || null}, ${taxYear ? Number(taxYear) : null}, ${now}, ${now})
+        `
+        await tx.$executeRaw`
+          INSERT INTO "BusinessUser" (id, "userId", "businessId", role, "createdAt")
+          VALUES (${cuid()}, ${userId}, ${businessId}, 'OWNER', ${now})
+        `
+      })
+    } catch (e) {
+      if (e instanceof BusinessLimitError) {
+        return NextResponse.json({ error: e.message }, { status: 403 })
+      }
+      throw e
+    }
 
     // Team features disabled for now
 

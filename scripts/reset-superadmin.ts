@@ -10,9 +10,16 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 const EMAIL = 'superadmin@mypnl.com'
-const NEW_PASSWORD = process.env.NEW_PASSWORD || 'SuperAdmin123!'
+const NEW_PASSWORD = process.env.NEW_PASSWORD
 
 async function main() {
+  if (!NEW_PASSWORD) {
+    console.error('❌ NEW_PASSWORD env var is required — refusing to fall back to a hardcoded password.')
+    console.error('   Usage: NEW_PASSWORD="MiNuevaContraseña123!" npx tsx scripts/reset-superadmin.ts')
+    process.exitCode = 1
+    return
+  }
+
   const hash = await bcrypt.hash(NEW_PASSWORD, 12)
   const user = await prisma.user.upsert({
     where: { email: EMAIL },
@@ -27,8 +34,12 @@ async function main() {
       billingAccount: { create: { plan: 'ENTERPRISE' } },
     },
   })
+
+  await prisma.auditLog.create({
+    data: { userId: user.id, action: 'SUPERADMIN_PASSWORD_RESET_VIA_SCRIPT', entity: 'User', entityId: user.id },
+  }).catch(() => {})
+
   console.log(`✅ Password reset for ${user.email}`)
-  console.log(`   New password: ${NEW_PASSWORD}`)
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect())

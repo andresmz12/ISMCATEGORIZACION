@@ -38,7 +38,11 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      // A deactivated user's already-issued token is revalidated against the
+      // DB every REVALIDATE_INTERVAL_MS (see lib/auth.ts) — once that catches
+      // up, isActive flips to false here and the user is bounced to sign-in
+      // instead of keeping page access for the rest of their 8-hour session.
+      authorized: ({ token }) => !!token && (token as any).isActive !== false,
     },
   }
 )

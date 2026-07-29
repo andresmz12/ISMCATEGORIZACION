@@ -82,9 +82,12 @@ export async function POST(req: Request) {
 
   let resolvedCategoryId: string | null = null
   if (categoryId) {
-    // A category may be business-owned or a shared system category (businessId: null) —
+    // A category may be business-owned or a shared system category (isSystem: true) —
     // same rule the classification/import paths use. Never trust the ID blindly.
-    const cat = await prisma.category.findFirst({ where: { id: categoryId, OR: [{ businessId }, { businessId: null }] } })
+    // NOTE: checking isSystem, not businessId: null — a non-system category with a
+    // null businessId (a data-model edge case, not a real "global" category) must
+    // not be assignable to every business.
+    const cat = await prisma.category.findFirst({ where: { id: categoryId, OR: [{ businessId }, { isSystem: true }] } })
     if (!cat) return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
     resolvedCategoryId = cat.id
   }

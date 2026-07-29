@@ -22,6 +22,13 @@ export function getPlanLimits(plan: string, trialEndsAt?: string | Date | null) 
 }
 
 export function requirePlanFeature(session: any, feature: PlanFeature): NextResponse | null {
+  // session.user.isActive is revalidated against the DB every ~60s (see
+  // lib/auth.ts) — this is what actually stops a deactivated user's
+  // already-issued 8-hour token from keeping access to paid AI/Plaid/team
+  // features, since middleware itself doesn't cover /api/* routes.
+  if (session?.user?.isActive === false) {
+    return NextResponse.json({ error: 'Esta cuenta ha sido desactivada' }, { status: 403 })
+  }
   const accountType = session?.user?.accountType
   const plan = session?.user?.plan
   const trialEndsAt = session?.user?.trialEndsAt
@@ -35,8 +42,15 @@ export function requirePlanFeature(session: any, feature: PlanFeature): NextResp
 // Businesses are owned by an account, not by an individual User — count
 // across every user that shares the account so the limit reflects what the
 // whole team (owner + invited members) has created, not just the caller.
-export async function countOwnedBusinesses(accountId: string): Promise<number> {
-  const result = await prisma.$queryRaw<{ count: number }[]>`
+// Accepts an optional tx client so callers can run this inside the same
+// transaction/advisory-lock scope as the insert it's gating (see
+// POST /api/businesses) — otherwise two concurrent requests can both read
+// the count before either commits and both slip past the plan limit.
+export async function countOwnedBusinesses(
+  accountId: string,
+  client: { $queryRaw: typeof prisma.$queryRaw } = prisma
+): Promise<number> {
+  const result = await client.$queryRaw<{ count: number }[]>`
     SELECT COUNT(*)::integer as count
     FROM "BusinessUser" bu
     INNER JOIN "User" u ON u.id = bu."userId"

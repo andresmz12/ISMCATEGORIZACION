@@ -26,6 +26,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       ...(irsCode !== undefined && { irsCode }),
       ...(description !== undefined && { description }),
       ...(isSystem !== undefined && { isSystem }),
+      // A system category must be global — clear any lingering businessId so a
+      // business-owned row flipped to isSystem:true doesn't start leaking into
+      // every other tenant's category list/AI-classification prompt (both key
+      // off isSystem alone, not businessId).
+      ...(isSystem === true && { businessId: null }),
     },
   })
   return NextResponse.json(updated)

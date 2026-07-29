@@ -47,10 +47,12 @@ export async function DELETE(req: Request) {
     }
     if (target === 'history') {
       const { count } = await prisma.auditLog.deleteMany({ where: { businessId, action: 'IMPORT_TRANSACTIONS' } })
+      await logAudit({ userId, businessId, action: 'PURGE_IMPORT_HISTORY', entity: 'AuditLog', metadata: { deletedCount: count } })
       return NextResponse.json({ deleted: count })
     }
     if (target === 'mappings') {
       const { count } = await prisma.bankFormatMapping.deleteMany({ where: { businessId } })
+      await logAudit({ userId, businessId, action: 'DELETE_ALL_BANK_MAPPINGS', entity: 'BankFormatMapping', metadata: { deletedCount: count } })
       return NextResponse.json({ deleted: count })
     }
     return NextResponse.json({ error: 'target required (history|mappings)' }, { status: 400 })

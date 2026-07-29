@@ -44,7 +44,6 @@ export async function GET(req: Request) {
       select: {
         id: true,
         status: true,
-        signToken: true,
         clientCompanyName: true,
         clientEmail: true,
         createdAt: true,

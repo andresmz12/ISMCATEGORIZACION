@@ -5,7 +5,6 @@ import Link from 'next/link'
 interface ContractRow {
   id: string
   status: 'SENT' | 'CLIENT_SIGNED' | 'COMPLETED'
-  signToken: string
   clientCompanyName: string | null
   clientEmail: string | null
   createdAt: string

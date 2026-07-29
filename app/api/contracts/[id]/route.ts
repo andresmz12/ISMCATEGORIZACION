@@ -23,13 +23,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   })
   if (!contract) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 
-  const { pdfData, finalPdfData, clientSignature, providerSignature, ...rest } = contract
+  const { pdfData, finalPdfData, clientSignature, providerSignature, signToken, ...rest } = contract
   return NextResponse.json({
     ...rest,
     hasDraftPdf: !!pdfData,
     hasFinalPdf: !!finalPdfData,
     hasClientSignature: !!clientSignature,
     hasProviderSignature: !!providerSignature,
+    signUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/sign/${signToken}`,
   })
 }
 
