@@ -5,10 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useToast } from '@/components/Toast'
 import { useActiveBiz } from '@/lib/use-active-biz'
 import { useTranslation } from '@/lib/i18n'
-
-function fmt(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
-}
+import { formatCurrency, excelNumFmt } from '@/lib/currency'
 
 const FIELD_KEYS = ['date', 'description', 'amount', 'debit', 'credit'] as const
 
@@ -39,6 +36,7 @@ export default function ClasificarPage() {
   const isAIEnabled = accountType === 'SUPERADMIN' || plan === 'PLUS' || plan === 'ENTERPRISE' || plan === 'CUSTOM'
 
   const { businesses, activeBizId: activeBiz } = useActiveBiz()
+  const fmt = (n: number) => formatCurrency(n, businesses.find(b => b.id === activeBiz)?.currency)
   const [savedMappings, setSavedMappings] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [aiUsage, setAiUsage] = useState<{ classifiedCount: number; limit: number | null } | null>(null)
@@ -352,7 +350,7 @@ export default function ClasificarPage() {
           confidence: tx.aiConfidence || '',
         })
         const amtCell = row.getCell('amount')
-        amtCell.numFmt = '"$"#,##0.00'
+        amtCell.numFmt = excelNumFmt(biz?.currency)
         amtCell.font = { color: { argb: tx.type === 'CREDIT' ? 'FF059669' : 'FFDC2626' } }
       }
       ws.autoFilter = { from: 'A1', to: 'G1' }
@@ -369,7 +367,7 @@ export default function ClasificarPage() {
       const totalDeductible = transactions.filter(t => t.deductibility === 'YES' || t.deductibility === 'FIFTY').reduce((s, t) => s + (t.deductibility === 'FIFTY' ? t.amount * 0.5 : t.amount), 0)
       for (const [label, val] of [[t('reports.totalIncome'), income], [t('reports.totalExpenses'), expenses], [t('reports.netProfit'), income - expenses], [t('reports.totalDeductible'), totalDeductible]]) {
         const r = wsSummary.addRow([label, val])
-        if (typeof val === 'number') r.getCell(2).numFmt = '"$"#,##0.00'
+        if (typeof val === 'number') r.getCell(2).numFmt = excelNumFmt(biz?.currency)
       }
       wsSummary.getColumn(1).width = 26
       wsSummary.getColumn(2).width = 18

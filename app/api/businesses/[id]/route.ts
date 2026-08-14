@@ -22,7 +22,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { name, industry, entityType, taxYear } = await req.json()
+  const { name, industry, entityType, taxYear, currency } = await req.json()
   const updated = await prisma.business.update({
     where: { id: params.id },
     data: {
@@ -30,6 +30,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       ...(industry !== undefined && { industry }),
       ...(entityType !== undefined && { entityType }),
       ...(taxYear !== undefined && { taxYear: taxYear ? Number(taxYear) : null }),
+      ...(currency !== undefined && { currency: currency === 'COP' ? 'COP' : 'USD' }),
     },
   })
   await logAudit({ userId, businessId: params.id, action: 'UPDATE_BUSINESS', entity: 'Business', entityId: params.id, metadata: { name: updated.name } })

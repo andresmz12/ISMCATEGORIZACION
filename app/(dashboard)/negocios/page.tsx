@@ -11,6 +11,10 @@ const INDUSTRIES = [
   'Real Estate', 'Transportation', 'Other',
 ]
 const ENTITIES = ['Sole Proprietor (Schedule C)', 'S-Corp', 'C-Corp', 'Partnership', 'LLC']
+const CURRENCIES = [
+  { value: 'USD', label: 'USD — Dólar estadounidense' },
+  { value: 'COP', label: 'COP — Peso colombiano' },
+]
 
 export default function NegociosPage() {
   const { data: session } = useSession()
@@ -23,10 +27,10 @@ export default function NegociosPage() {
   const [businesses, setBusinesses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeBizId, setActiveBizId] = useState<string>('')
-  const [form, setForm] = useState({ name: '', industry: '', entityType: '', taxYear: new Date().getFullYear().toString() })
+  const [form, setForm] = useState({ name: '', industry: '', entityType: '', taxYear: new Date().getFullYear().toString(), currency: 'USD' })
   const [submitting, setSubmitting] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', industry: '', entityType: '' })
+  const [editForm, setEditForm] = useState({ name: '', industry: '', entityType: '', currency: 'USD' })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -57,7 +61,7 @@ export default function NegociosPage() {
       const data = await res.json()
       if (!res.ok) { toast(data.error || t('business.failed'), 'error'); return }
       setBusinesses(b => [...b, data])
-      setForm({ name: '', industry: '', entityType: '', taxYear: new Date().getFullYear().toString() })
+      setForm({ name: '', industry: '', entityType: '', taxYear: new Date().getFullYear().toString(), currency: 'USD' })
       localStorage.setItem('activeBusiness', data.id)
       setActiveBizId(data.id)
       toast(t('business.created'), 'success')
@@ -76,7 +80,7 @@ export default function NegociosPage() {
 
   function startEdit(b: any) {
     setEditId(b.id)
-    setEditForm({ name: b.name, industry: b.industry || '', entityType: b.entityType || '' })
+    setEditForm({ name: b.name, industry: b.industry || '', entityType: b.entityType || '', currency: b.currency || 'USD' })
   }
 
   async function saveEdit(id: string) {
@@ -140,7 +144,7 @@ export default function NegociosPage() {
                       value={editForm.name}
                       onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                     />
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       <select className="input" value={editForm.industry} onChange={e => setEditForm(f => ({ ...f, industry: e.target.value }))}>
                         <option value="">— Industria —</option>
                         {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
@@ -148,6 +152,9 @@ export default function NegociosPage() {
                       <select className="input" value={editForm.entityType} onChange={e => setEditForm(f => ({ ...f, entityType: e.target.value }))}>
                         <option value="">— Tipo de entidad —</option>
                         {ENTITIES.map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                      <select className="input" value={editForm.currency} onChange={e => setEditForm(f => ({ ...f, currency: e.target.value }))}>
+                        {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                       </select>
                     </div>
                     <div className="flex gap-2">
@@ -171,7 +178,7 @@ export default function NegociosPage() {
                           <span className="text-xs bg-emerald-100 text-emerald-700 font-medium px-2 py-0.5 rounded-full">Activo</span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400">{[b.industry, b.entityType, b.taxYear].filter(Boolean).join(' · ')}</p>
+                      <p className="text-xs text-gray-400">{[b.industry, b.entityType, b.taxYear, b.currency].filter(Boolean).join(' · ')}</p>
                       {b.userRole && <span className="text-xs text-[#1B4965] font-medium">{b.userRole}</span>}
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
@@ -240,6 +247,12 @@ export default function NegociosPage() {
                   {ENTITIES.map(e => <option key={e} value={e}>{e}</option>)}
                 </select>
               </div>
+            </div>
+            <div>
+              <label className="label">Moneda</label>
+              <select className="input" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
+                {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
             </div>
             <button type="submit" disabled={submitting} className="btn-primary disabled:opacity-50">
               {submitting ? t('common.loading') : t('business.create')}

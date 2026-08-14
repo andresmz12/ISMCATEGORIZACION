@@ -4,10 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
 import { useActiveBiz } from '@/lib/use-active-biz'
-
-function fmt(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
-}
+import { formatCurrency } from '@/lib/currency'
 
 function TransactionsContent() {
   const { t } = useTranslation()
@@ -15,7 +12,8 @@ function TransactionsContent() {
   const searchParams = useSearchParams()
   const selectAllRef = useRef<HTMLInputElement>(null)
 
-  const { activeBizId: activeBiz } = useActiveBiz()
+  const { businesses, activeBizId: activeBiz } = useActiveBiz()
+  const fmt = (n: number) => formatCurrency(n, businesses.find(b => b.id === activeBiz)?.currency)
   const [transactions, setTransactions] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [total, setTotal] = useState(0)

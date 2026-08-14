@@ -3,10 +3,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTranslation } from '@/lib/i18n'
 import { useActiveBiz } from '@/lib/use-active-biz'
-
-function fmt(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
-}
+import { formatCurrency, excelNumFmt } from '@/lib/currency'
 
 // /api/transactions caps `limit` at 1000 server-side, so a single request with
 // limit=5000 silently returns only the first page. Page through using the
@@ -34,6 +31,7 @@ export default function ReportsPage() {
   const { t } = useTranslation()
   const { businesses, activeBizId } = useActiveBiz()
   const activeBiz = activeBizId
+  const fmt = (n: number) => formatCurrency(n, businesses.find((b: any) => b.id === activeBiz)?.currency)
   const accountType = (session?.user as any)?.accountType
   const plan = (session?.user as any)?.plan || 'BASIC'
   const isPremium = accountType === 'SUPERADMIN' || plan === 'PLUS' || plan === 'ENTERPRISE' || plan === 'CUSTOM'
@@ -206,7 +204,7 @@ export default function ReportsPage() {
         catRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
         catRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BLUE } }
         catRow.height = 18
-        catRow.getCell(3).numFmt = '"$"#,##0.00'
+        catRow.getCell(3).numFmt = excelNumFmt(biz?.currency)
 
         // Column sub-headers
         const hRow = ws.addRow([t('reports.date'), t('reports.description'), t('tx.amount'), t('reports.type'), t('reports.status')])
@@ -221,7 +219,7 @@ export default function ReportsPage() {
             tx.type === 'CREDIT' ? t('reports.inflow') : t('reports.outflow'),
             tx.status === 'CLASSIFIED' ? t('reports.statusClassified') : tx.status === 'PENDING' ? t('reports.statusPending') : t('reports.statusReview'),
           ])
-          row.getCell(3).numFmt = '"$"#,##0.00'
+          row.getCell(3).numFmt = excelNumFmt(biz?.currency)
           row.getCell(3).font = { color: { argb: tx.type === 'CREDIT' ? 'FF059669' : 'FFDC2626' } }
           row.height = 15
         }
@@ -229,7 +227,7 @@ export default function ReportsPage() {
         // Subtotal row
         const subRow = ws.addRow(['', `${t('reports.subtotal')} ${catName}`, catTotal])
         subRow.font = { bold: true, italic: true, size: 9 }
-        subRow.getCell(3).numFmt = '"$"#,##0.00'
+        subRow.getCell(3).numFmt = excelNumFmt(biz?.currency)
         subRow.getCell(3).font = { bold: true, italic: true, color: { argb: debitTotal > 0 ? 'FFDC2626' : 'FF059669' } }
 
         ws.addRow([]) // spacer between categories
@@ -315,12 +313,12 @@ export default function ReportsPage() {
           startY,
           head: [[
             { content: catName, colSpan: 3, styles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 9 } },
-            { content: `${t('reports.subtotal')}: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(catTotal)}`, styles: { fillColor: BLUE, textColor: [200, 230, 240] as [number,number,number], fontStyle: 'italic', fontSize: 8, halign: 'right' } },
+            { content: `${t('reports.subtotal')}: ${fmt(catTotal)}`, styles: { fillColor: BLUE, textColor: [200, 230, 240] as [number,number,number], fontStyle: 'italic', fontSize: 8, halign: 'right' } },
           ]],
           body: catTxs.map((tx: any) => [
             new Date(tx.date).toLocaleDateString(),
             tx.description?.substring(0, 55) || '',
-            new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(tx.amount),
+            fmt(tx.amount),
             tx.type === 'CREDIT' ? t('reports.inflow') : t('reports.outflow'),
           ]),
           headStyles: { fontSize: 9 },

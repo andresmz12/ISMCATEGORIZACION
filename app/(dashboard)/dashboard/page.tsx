@@ -4,10 +4,7 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { useTranslation } from '@/lib/i18n'
 import { useActiveBiz } from '@/lib/use-active-biz'
-
-function fmt(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
-}
+import { formatCurrency } from '@/lib/currency'
 
 function greeting(name: string, t: (k: any) => string) {
   const h = new Date().getHours()
@@ -16,7 +13,7 @@ function greeting(name: string, t: (k: any) => string) {
 }
 
 // Simple SVG donut chart
-function DonutChart({ data }: { data: { name: string; value: number; color: string }[] }) {
+function DonutChart({ data, currency }: { data: { name: string; value: number; color: string }[]; currency?: string }) {
   const total = data.reduce((s, d) => s + d.value, 0)
   if (total === 0) return null
 
@@ -55,7 +52,7 @@ function DonutChart({ data }: { data: { name: string; value: number; color: stri
           />
         ))}
         <text x={cx} y={cy - 6} textAnchor="middle" className="fill-gray-800 font-bold" fontSize="13">
-          {fmt(total).replace(/\.\d+/, '')}
+          {formatCurrency(total, currency).replace(/\.\d+/, '')}
         </text>
         <text x={cx} y={cy + 12} textAnchor="middle" className="fill-gray-400" fontSize="10">total</text>
       </svg>
@@ -79,6 +76,7 @@ export default function DashboardPage() {
   const { t } = useTranslation()
   const { businesses, activeBizId, loading } = useActiveBiz()
   const activeBiz = businesses.find(b => b.id === activeBizId) || null
+  const fmt = (n: number) => formatCurrency(n, activeBiz?.currency)
 
   const currentYear = new Date().getFullYear()
   const [from, setFrom] = useState(`${currentYear}-01-01`)
@@ -294,7 +292,7 @@ export default function DashboardPage() {
           {donutData.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">{t('common.noData')}</p>
           ) : (
-            <DonutChart data={donutData} />
+            <DonutChart data={donutData} currency={activeBiz?.currency} />
           )}
         </div>
       </div>

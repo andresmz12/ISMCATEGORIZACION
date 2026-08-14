@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
 import { useActiveBiz } from '@/lib/use-active-biz'
+import { formatCurrency } from '@/lib/currency'
 
 interface ExtractedData {
   merchant: string | null
@@ -36,10 +37,6 @@ interface ScanJob {
   }
 }
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
-}
-
 function ConfidenceBadge({ level }: { level: string }) {
   const colors: Record<string, string> = {
     HIGH: 'bg-emerald-100 text-emerald-700',
@@ -60,7 +57,8 @@ export default function RecibosPage() {
   const cameraRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
-  const { activeBizId: activeBiz } = useActiveBiz()
+  const { businesses, activeBizId: activeBiz } = useActiveBiz()
+  const fmt = (n: number) => formatCurrency(n, businesses.find(b => b.id === activeBiz)?.currency)
   const [categories, setCategories] = useState<any[]>([])
   const [jobs, setJobs] = useState<ScanJob[]>([])
 
@@ -243,6 +241,7 @@ export default function RecibosPage() {
               key={job.id}
               job={job}
               categories={categories}
+              currency={businesses.find(b => b.id === activeBiz)?.currency}
               onConfirm={confirmJob}
               onReject={rejectJob}
               onFormChange={updateForm}
@@ -292,17 +291,20 @@ export default function RecibosPage() {
 function ScanCard({
   job,
   categories,
+  currency,
   onConfirm,
   onReject,
   onFormChange,
 }: {
   job: ScanJob
   categories: any[]
+  currency?: string
   onConfirm: (j: ScanJob) => void
   onReject: (j: ScanJob) => void
   onFormChange: (id: string, field: string, value: string) => void
 }) {
   const { t } = useTranslation()
+  const fmt = (n: number) => formatCurrency(n, currency)
 
   if (job.status === 'scanning') {
     return (

@@ -49,8 +49,9 @@ export async function POST(req: Request) {
   const trialEndsAt = (session.user as any).trialEndsAt
 
   try {
-    const { name, industry, entityType, taxYear } = await req.json()
+    const { name, industry, entityType, taxYear, currency } = await req.json()
     if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 })
+    const businessCurrency = currency === 'COP' ? 'COP' : 'USD'
 
     if (accountType === 'TEAM_MEMBER') {
       return NextResponse.json({ error: 'Los miembros del equipo no pueden crear negocios' }, { status: 403 })
@@ -76,8 +77,8 @@ export async function POST(req: Request) {
         }
 
         await tx.$executeRaw`
-          INSERT INTO "Business" (id, name, industry, "entityType", "taxYear", "createdAt", "updatedAt")
-          VALUES (${businessId}, ${name}, ${industry || null}, ${entityType || null}, ${taxYear ? Number(taxYear) : null}, ${now}, ${now})
+          INSERT INTO "Business" (id, name, industry, "entityType", "taxYear", currency, "createdAt", "updatedAt")
+          VALUES (${businessId}, ${name}, ${industry || null}, ${entityType || null}, ${taxYear ? Number(taxYear) : null}, ${businessCurrency}::"Currency", ${now}, ${now})
         `
         await tx.$executeRaw`
           INSERT INTO "BusinessUser" (id, "userId", "businessId", role, "createdAt")
@@ -94,7 +95,7 @@ export async function POST(req: Request) {
     // Team features disabled for now
 
     await logAudit({ userId, businessId, action: 'CREATE_BUSINESS', entity: 'Business', entityId: businessId, metadata: { name } })
-    return NextResponse.json({ id: businessId, name, industry, entityType, taxYear }, { status: 201 })
+    return NextResponse.json({ id: businessId, name, industry, entityType, taxYear, currency: businessCurrency }, { status: 201 })
   } catch (e: any) {
     console.error('create business error:', e)
     return NextResponse.json({ error: 'Error al crear el negocio' }, { status: 500 })

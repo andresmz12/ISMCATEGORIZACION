@@ -3,16 +3,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import { useActiveBiz } from '@/lib/use-active-biz'
+import { formatCurrency } from '@/lib/currency'
 
 const FIELD_KEYS = ['date', 'description', 'amount', 'debit', 'credit'] as const
 
-function fmt(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
-}
-
 interface DupRow { row: number; date: string; description: string; amount: number; type: string; existingId: string }
 
-function DuplicateTable({ rows, businessId, onImported }: { rows: DupRow[]; businessId: string; onImported: () => void }) {
+function DuplicateTable({ rows, businessId, currency, onImported }: { rows: DupRow[]; businessId: string; currency?: string; onImported: () => void }) {
+  const fmt = (n: number) => formatCurrency(n, currency)
   const [open, setOpen] = useState(false)
   const [importing, setImporting] = useState<string | null>(null)
 
@@ -99,7 +97,8 @@ function DuplicateTable({ rows, businessId, onImported }: { rows: DupRow[]; busi
 
 export default function ImportPage() {
   const { t } = useTranslation()
-  const { activeBizId: activeBiz } = useActiveBiz()
+  const { businesses, activeBizId: activeBiz } = useActiveBiz()
+  const activeBizCurrency = businesses.find(b => b.id === activeBiz)?.currency
   const [file, setFile] = useState<File | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
   const [previewRows, setPreviewRows] = useState<string[][]>([])
@@ -419,7 +418,7 @@ export default function ImportPage() {
             </div>
           </div>
           {result.duplicateRows?.length > 0 && (
-            <DuplicateTable rows={result.duplicateRows} businessId={activeBiz} onImported={() => { setResult((r: any) => ({ ...r, duplicateRows: [] })) }} />
+            <DuplicateTable rows={result.duplicateRows} businessId={activeBiz} currency={activeBizCurrency} onImported={() => { setResult((r: any) => ({ ...r, duplicateRows: [] })) }} />
           )}
           {result.errors?.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
