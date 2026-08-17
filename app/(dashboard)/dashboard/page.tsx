@@ -83,6 +83,7 @@ export default function DashboardPage() {
   const [to, setTo] = useState(new Date().toISOString().split('T')[0])
 
   const [report, setReport] = useState<any>(null)
+  const [prevReport, setPrevReport] = useState<any>(null)
   const [txs, setTxs] = useState<any[]>([])
 
   useEffect(() => {
@@ -91,6 +92,20 @@ export default function DashboardPage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => setReport(d))
       .catch(() => setReport(null))
+  }, [activeBizId, from, to])
+
+  // Previous period of equal length, for the "vs last period" deltas on the stat cards
+  useEffect(() => {
+    if (!activeBizId) return
+    const fromMs = new Date(from).getTime()
+    const toMs = new Date(to).getTime()
+    const spanMs = Math.max(toMs - fromMs, 0)
+    const prevTo = new Date(fromMs - 24 * 60 * 60 * 1000)
+    const prevFrom = new Date(prevTo.getTime() - spanMs)
+    fetch(`/api/reports?businessId=${activeBizId}&from=${prevFrom.toISOString().split('T')[0]}&to=${prevTo.toISOString().split('T')[0]}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setPrevReport(d))
+      .catch(() => setPrevReport(null))
   }, [activeBizId, from, to])
 
   useEffect(() => {
@@ -104,6 +119,15 @@ export default function DashboardPage() {
   const income = report?.summary.income ?? 0
   const expenses = report?.summary.totalExpenses ?? 0
   const profit = report?.summary.netProfit ?? 0
+  const pendingCount = report?.summary.pending ?? 0
+
+  const pctDelta = (current: number, previous: number): number | null => {
+    if (!prevReport || previous === 0) return null
+    return ((current - previous) / Math.abs(previous)) * 100
+  }
+  const incomeDelta = pctDelta(income, prevReport?.summary.income ?? 0)
+  const expensesDelta = pctDelta(expenses, prevReport?.summary.totalExpenses ?? 0)
+  const profitDelta = pctDelta(profit, prevReport?.summary.netProfit ?? 0)
 
   const now = new Date()
 
@@ -208,6 +232,7 @@ export default function DashboardPage() {
           {
             label: t('dashboard.income'),
             value: income,
+            delta: incomeDelta,
             color: '#059669',
             iconBg: 'rgb(16 185 129 / 0.10)',
             icon: <svg className="w-3.5 h-3.5" style={{ color: '#059669' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>,
@@ -215,6 +240,7 @@ export default function DashboardPage() {
           {
             label: t('dashboard.expenses'),
             value: expenses,
+            delta: expensesDelta,
             color: '#dc2626',
             iconBg: 'rgb(239 68 68 / 0.10)',
             icon: <svg className="w-3.5 h-3.5" style={{ color: '#dc2626' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>,
@@ -222,44 +248,83 @@ export default function DashboardPage() {
           {
             label: t('dashboard.profit'),
             value: profit,
+            delta: profitDelta,
             color: profit >= 0 ? '#059669' : '#dc2626',
             iconBg: profit >= 0 ? 'rgb(16 185 129 / 0.10)' : 'rgb(239 68 68 / 0.10)',
             icon: <svg className="w-3.5 h-3.5" style={{ color: profit >= 0 ? '#059669' : '#dc2626' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>,
           },
-        ].map((card, idx) => (
-          <div
-            key={card.label}
-            className="card p-4 flex flex-col gap-2 animate-slide-up"
-            style={{ animationDelay: `${idx * 60}ms` }}
-            data-hover
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{card.label}</p>
-              <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: card.iconBg }}>
-                {card.icon}
+        ].map((card, idx) => {
+          // For expenses, a rise is bad and a drop is good — flip the color read, not the arrow direction
+          const deltaIsGood = card.label === t('dashboard.expenses') ? (card.delta ?? 0) <= 0 : (card.delta ?? 0) >= 0
+          return (
+            <div
+              key={card.label}
+              className="card p-4 flex flex-col gap-2 animate-slide-up"
+              style={{ animationDelay: `${idx * 60}ms` }}
+              data-hover
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{card.label}</p>
+                <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: card.iconBg }}>
+                  {card.icon}
+                </div>
               </div>
+              <p className="amount-lg" style={{ color: card.color }}>{fmt(card.value)}</p>
+              {card.delta !== null && (
+                <div className={`flex items-center gap-1 text-xs font-semibold ${deltaIsGood ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={card.delta < 0 ? { transform: 'rotate(180deg)' } : undefined}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7 7 7M12 3v18" />
+                  </svg>
+                  {Math.abs(card.delta).toFixed(1)}%
+                  <span className="text-slate-400 font-normal">{t('dashboard.vsPrevPeriod')}</span>
+                </div>
+              )}
             </div>
-            <p className="amount-lg" style={{ color: card.color }}>{fmt(card.value)}</p>
-          </div>
-        ))}
+          )
+        })}
       </div>
+
+      {/* Pending review CTA */}
+      {pendingCount > 0 && (
+        <Link
+          href={`/transactions?status=PENDING`}
+          className="flex items-center justify-between gap-4 rounded-2xl px-5 py-4 text-white shadow-sm hover:opacity-95 transition-opacity"
+          style={{ background: 'linear-gradient(120deg, #1B4965 0%, #133249 100%)' }}
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-2xl font-extrabold tabular-nums">{pendingCount}</span>
+            <p className="text-sm font-semibold">{t('dashboard.pending')}</p>
+          </div>
+          <span className="flex-shrink-0 bg-white text-[#1B4965] text-sm font-bold rounded-lg px-4 py-2">
+            {t('dashboard.reviewPending', { n: pendingCount })}
+          </span>
+        </Link>
+      )}
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Monthly bar chart */}
+        {/* Monthly income vs. expenses */}
         <div className="card p-5">
           <div className="flex items-center justify-between mb-1">
             <h3 className="section-title">{t('dashboard.monthlyExpenses')}</h3>
             {hoveredMonth !== null && months[hoveredMonth] && (
               <div className="text-right">
                 <span className="text-xs text-gray-500">{months[hoveredMonth].label} · </span>
+                <span className="text-sm font-bold text-emerald-600">{fmt(months[hoveredMonth].income)}</span>
+                <span className="text-xs text-gray-300 mx-1">/</span>
                 <span className="text-sm font-bold text-red-600">{fmt(months[hoveredMonth].expenses)}</span>
               </div>
             )}
           </div>
-          <div className="flex items-end gap-1 mt-3" style={{ height: '130px' }}>
-            {months.map(({ label, expenses: val }, i) => {
-              const pct = maxMonthly > 0 ? (val / maxMonthly) * 100 : 0
+          <div className="flex items-center gap-3 mb-2">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500"><span className="w-2 h-2 rounded-full bg-[#2EC4B6]" />{t('dashboard.income')}</span>
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500"><span className="w-2 h-2 rounded-full bg-red-400" />{t('dashboard.expenses')}</span>
+          </div>
+          <div className="flex items-end gap-1 mt-1" style={{ height: '130px' }}>
+            {months.map((m, i) => {
+              const { label, expenses: val, income: incVal } = m
+              const expPct = maxMonthly > 0 ? (val / maxMonthly) * 100 : 0
+              const incPct = maxMonthly > 0 ? (incVal / maxMonthly) * 100 : 0
               const isHovered = hoveredMonth === i
               return (
                 <div
@@ -268,15 +333,19 @@ export default function DashboardPage() {
                   onMouseEnter={() => setHoveredMonth(i)}
                   onMouseLeave={() => setHoveredMonth(null)}
                 >
-                  <div className="w-full flex items-end justify-center relative" style={{ height: '104px' }}>
-                    {isHovered && val > 0 && (
+                  <div className="w-full flex items-end justify-center gap-0.5 relative" style={{ height: '104px' }}>
+                    {isHovered && (val > 0 || incVal > 0) && (
                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] font-medium px-1.5 py-0.5 rounded whitespace-nowrap z-10 pointer-events-none">
-                        {fmt(val)}
+                        {fmt(incVal)} / {fmt(val)}
                       </div>
                     )}
                     <div
-                      className={`w-full rounded-t transition-colors ${isHovered ? 'bg-[#2EC4B6]' : 'bg-[#1B4965]'}`}
-                      style={{ height: `${Math.max(pct, val > 0 ? 3 : 1)}%` }}
+                      className={`w-full rounded-t transition-colors ${isHovered ? 'bg-[#20a99d]' : 'bg-[#2EC4B6]'}`}
+                      style={{ height: `${Math.max(incPct, incVal > 0 ? 3 : 1)}%` }}
+                    />
+                    <div
+                      className={`w-full rounded-t transition-colors ${isHovered ? 'bg-red-500' : 'bg-red-300'}`}
+                      style={{ height: `${Math.max(expPct, val > 0 ? 3 : 1)}%` }}
                     />
                   </div>
                   <span className={`text-[10px] ${isHovered ? 'text-[#1B4965] font-semibold' : 'text-gray-400'}`}>{label}</span>

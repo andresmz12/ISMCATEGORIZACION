@@ -66,6 +66,7 @@ const es = {
   'dashboard.viewAll': 'Ver todas',
   'dashboard.quickActions': 'Acciones rápidas',
   'dashboard.reviewPending': 'Revisar {n} pendientes →',
+  'dashboard.vsPrevPeriod': 'vs. periodo anterior',
   'dashboard.noPending': 'No hay transacciones pendientes',
 
   // Transactions
