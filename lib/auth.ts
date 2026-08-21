@@ -5,6 +5,18 @@ import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 import { rateLimit } from './rate-limit'
 
+// NextAuth's authorize() gets a plain headers object (not a Fetch Request),
+// so lib/validate.ts's getClientIp (which expects Request.headers.get) can't
+// be reused here. Same last-hop-of-XFF logic as that helper.
+function getClientIpFromHeaders(headers?: Record<string, any>): string {
+  const xff = headers?.['x-forwarded-for']
+  if (xff) {
+    const parts = String(xff).split(',').map(p => p.trim()).filter(Boolean)
+    if (parts.length > 0) return parts[parts.length - 1]
+  }
+  return headers?.['x-real-ip'] ?? 'unknown'
+}
+
 // How often a live session's JWT re-checks the DB for accountType/plan/
 // isActive changes, instead of trusting what was true at login for the
 // entire 8-hour session lifetime. Without this, deactivating a user,
@@ -79,14 +91,19 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null
 
         const email = credentials.email.toLowerCase().trim()
 
-        // 10 attempts per email per 15 minutes
-        const rl = rateLimit(`login:${email}`, 10, 15 * 60 * 1000)
-        if (!rl.ok) return null
+        // Per-email limit stops brute-forcing one account; per-IP limit
+        // stops credential stuffing (one attacker rotating many emails
+        // against the same endpoint) that the per-email limit alone can't
+        // see. Both must pass.
+        const rl = rateLimit(`login:${email}`, 10, 15 * 60 * 1000) // 10 attempts per email per 15 min
+        const ip = getClientIpFromHeaders(req?.headers)
+        const rlIp = rateLimit(`login-ip:${ip}`, 30, 15 * 60 * 1000) // 30 attempts per IP per 15 min
+        if (!rl.ok || !rlIp.ok) return null
 
         try {
           const user = await prisma.user.findUnique({
