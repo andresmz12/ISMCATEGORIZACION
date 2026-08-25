@@ -67,6 +67,10 @@ const en = {
   'dashboard.quickActions': 'Quick actions',
   'dashboard.reviewPending': 'Review {n} pending →',
   'dashboard.vsPrevPeriod': 'vs. previous period',
+  'tx.ruleSuggestTitle': 'Create an automatic rule?',
+  'tx.ruleSuggestBody': 'You\'ve already classified {count} transactions from "{pattern}" as {category}. Create a rule so it classifies itself next time.',
+  'tx.ruleSuggestConfirm': 'Create rule',
+  'tx.ruleSuggestDismiss': 'Not now',
   'dashboard.noPending': 'No pending transactions',
 
   // Transactions

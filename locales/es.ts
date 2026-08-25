@@ -67,6 +67,10 @@ const es = {
   'dashboard.quickActions': 'Acciones rápidas',
   'dashboard.reviewPending': 'Revisar {n} pendientes →',
   'dashboard.vsPrevPeriod': 'vs. periodo anterior',
+  'tx.ruleSuggestTitle': '¿Crear una regla automática?',
+  'tx.ruleSuggestBody': 'Ya clasificaste {count} transacciones de "{pattern}" como {category}. Crea una regla para que se clasifiquen solas la próxima vez.',
+  'tx.ruleSuggestConfirm': 'Crear regla',
+  'tx.ruleSuggestDismiss': 'Ahora no',
   'dashboard.noPending': 'No hay transacciones pendientes',
 
   // Transactions

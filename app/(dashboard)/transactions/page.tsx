@@ -46,11 +46,60 @@ function TransactionsContent() {
   const [addForm, setAddForm] = useState({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
   const [addError, setAddError] = useState('')
   const [addLoading, setAddLoading] = useState(false)
+  const [rules, setRules] = useState<any[]>([])
+  const [ruleSuggestion, setRuleSuggestion] = useState<{ pattern: string; categoryId: string; categoryName: string; count: number } | null>(null)
+  const [ruleSuggestionLoading, setRuleSuggestionLoading] = useState(false)
 
   useEffect(() => {
     if (!activeBiz) return
     fetch(`/api/categories?businessId=${activeBiz}`).then(r => r.ok ? r.json() : []).then(setCategories)
+    fetch(`/api/rules?businessId=${activeBiz}`).then(r => r.ok ? r.json() : []).then(d => setRules(Array.isArray(d) ? d : []))
   }, [activeBiz])
+
+  // A manual correction that repeats a pattern already seen elsewhere is a
+  // signal the business always classifies this vendor the same way — offer
+  // to turn it into a rule instead of making the user retype it every time.
+  // Mirrors the grouping logic in rules/page.tsx's "learned rules" tab, just
+  // triggered at the moment of correction instead of requiring a separate trip.
+  async function checkRuleSuggestion(description: string, categoryId: string) {
+    if (!activeBiz || !description) return
+    const words = description.trim().toUpperCase().split(/\s+/)
+    const pattern = words.slice(0, 2).join(' ')
+    if (!pattern) return
+    if (rules.some(r => r.pattern.toUpperCase() === pattern)) return // already covered
+    setRuleSuggestionLoading(true)
+    try {
+      const res = await fetch(`/api/transactions?businessId=${activeBiz}&search=${encodeURIComponent(pattern)}&status=CLASSIFIED&limit=50`)
+      if (!res.ok) return
+      const data = await res.json()
+      const matches = (data.transactions || []).filter((t: any) => t.method === 'MANUAL' && t.categoryId === categoryId)
+      if (matches.length >= 2) {
+        const cat = categories.find((c: any) => c.id === categoryId)
+        setRuleSuggestion({ pattern, categoryId, categoryName: cat?.name || '', count: matches.length })
+      }
+    } catch {
+      // Non-critical — just skip the suggestion
+    } finally {
+      setRuleSuggestionLoading(false)
+    }
+  }
+
+  async function confirmRuleSuggestion() {
+    if (!ruleSuggestion || !activeBiz) return
+    const res = await fetch('/api/rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ businessId: activeBiz, pattern: ruleSuggestion.pattern, categoryId: ruleSuggestion.categoryId, priority: 10, field: 'description' }),
+    })
+    if (res.ok) {
+      const rule = await res.json()
+      setRules(r => [...r, rule])
+      toast(t('rules.added'), 'success')
+    } else {
+      toast(t('common.error'), 'error')
+    }
+    setRuleSuggestion(null)
+  }
 
   const loadTransactions = useCallback(async (pageNum: number, append: boolean) => {
     if (!activeBiz) return
@@ -484,6 +533,25 @@ function TransactionsContent() {
         </div>
       )}
 
+      {/* Rule suggestion — appears right after a manual correction repeats a pattern */}
+      {ruleSuggestion && (
+        <div className="p-4 bg-[#1B4965]/5 border border-[#1B4965]/20 rounded-lg flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-start gap-3">
+            <span className="text-xl flex-shrink-0">🤖</span>
+            <div>
+              <p className="text-sm font-semibold text-[#1B4965]">{t('tx.ruleSuggestTitle')}</p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                {t('tx.ruleSuggestBody').replace('{pattern}', ruleSuggestion.pattern).replace('{category}', ruleSuggestion.categoryName).replace('{count}', String(ruleSuggestion.count))}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <button onClick={() => setRuleSuggestion(null)} className="btn-secondary text-xs">{t('tx.ruleSuggestDismiss')}</button>
+            <button onClick={confirmRuleSuggestion} className="btn-primary text-xs">{t('tx.ruleSuggestConfirm')}</button>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="card p-4 flex flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-[180px] border border-gray-300 rounded-lg px-3 bg-white focus-within:ring-2 focus-within:ring-[#1B4965] focus-within:border-transparent">
@@ -627,7 +695,11 @@ function TransactionsContent() {
                     <select
                       className="text-xs border border-gray-200 rounded px-2 py-1 bg-white max-w-[160px]"
                       value={tx.categoryId || ''}
-                      onChange={e => updateTx(tx.id, { categoryId: e.target.value || null, status: 'CLASSIFIED', method: 'MANUAL' })}
+                      onChange={e => {
+                        const categoryId = e.target.value
+                        updateTx(tx.id, { categoryId: categoryId || null, status: 'CLASSIFIED', method: 'MANUAL' })
+                        if (categoryId) checkRuleSuggestion(tx.description, categoryId)
+                      }}
                     >
                       <option value="">{t('tx.unassigned')}</option>
                       {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
