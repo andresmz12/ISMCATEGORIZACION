@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess } from '@/lib/check-business-access'
 import { endOfDay } from '@/lib/date'
+import { materializeDueRecurring } from '@/lib/recurring'
 
 const round = (n: number) => Math.round(n * 100) / 100
 
@@ -21,6 +22,7 @@ export async function GET(req: Request) {
   if (!await checkBusinessAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+  await materializeDueRecurring(businessId)
 
   const where: any = { businessId }
   if (from || to) {

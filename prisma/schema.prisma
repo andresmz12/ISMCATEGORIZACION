@@ -57,6 +57,7 @@ enum ClassMethod {
   MANUAL
   AI
   RULE
+  RECURRING
 }
 
 enum AssignmentStatus {
@@ -110,32 +111,32 @@ model BillingAccount {
 }
 
 model User {
-  id              String      @id @default(cuid())
-  email           String      @unique
-  passwordHash    String
-  name            String?
-  accountType     AccountType @default(ACCOUNTANT)
-  accountId       String
-  accountRole     AccountRole @default(MEMBER)
-  isActive        Boolean     @default(true)
-  lastLogin       DateTime?
-  termsAcceptedAt DateTime?
-  termsVersion    String?
-  inviteToken           String?   @unique
-  inviteTokenExpiresAt  DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  billingAccount      BillingAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  businessUsers       BusinessUser[]
-  accounts            Account[]
-  sessions            Session[]
-  auditLogs           AuditLog[]
-  uploadedDocuments   Document[]
-  assignmentsAssigned Assignment[] @relation("AssignedTo")
-  assignmentsCreated  Assignment[] @relation("CreatedBy")
-  assignmentNotes     AssignmentNote[]
-  contractsCreated       Contract[] @relation("ContractCreatedBy")
-  contractsCounterSigned Contract[] @relation("ContractCounterSignedBy")
+  id                     String           @id @default(cuid())
+  email                  String           @unique
+  passwordHash           String
+  name                   String?
+  accountType            AccountType      @default(ACCOUNTANT)
+  accountId              String
+  accountRole            AccountRole      @default(MEMBER)
+  isActive               Boolean          @default(true)
+  lastLogin              DateTime?
+  termsAcceptedAt        DateTime?
+  termsVersion           String?
+  inviteToken            String?          @unique
+  inviteTokenExpiresAt   DateTime?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  billingAccount         BillingAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  businessUsers          BusinessUser[]
+  accounts               Account[]
+  sessions               Session[]
+  auditLogs              AuditLog[]
+  uploadedDocuments      Document[]
+  assignmentsAssigned    Assignment[]     @relation("AssignedTo")
+  assignmentsCreated     Assignment[]     @relation("CreatedBy")
+  assignmentNotes        AssignmentNote[]
+  contractsCreated       Contract[]       @relation("ContractCreatedBy")
+  contractsCounterSigned Contract[]       @relation("ContractCounterSignedBy")
 
   @@index([accountId])
 }
@@ -178,39 +179,40 @@ model VerificationToken {
 }
 
 model Business {
-  id                   String               @id @default(cuid())
-  name                 String
-  industry             String?
-  entityType           String?
-  taxYear              Int?
-  currency             Currency             @default(USD)
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  users            BusinessUser[]
-  transactions     Transaction[]
-  categories       Category[]
-  bankMappings     BankFormatMapping[]
-  rules            ClassificationRule[]
-  documentTypes    DocumentType[]
-  documents        Document[]
-  assignments      Assignment[]
+  id                    String                 @id @default(cuid())
+  name                  String
+  industry              String?
+  entityType            String?
+  taxYear               Int?
+  currency              Currency               @default(USD)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  users                 BusinessUser[]
+  transactions          Transaction[]
+  categories            Category[]
+  bankMappings          BankFormatMapping[]
+  rules                 ClassificationRule[]
+  documentTypes         DocumentType[]
+  documents             Document[]
+  assignments           Assignment[]
+  recurringTransactions RecurringTransaction[]
 }
 
 // Scoped to the BillingAccount (not Business) — an account's AI spend is
 // shared across every business it owns. See lib/account.ts.
 model AiUsage {
-  id                String         @id @default(cuid())
-  accountId         String
-  period            String
-  inputTokens       Int            @default(0)
-  outputTokens      Int            @default(0)
-  costCents         Int            @default(0)
-  classifiedCount   Int            @default(0)
-  blocked           Boolean        @default(false)
-  unblockedByAdmin  Boolean        @default(false)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  billingAccount    BillingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  id               String         @id @default(cuid())
+  accountId        String
+  period           String
+  inputTokens      Int            @default(0)
+  outputTokens     Int            @default(0)
+  costCents        Int            @default(0)
+  classifiedCount  Int            @default(0)
+  blocked          Boolean        @default(false)
+  unblockedByAdmin Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  billingAccount   BillingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@unique([accountId, period])
   @@index([accountId])
@@ -230,32 +232,67 @@ model BusinessUser {
 }
 
 model Transaction {
-  id            String            @id @default(cuid())
+  id            String                @id @default(cuid())
   businessId    String
   date          DateTime
   description   String
   amount        Float
-  type          TxType            @default(DEBIT)
-  status        TxStatus          @default(PENDING)
+  type          TxType                @default(DEBIT)
+  status        TxStatus              @default(PENDING)
   categoryId    String?
   deductibility Deductibility?
   method        ClassMethod?
   aiConfidence  String?
   aiSuggestion  String?
-  notes              String?
-  sourceFile         String?
-  checksum           String?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  business           Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category           Category?         @relation(fields: [categoryId], references: [id])
-  splits             TransactionSplit[]
+  notes         String?
+  sourceFile    String?
+  checksum      String?
+  recurringId   String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  business      Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category      Category?             @relation(fields: [categoryId], references: [id])
+  splits        TransactionSplit[]
+  recurring     RecurringTransaction? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
 
+  @@unique([businessId, checksum])
   @@index([businessId, status])
   @@index([businessId, date])
   @@index([businessId, categoryId])
   @@index([categoryId])
-  @@unique([businessId, checksum])
+  @@index([recurringId])
+}
+
+// An ongoing template that keeps generating Transaction rows forward in
+// time (rent, payroll, SaaS subscriptions) — distinct from the "repeat this
+// entry N times" one-shot batch create in POST /api/transactions, which
+// pre-generates a fixed count upfront and has no memory of being a series.
+// Occurrences are materialized lazily (see lib/recurring.ts) whenever the
+// business's transactions are read, not on a fixed schedule — there's no
+// cron/job runner in this deployment, and lazy catch-up is simpler and just
+// as reliable for an app that's opened regularly.
+model RecurringTransaction {
+  id            String         @id @default(cuid())
+  businessId    String
+  description   String
+  amount        Float
+  type          TxType         @default(DEBIT)
+  categoryId    String?
+  deductibility Deductibility?
+  frequency     String // WEEKLY | BIWEEKLY | MONTHLY — validated at the API layer, not a DB enum (matches ClassificationRule.field's convention)
+  startDate     DateTime
+  nextDate      DateTime // next occurrence still to materialize
+  endDate       DateTime?
+  active        Boolean        @default(true)
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category      Category?      @relation(fields: [categoryId], references: [id])
+  transactions  Transaction[]
+
+  @@index([businessId])
+  @@index([nextDate])
 }
 
 model TransactionSplit {
@@ -273,32 +310,33 @@ model TransactionSplit {
 }
 
 model Category {
-  id           String               @id @default(cuid())
-  businessId   String?
-  name         String
-  irsCode      String?
-  description  String?
-  isSystem     Boolean              @default(false)
-  createdAt    DateTime             @default(now())
-  business     Business?            @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-  splits       TransactionSplit[]
-  rules        ClassificationRule[]
+  id                    String                 @id @default(cuid())
+  businessId            String?
+  name                  String
+  irsCode               String?
+  description           String?
+  isSystem              Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+  business              Business?              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]
+  splits                TransactionSplit[]
+  rules                 ClassificationRule[]
+  recurringTransactions RecurringTransaction[]
 
   @@index([businessId])
 }
 
 model ClassificationRule {
-  id            String        @id @default(cuid())
+  id            String         @id @default(cuid())
   businessId    String
   pattern       String
   categoryId    String
-  priority      Int           @default(0)
-  field         String        @default("description")
+  priority      Int            @default(0)
+  field         String         @default("description")
   deductibility Deductibility?
-  createdAt     DateTime      @default(now())
-  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category      Category      @relation(fields: [categoryId], references: [id])
+  createdAt     DateTime       @default(now())
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category      Category       @relation(fields: [categoryId], references: [id])
 
   @@index([businessId, priority])
 }
@@ -397,9 +435,9 @@ model AuditLog {
 }
 
 enum ContractStatus {
-  SENT          // draft generated, waiting on the client's public-link signature
+  SENT // draft generated, waiting on the client's public-link signature
   CLIENT_SIGNED // client signed; waiting on staff countersignature
-  COMPLETED     // both signatures present, final PDF + hash generated
+  COMPLETED // both signatures present, final PDF + hash generated
 }
 
 // The "Contrato de Servicio de Software — MyProfitandLoss" between "El
@@ -452,12 +490,12 @@ model Contract {
   clientSignedIp  String?
 
   // Provider (staff) countersignature.
-  providerFirstName   String?
-  providerLastName    String?
-  providerSignature   String?   @db.Text // PNG, base64 data URL
-  providerSignedAt    DateTime?
-  providerSignedById  String?
-  providerSignedBy    User?     @relation("ContractCounterSignedBy", fields: [providerSignedById], references: [id])
+  providerFirstName  String?
+  providerLastName   String?
+  providerSignature  String?   @db.Text // PNG, base64 data URL
+  providerSignedAt   DateTime?
+  providerSignedById String?
+  providerSignedBy   User?     @relation("ContractCounterSignedBy", fields: [providerSignedById], references: [id])
 
   // §3 PRECIO Y FORMA DE PAGO — the only two variable terms in the price
   // clause: the monthly subscription amount and the day of the month it's
@@ -485,7 +523,7 @@ model Contract {
 // editable from the admin UI instead of environment variables, so changing
 // the business address doesn't require a redeploy.
 model ContractSettings {
-  id                  Int      @id @default(1)
+  id                  Int     @id @default(1)
   providerCompanyName String?
   providerAddress     String?
   providerCity        String?
@@ -502,12 +540,12 @@ model ContractSettings {
   // manually. Only PUT-ing a freshly-drawn signature updates
   // providerSignatureDataUrl — saving other settings fields (e.g. just the
   // address) must never clear it.
-  providerSignerFirstName String?
-  providerSignerLastName  String?
+  providerSignerFirstName  String?
+  providerSignerLastName   String?
   providerSignatureDataUrl String? @db.Text // PNG, base64 data URL
 
   // Internal address notified when a client finishes signing and a contract
   // is ready to be countersigned. Falls back to the creator's email when unset.
-  notifyEmail         String?
-  updatedAt           DateTime @updatedAt
+  notifyEmail String?
+  updatedAt   DateTime @updatedAt
 }

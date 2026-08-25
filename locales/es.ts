@@ -71,6 +71,30 @@ const es = {
   'tx.ruleSuggestBody': 'Ya clasificaste {count} transacciones de "{pattern}" como {category}. Crea una regla para que se clasifiquen solas la próxima vez.',
   'tx.ruleSuggestConfirm': 'Crear regla',
   'tx.ruleSuggestDismiss': 'Ahora no',
+
+  // Nav - Recurring
+  'nav.recurring': 'Recurrentes',
+
+  // Recurring transactions
+  'recurring.title': 'Gastos e Ingresos Recurrentes',
+  'recurring.subtitle': 'Crea una plantilla una vez y se seguirá registrando sola — arriendo, nómina, suscripciones.',
+  'recurring.add': 'Nueva recurrente',
+  'recurring.descriptionLabel': 'Descripción',
+  'recurring.descriptionPlaceholder': 'Arriendo local, Nómina, Netflix...',
+  'recurring.amountLabel': 'Monto',
+  'recurring.frequencyLabel': 'Frecuencia',
+  'recurring.startDateLabel': 'Primera fecha',
+  'recurring.endDateLabel': 'Fecha final (opcional)',
+  'recurring.endDateHint': 'Déjalo vacío para que continúe indefinidamente',
+  'recurring.added': '¡Recurrente creada!',
+  'recurring.list': 'Plantillas activas',
+  'recurring.noTemplates': 'No tienes gastos ni ingresos recurrentes',
+  'recurring.noTemplatesHint': 'Crea uno para dejar de registrar el mismo movimiento cada mes',
+  'recurring.next': 'próxima:',
+  'recurring.active': 'Activa',
+  'recurring.paused': 'Pausada',
+  'recurring.pause': 'Pausar',
+  'recurring.resume': 'Reanudar',
   'dashboard.noPending': 'No hay transacciones pendientes',
 
   // Transactions

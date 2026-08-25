@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { endOfDay, parseTransactionDate, addRecurrenceInterval, RecurrenceFrequency } from '@/lib/date'
+import { materializeDueRecurring } from '@/lib/recurring'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -17,6 +18,7 @@ export async function GET(req: Request) {
   if (!await checkBusinessAccess(userId, businessId, accountType)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+  await materializeDueRecurring(businessId)
 
   const status = searchParams.get('status')
   const categoryId = searchParams.get('categoryId')

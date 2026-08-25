@@ -71,6 +71,30 @@ const en = {
   'tx.ruleSuggestBody': 'You\'ve already classified {count} transactions from "{pattern}" as {category}. Create a rule so it classifies itself next time.',
   'tx.ruleSuggestConfirm': 'Create rule',
   'tx.ruleSuggestDismiss': 'Not now',
+
+  // Nav - Recurring
+  'nav.recurring': 'Recurring',
+
+  // Recurring transactions
+  'recurring.title': 'Recurring Income & Expenses',
+  'recurring.subtitle': 'Create a template once and it keeps recording itself — rent, payroll, subscriptions.',
+  'recurring.add': 'New recurring',
+  'recurring.descriptionLabel': 'Description',
+  'recurring.descriptionPlaceholder': 'Store rent, Payroll, Netflix...',
+  'recurring.amountLabel': 'Amount',
+  'recurring.frequencyLabel': 'Frequency',
+  'recurring.startDateLabel': 'First date',
+  'recurring.endDateLabel': 'End date (optional)',
+  'recurring.endDateHint': 'Leave empty for it to continue indefinitely',
+  'recurring.added': 'Recurring template created!',
+  'recurring.list': 'Active templates',
+  'recurring.noTemplates': 'You have no recurring income or expenses',
+  'recurring.noTemplatesHint': 'Create one to stop logging the same entry every month',
+  'recurring.next': 'next:',
+  'recurring.active': 'Active',
+  'recurring.paused': 'Paused',
+  'recurring.pause': 'Pause',
+  'recurring.resume': 'Resume',
   'dashboard.noPending': 'No pending transactions',
 
   // Transactions
