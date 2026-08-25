@@ -194,7 +194,6 @@ model Business {
   documentTypes    DocumentType[]
   documents        Document[]
   assignments      Assignment[]
-  plaidConnections PlaidConnection[]
 }
 
 // Scoped to the BillingAccount (not Business) — an account's AI spend is
@@ -246,7 +245,6 @@ model Transaction {
   notes              String?
   sourceFile         String?
   checksum           String?
-  plaidTransactionId String?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
   business           Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -258,7 +256,6 @@ model Transaction {
   @@index([businessId, categoryId])
   @@index([categoryId])
   @@unique([businessId, checksum])
-  @@unique([plaidTransactionId])
 }
 
 model TransactionSplit {
@@ -397,34 +394,6 @@ model AuditLog {
   @@index([userId])
   @@index([businessId])
   @@index([createdAt])
-}
-
-model PlaidConnection {
-  id              String        @id @default(cuid())
-  businessId      String
-  accessToken     String
-  itemId          String
-  institutionName String
-  cursor          String?
-  lastSyncAt      DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  accounts        PlaidAccount[]
-
-  @@index([businessId])
-}
-
-model PlaidAccount {
-  id           String          @id @default(cuid())
-  connectionId String
-  plaidId      String
-  name         String
-  mask         String?
-  type         String
-  connection   PlaidConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-
-  @@unique([connectionId, plaidId])
 }
 
 enum ContractStatus {

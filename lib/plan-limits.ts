@@ -3,13 +3,12 @@ import { prisma } from './prisma'
 import { PLAN_LIMITS as LIMITS } from './plan-config'
 import { effectivePlan } from './billing-access'
 
-export type PlanFeature = 'aiClassify' | 'receiptScan' | 'reports' | 'plaid' | 'team'
+export type PlanFeature = 'aiClassify' | 'receiptScan' | 'reports' | 'team'
 
 const FEATURE_MESSAGES: Record<PlanFeature, string> = {
   aiClassify:  'La clasificación con IA requiere plan PLUS, ENTERPRISE o CUSTOM',
   receiptScan: 'El escaneo de recibos requiere plan PLUS, ENTERPRISE o CUSTOM',
   reports:     'Los reportes requieren plan PLUS, ENTERPRISE o CUSTOM',
-  plaid:       'La conexión bancaria requiere plan PLUS, ENTERPRISE o CUSTOM',
   team:        'La gestión de equipo requiere plan PLUS, ENTERPRISE o CUSTOM',
 }
 
@@ -24,7 +23,7 @@ export function getPlanLimits(plan: string, trialEndsAt?: string | Date | null) 
 export function requirePlanFeature(session: any, feature: PlanFeature): NextResponse | null {
   // session.user.isActive is revalidated against the DB every ~60s (see
   // lib/auth.ts) — this is what actually stops a deactivated user's
-  // already-issued 8-hour token from keeping access to paid AI/Plaid/team
+  // already-issued 8-hour token from keeping access to paid AI/team
   // features, since middleware itself doesn't cover /api/* routes.
   if (session?.user?.isActive === false) {
     return NextResponse.json({ error: 'Esta cuenta ha sido desactivada' }, { status: 403 })

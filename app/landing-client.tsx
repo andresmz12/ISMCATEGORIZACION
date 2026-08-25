@@ -410,7 +410,7 @@ const copy = {
       cta2: 'Ver planes',
       note: 'Desde $20/mes · Sin permanencia',
     },
-    ticker: ['CHASE', 'BANK OF AMERICA', 'WELLS FARGO', 'CITI', 'TD BANK', 'CAPITAL ONE', 'CSV', 'XLSX', 'IRS SCHEDULE C', 'PDF', 'EXCEL', 'PLAID'],
+    ticker: ['CHASE', 'BANK OF AMERICA', 'WELLS FARGO', 'CITI', 'TD BANK', 'CAPITAL ONE', 'CSV', 'XLSX', 'IRS SCHEDULE C', 'PDF', 'EXCEL'],
     steps: {
       kicker: 'Cómo funciona',
       title: 'Tres pasos. Minutos, no fines de semana.',
@@ -442,18 +442,18 @@ const copy = {
         {
           name: 'Basic', price: '$20', desc: 'Para empezar con un negocio',
           features: ['1 negocio', 'Importación CSV y XLSX', 'Categorización manual', 'Reglas de palabras clave'],
-          missing: ['Clasificación con IA', 'Escaneo de recibos (OCR)', 'Exportación PDF / Excel', 'Conexión bancaria Plaid', 'Multi-usuario'],
+          missing: ['Clasificación con IA', 'Escaneo de recibos (OCR)', 'Exportación PDF / Excel', 'Multi-usuario'],
           cta: 'Empezar con Basic', highlight: false,
         },
         {
           name: 'Plus', price: '$50', desc: 'El plan completo para la mayoría',
-          features: ['Hasta 5 negocios', 'Importación CSV y XLSX', 'Clasificación automática con IA', 'Escaneo de recibos (OCR)', 'Reportes y exportación PDF / Excel', 'Conexión bancaria Plaid', 'Multi-usuario'],
+          features: ['Hasta 5 negocios', 'Importación CSV y XLSX', 'Clasificación automática con IA', 'Escaneo de recibos (OCR)', 'Reportes y exportación PDF / Excel', 'Multi-usuario'],
           missing: [],
           cta: 'Empezar con Plus', highlight: true,
         },
         {
           name: 'Enterprise', price: '$80', desc: 'Para contadores y firmas',
-          features: ['Hasta 20 negocios', 'Todo lo de Plus', 'Clasificación automática con IA', 'Escaneo de recibos (OCR)', 'Reportes PDF / Excel', 'Conexión bancaria Plaid', 'Multi-usuario', 'Soporte prioritario'],
+          features: ['Hasta 20 negocios', 'Todo lo de Plus', 'Clasificación automática con IA', 'Escaneo de recibos (OCR)', 'Reportes PDF / Excel', 'Multi-usuario', 'Soporte prioritario'],
           missing: [],
           cta: 'Empezar con Enterprise', highlight: false,
         },
@@ -468,7 +468,7 @@ const copy = {
     faq: {
       kicker: 'Preguntas frecuentes',
       items: [
-        { q: '¿Funciona con mi banco?', a: 'Sí. Funciona con cualquier banco que permita exportar transacciones en CSV o Excel: Chase, Bank of America, Wells Fargo, Citi, TD Bank y más. En los planes Plus en adelante también puedes conectar tu banco directamente vía Plaid.' },
+        { q: '¿Funciona con mi banco?', a: 'Sí. Funciona con cualquier banco que permita exportar transacciones en CSV o Excel: Chase, Bank of America, Wells Fargo, Citi, TD Bank y más.' },
         { q: '¿Necesito saber de contabilidad?', a: 'No. La plataforma está diseñada para dueños de negocio. Las categorías siguen el IRS Schedule C y la IA hace el trabajo pesado; tú solo revisas y confirmas.' },
         { q: '¿Qué plan incluye la clasificación con IA?', a: 'Plus, Enterprise y Custom. El plan Basic incluye categorización manual y reglas por palabras clave, que ya ahorran bastante tiempo.' },
         { q: '¿Mis datos están seguros?', a: 'Sí. Encriptación TLS en tránsito, contraseñas con bcrypt y aislamiento estricto de datos por usuario. Nunca vendemos ni compartimos tu información.' },
@@ -499,7 +499,7 @@ const copy = {
       cta2: 'See pricing',
       note: 'From $20/mo · Cancel anytime',
     },
-    ticker: ['CHASE', 'BANK OF AMERICA', 'WELLS FARGO', 'CITI', 'TD BANK', 'CAPITAL ONE', 'CSV', 'XLSX', 'IRS SCHEDULE C', 'PDF', 'EXCEL', 'PLAID'],
+    ticker: ['CHASE', 'BANK OF AMERICA', 'WELLS FARGO', 'CITI', 'TD BANK', 'CAPITAL ONE', 'CSV', 'XLSX', 'IRS SCHEDULE C', 'PDF', 'EXCEL'],
     steps: {
       kicker: 'How it works',
       title: 'Three steps. Minutes, not weekends.',
@@ -531,18 +531,18 @@ const copy = {
         {
           name: 'Basic', price: '$20', desc: 'To get started with one business',
           features: ['1 business', 'CSV & XLSX import', 'Manual categorization', 'Keyword rules'],
-          missing: ['AI classification', 'Receipt scanning (OCR)', 'PDF / Excel export', 'Plaid bank connection', 'Multi-user'],
+          missing: ['AI classification', 'Receipt scanning (OCR)', 'PDF / Excel export', 'Multi-user'],
           cta: 'Start with Basic', highlight: false,
         },
         {
           name: 'Plus', price: '$50', desc: 'The complete plan for most',
-          features: ['Up to 5 businesses', 'CSV & XLSX import', 'Automatic AI classification', 'Receipt scanning (OCR)', 'Reports & PDF / Excel export', 'Plaid bank connection', 'Multi-user'],
+          features: ['Up to 5 businesses', 'CSV & XLSX import', 'Automatic AI classification', 'Receipt scanning (OCR)', 'Reports & PDF / Excel export', 'Multi-user'],
           missing: [],
           cta: 'Start with Plus', highlight: true,
         },
         {
           name: 'Enterprise', price: '$80', desc: 'For accountants and firms',
-          features: ['Up to 20 businesses', 'Everything in Plus', 'Automatic AI classification', 'Receipt scanning (OCR)', 'PDF / Excel reports', 'Plaid bank connection', 'Multi-user', 'Priority support'],
+          features: ['Up to 20 businesses', 'Everything in Plus', 'Automatic AI classification', 'Receipt scanning (OCR)', 'PDF / Excel reports', 'Multi-user', 'Priority support'],
           missing: [],
           cta: 'Start with Enterprise', highlight: false,
         },
@@ -557,7 +557,7 @@ const copy = {
     faq: {
       kicker: 'Frequently asked questions',
       items: [
-        { q: 'Does it work with my bank?', a: 'Yes. It works with any bank that exports transactions as CSV or Excel — Chase, Bank of America, Wells Fargo, Citi, TD Bank and more. On Plus and above you can also connect your bank directly via Plaid.' },
+        { q: 'Does it work with my bank?', a: 'Yes. It works with any bank that exports transactions as CSV or Excel — Chase, Bank of America, Wells Fargo, Citi, TD Bank and more.' },
         { q: 'Do I need accounting knowledge?', a: 'No. The platform is built for business owners. Categories follow the IRS Schedule C and the AI does the heavy lifting; you just review and confirm.' },
         { q: 'Which plan includes AI classification?', a: 'Plus, Enterprise and Custom. The Basic plan includes manual categorization and keyword rules, which already save plenty of time.' },
         { q: 'Is my data secure?', a: 'Yes. TLS encryption in transit, bcrypt-hashed passwords and strict per-user data isolation. We never sell or share your information.' },
