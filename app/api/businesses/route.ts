@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
 import { getPlanLimits, countOwnedBusinesses } from '@/lib/plan-limits'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 const cuid = customAlphabet('36ghjkmnpqrtvwxyz2468', 24)
 
@@ -47,6 +48,9 @@ export async function POST(req: Request) {
   const accountId = (session.user as any).accountId
   const plan = (session.user as any).plan
   const trialEndsAt = (session.user as any).trialEndsAt
+
+  const rl = rateLimit(`business-create:${userId}`, 20, 60 * 60 * 1000)
+  if (!rl.ok) return rateLimitResponse()
 
   try {
     const { name, industry, entityType, taxYear, currency } = await req.json()

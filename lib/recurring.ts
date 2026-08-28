@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { addRecurrenceInterval, RecurrenceFrequency } from './date'
 
@@ -10,44 +11,52 @@ const MAX_CATCHUP = 24 // cap how many missed occurrences one pass backfills, in
 // each template by its current nextDate before writing rows, so two requests
 // racing for the same business (e.g. the dashboard fetching both endpoints
 // at once) can't double-create the same occurrence.
+type PendingRow = Prisma.TransactionCreateManyInput
+
 export async function materializeDueRecurring(businessId: string): Promise<void> {
   const now = new Date()
   const templates = await prisma.recurringTransaction.findMany({
     where: { businessId, active: true, nextDate: { lte: now } },
   })
 
-  for (const tpl of templates) {
-    const occurrences: Date[] = []
-    let cursor = tpl.nextDate
-    while (
-      cursor <= now &&
-      occurrences.length < MAX_CATCHUP &&
-      !(tpl.endDate && cursor > tpl.endDate)
-    ) {
-      occurrences.push(cursor)
-      cursor = addRecurrenceInterval(cursor, tpl.frequency as RecurrenceFrequency, 1)
-    }
+  if (templates.length === 0) return
 
-    const stillActive = !(tpl.endDate && cursor > tpl.endDate)
+  // Claim each template with its own compare-and-swap (still one updateMany
+  // per template, since each has a different nextDate/active target — but
+  // run concurrently instead of serially, and collect rows for a single
+  // batched createMany below, instead of one round trip per template.
+  const perTemplateRows = await Promise.all(
+    templates.map(async (tpl): Promise<PendingRow[]> => {
+      const occurrences: Date[] = []
+      let cursor = tpl.nextDate
+      while (
+        cursor <= now &&
+        occurrences.length < MAX_CATCHUP &&
+        !(tpl.endDate && cursor > tpl.endDate)
+      ) {
+        occurrences.push(cursor)
+        cursor = addRecurrenceInterval(cursor, tpl.frequency as RecurrenceFrequency, 1)
+      }
 
-    if (occurrences.length === 0) {
-      // Nothing to create — this only happens once the end date has already
-      // passed. Deactivate so it stops showing up in the due-templates query.
-      await prisma.recurringTransaction.updateMany({
+      const stillActive = !(tpl.endDate && cursor > tpl.endDate)
+
+      if (occurrences.length === 0) {
+        // Nothing to create — this only happens once the end date has already
+        // passed. Deactivate so it stops showing up in the due-templates query.
+        await prisma.recurringTransaction.updateMany({
+          where: { id: tpl.id, nextDate: tpl.nextDate },
+          data: { active: false },
+        })
+        return []
+      }
+
+      const claim = await prisma.recurringTransaction.updateMany({
         where: { id: tpl.id, nextDate: tpl.nextDate },
-        data: { active: false },
+        data: { nextDate: cursor, active: stillActive },
       })
-      continue
-    }
+      if (claim.count === 0) return [] // a concurrent request already materialized this one
 
-    const claim = await prisma.recurringTransaction.updateMany({
-      where: { id: tpl.id, nextDate: tpl.nextDate },
-      data: { nextDate: cursor, active: stillActive },
-    })
-    if (claim.count === 0) continue // a concurrent request already materialized this one
-
-    await prisma.transaction.createMany({
-      data: occurrences.map(date => ({
+      return occurrences.map(date => ({
         businessId,
         date,
         description: tpl.description,
@@ -59,7 +68,12 @@ export async function materializeDueRecurring(businessId: string): Promise<void>
         status: tpl.categoryId ? ('CLASSIFIED' as const) : ('PENDING' as const),
         notes: tpl.notes,
         recurringId: tpl.id,
-      })),
+      }))
     })
+  )
+
+  const rows = perTemplateRows.flat()
+  if (rows.length > 0) {
+    await prisma.transaction.createMany({ data: rows })
   }
 }

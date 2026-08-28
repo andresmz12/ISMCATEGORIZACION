@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import crypto from 'crypto'
 
 function makeChecksum(date: string, description: string, amount: number): string {
@@ -73,6 +74,9 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
+
+  const rl = rateLimit(`import:${userId}`, 30, 60 * 60 * 1000)
+  if (!rl.ok) return rateLimitResponse()
 
   try {
     const formData = await req.formData()

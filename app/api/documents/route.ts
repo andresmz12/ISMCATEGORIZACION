@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -67,6 +68,10 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const userId = (session.user as any).id
+  const rl = rateLimit(`documents-upload:${userId}`, 60, 60 * 60 * 1000)
+  if (!rl.ok) return rateLimitResponse()
+
   const body = await req.json()
   const { businessId, documentTypeId, filename, data, mimeType, notes } = body
 
@@ -86,7 +91,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'El contenido del archivo no coincide con su tipo declarado' }, { status: 400 })
   }
 
-  const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
   if (!(await checkBusinessWriteAccess(userId, businessId, accountType))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

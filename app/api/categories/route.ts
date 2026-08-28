@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
+import { revalidateCategories } from '@/lib/categories'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -44,5 +45,6 @@ export async function POST(req: Request) {
 
   const cat = await prisma.category.create({ data: { name, irsCode, description, businessId } })
   await logAudit({ userId, businessId, action: 'CREATE_CATEGORY', entity: 'Category', entityId: cat.id, metadata: { name } })
+  revalidateCategories()
   return NextResponse.json(cat, { status: 201 })
 }

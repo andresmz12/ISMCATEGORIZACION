@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { nanoid } from 'nanoid'
+import { revalidateCategories } from '@/lib/categories'
 
 async function requireSuperadmin() {
   const session = await getServerSession(authOptions)
@@ -38,5 +39,6 @@ export async function POST(req: Request) {
       isSystem: isSystem === true,
     },
   })
+  revalidateCategories()
   return NextResponse.json(category)
 }

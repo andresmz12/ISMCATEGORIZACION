@@ -9,6 +9,7 @@ import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
 import { withAiBudget } from '@/lib/ai-budget'
 import { noon } from '@/lib/date'
+import { getSystemCategories } from '@/lib/categories'
 
 const CATEGORIES = [
   'Advertising', 'Car & Truck Expenses', 'Commissions & Fees', 'Contract Labor',
@@ -109,7 +110,7 @@ Use null for any field you cannot read. Receipt may be in English or Spanish.`,
     }
 
     // Resolve category
-    const categories = await prisma.category.findMany({ where: { isSystem: true } })
+    const categories = await getSystemCategories()
     const catMap = new Map(categories.map((c: any) => [c.name.toLowerCase().trim(), c.id]))
     const categoryId = catMap.get(extracted.category_suggestion?.toLowerCase().trim()) ?? catMap.get('uncategorized') ?? null
 

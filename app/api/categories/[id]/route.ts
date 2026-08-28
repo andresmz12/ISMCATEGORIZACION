@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
+import { revalidateCategories } from '@/lib/categories'
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -24,6 +25,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   try {
     await prisma.category.delete({ where: { id: params.id } })
     await logAudit({ userId, businessId: category.businessId, action: 'DELETE_CATEGORY', entity: 'Category', entityId: params.id, metadata: { name: category.name } })
+    revalidateCategories()
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: 'Cannot delete category in use' }, { status: 400 })
@@ -58,5 +60,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     },
   })
   await logAudit({ userId, businessId: category.businessId, action: 'UPDATE_CATEGORY', entity: 'Category', entityId: params.id, metadata: { name: updated.name } })
+  revalidateCategories()
   return NextResponse.json(updated)
 }

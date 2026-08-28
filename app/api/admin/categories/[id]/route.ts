@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { revalidateCategories } from '@/lib/categories'
 
 async function requireSuperadmin() {
   const session = await getServerSession(authOptions)
@@ -33,6 +34,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       ...(isSystem === true && { businessId: null }),
     },
   })
+  revalidateCategories()
   return NextResponse.json(updated)
 }
 
@@ -59,6 +61,7 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
       prisma.classificationRule.deleteMany({ where: { categoryId: params.id } }),
       prisma.category.delete({ where: { id: params.id } }),
     ])
+    revalidateCategories()
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: 'No se puede eliminar esta categoría' }, { status: 400 })

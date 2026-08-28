@@ -8,6 +8,7 @@ import { checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { requirePlanFeature } from '@/lib/plan-limits'
 import { checkAiBudget, withAiBudget } from '@/lib/ai-budget'
 import { getActiveRules, matchRule } from '@/lib/classification-rules'
+import { getBusinessCategories } from '@/lib/categories'
 
 // Classifies raw transaction rows with AI WITHOUT saving to DB.
 // Returns classified rows so the user can review before committing.
@@ -44,10 +45,7 @@ export async function POST(req: Request) {
     if (budgetDenied) return budgetDenied
 
     // Load actual categories for this business
-    const categories = await prisma.category.findMany({
-      where: { OR: [{ isSystem: true }, { businessId }] },
-      select: { id: true, name: true },
-    })
+    const categories = await getBusinessCategories(businessId)
     const categoryByName = new Map(categories.map(c => [c.name.toLowerCase().trim(), c]))
     const categoryById = new Map(categories.map(c => [c.id, c]))
     const categoryNames = categories.map(c => c.name)

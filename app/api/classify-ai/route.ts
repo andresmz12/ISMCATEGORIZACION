@@ -9,6 +9,7 @@ import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
 import { checkAiBudget, withAiBudget } from '@/lib/ai-budget'
 import { getActiveRules, matchRule } from '@/lib/classification-rules'
+import { getBusinessCategories } from '@/lib/categories'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -68,10 +69,7 @@ export async function POST(req: Request) {
     }
 
     // Load all categories available to this business (system + custom)
-    const categories = await prisma.category.findMany({
-      where: { OR: [{ isSystem: true }, { businessId }] },
-      select: { id: true, name: true },
-    })
+    const categories = await getBusinessCategories(businessId)
     const categoryMap = new Map(categories.map((c: { name: string; id: string }) => [c.name.toLowerCase().trim(), c.id]))
     const categoryNames = categories.map((c: { name: string }) => c.name)
     const uncategorizedId = categories.find((c: { name: string }) => c.name.toLowerCase().includes('uncategor') || c.name.toLowerCase().includes('sin categor'))?.id
