@@ -887,15 +887,15 @@ export default function ReportsPage() {
       {report && !loading && (
         <>
           {/* P&L Summary */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { label: t('reports.totalIncome'), val: report.summary.income, color: 'text-emerald-700' },
               { label: t('reports.totalExpenses'), val: report.summary.totalExpenses, color: 'text-red-600' },
               { label: t('reports.netProfit'), val: report.summary.netProfit, color: report.summary.netProfit >= 0 ? 'text-emerald-700' : 'text-red-600' },
             ].map(s => (
-              <div key={s.label} className="card p-4">
+              <div key={s.label} className="card p-4 min-w-0">
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{s.label}</p>
-                <p className={`text-2xl font-bold mt-1 ${s.color}`}>{fmt(s.val)}</p>
+                <p className={`text-2xl font-bold mt-1 ${s.color} truncate`} title={fmt(s.val)}>{fmt(s.val)}</p>
               </div>
             ))}
           </div>
