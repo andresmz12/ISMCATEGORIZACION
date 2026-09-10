@@ -62,6 +62,8 @@ export async function POST(req: Request) {
     // Categories available to this business (system, scoped to its country, + custom)
     const categories = await getBusinessCategories(businessId)
     const categoryNames = categories.map((c: { name: string }) => c.name)
+    const business = await prisma.business.findUnique({ where: { id: businessId }, select: { country: true } })
+    const isColombia = business?.country === 'CO'
 
     const budgetResult = await withAiBudget(businessId, async () => {
       const response = await client.messages.create({
@@ -86,7 +88,8 @@ export async function POST(req: Request) {
   "deductibility": "YES/NO/FIFTY",
   "confidence": "HIGH/MEDIUM/LOW"
 }
-Use null for any field you cannot read. Receipt may be in English or Spanish.`,
+Use null for any field you cannot read. Receipt may be in English or Spanish.
+${isColombia ? `This is a Colombian receipt. "tax" is the IVA amount (usually labeled "IVA" on the receipt, at 19%, 5%, or exempt). Colombian peso amounts are written with "." as the thousands separator and no decimals (e.g. "$45.000" means 45000 pesos, NOT 45) — "total", "subtotal" and "tax" must be plain numbers in that true magnitude, never divided by 1000.` : ''}`,
             },
           ],
         }],
@@ -117,7 +120,7 @@ Use null for any field you cannot read. Receipt may be in English or Spanish.`,
 
     const notesLines: string[] = []
     if (extracted.subtotal) notesLines.push(`Subtotal: $${extracted.subtotal}`)
-    if (extracted.tax) notesLines.push(`Tax: $${extracted.tax}`)
+    if (extracted.tax) notesLines.push(`${isColombia ? 'IVA' : 'Tax'}: $${extracted.tax}`)
     if (Array.isArray(extracted.items) && extracted.items.length > 0) {
       extracted.items.forEach((it: any) => notesLines.push(`• ${it.description}: $${it.amount}`))
     }
@@ -137,6 +140,10 @@ Use null for any field you cannot read. Receipt may be in English or Spanish.`,
         aiConfidence: confidence,
         aiSuggestion: extracted.category_suggestion || null,
         notes: notesLines.length > 0 ? notesLines.join('\n') : null,
+        // Vendor tracking (feeds the CO-only "Gasto por proveedor" report)
+        // only matters for Colombian businesses — a receipt's merchant name
+        // is a natural fit, same as manually typing it in the vendor field.
+        vendor: isColombia ? (extracted.merchant || null) : undefined,
       },
     })
 

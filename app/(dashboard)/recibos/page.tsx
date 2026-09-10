@@ -34,6 +34,8 @@ interface ScanJob {
     categoryId: string
     deductibility: string
     notes: string
+    vendor: string
+    costCenter: string
   }
 }
 
@@ -59,6 +61,7 @@ export default function RecibosPage() {
 
   const { businesses, activeBizId: activeBiz } = useActiveBiz()
   const fmt = (n: number) => formatCurrency(n, businesses.find(b => b.id === activeBiz)?.currency)
+  const isColombia = businesses.find(b => b.id === activeBiz)?.country === 'CO'
   const [categories, setCategories] = useState<any[]>([])
   const [jobs, setJobs] = useState<ScanJob[]>([])
 
@@ -102,7 +105,7 @@ export default function RecibosPage() {
         file,
         preview,
         status: 'scanning' as const,
-        form: { merchant: '', date: '', amount: '', categoryId: '', deductibility: '', notes: '' },
+        form: { merchant: '', date: '', amount: '', categoryId: '', deductibility: '', notes: '', vendor: '', costCenter: '' },
       }
     }))
 
@@ -139,6 +142,8 @@ export default function RecibosPage() {
           categoryId: catMatch?.id || '',
           deductibility: ex?.deductibility || 'YES',
           notes: '',
+          vendor: ex?.merchant || '',
+          costCenter: '',
         },
       } : j))
     } catch (e: any) {
@@ -157,6 +162,8 @@ export default function RecibosPage() {
         categoryId: job.form.categoryId || undefined,
         deductibility: job.form.deductibility || undefined,
         notes: job.form.notes || undefined,
+        vendor: job.form.vendor.trim() || null,
+        costCenter: job.form.costCenter.trim() || null,
         method: 'MANUAL',
       }),
     })
@@ -242,6 +249,7 @@ export default function RecibosPage() {
               job={job}
               categories={categories}
               currency={businesses.find(b => b.id === activeBiz)?.currency}
+              isColombia={isColombia}
               onConfirm={confirmJob}
               onReject={rejectJob}
               onFormChange={updateForm}
@@ -292,6 +300,7 @@ function ScanCard({
   job,
   categories,
   currency,
+  isColombia,
   onConfirm,
   onReject,
   onFormChange,
@@ -299,6 +308,7 @@ function ScanCard({
   job: ScanJob
   categories: any[]
   currency?: string
+  isColombia?: boolean
   onConfirm: (j: ScanJob) => void
   onReject: (j: ScanJob) => void
   onFormChange: (id: string, field: string, value: string) => void
@@ -391,6 +401,19 @@ function ScanCard({
             </select>
           </div>
 
+          {isColombia && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="label">Proveedor</label>
+                <input className="input text-sm" value={job.form.vendor} onChange={e => onFormChange(job.id, 'vendor', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Centro de costos</label>
+                <input className="input text-sm" value={job.form.costCenter} onChange={e => onFormChange(job.id, 'costCenter', e.target.value)} placeholder="Ej: Ventas, Operaciones" />
+              </div>
+            </div>
+          )}
+
           {job.extracted?.items && job.extracted.items.length > 0 && (
             <div className="bg-gray-50 rounded-lg p-2 text-xs text-gray-500 space-y-0.5">
               <p className="font-semibold text-gray-600 mb-1">{t('receipts.aiExtracted')}:</p>
@@ -402,7 +425,7 @@ function ScanCard({
               ))}
               {job.extracted.tax && (
                 <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
-                  <span>Tax</span>
+                  <span>{isColombia ? 'IVA' : 'Tax'}</span>
                   <span>{fmt(job.extracted.tax)}</span>
                 </div>
               )}
