@@ -641,14 +641,14 @@ const en = {
 
   // Documentos
   'documentos.title': 'Documents',
-  'documentos.subtitle': 'Manage the business documents: W-2, 1099, bank statements and more.',
+  'documentos.subtitle': 'Manage the business documents: {examples} and more.',
   'documentos.uploadBtn': '+ Upload document',
   'documentos.tabFiles': 'Uploaded files',
   'documentos.tabTypes': 'Document types',
   'documentos.selectBusiness': 'Select a business to see its documents.',
   'documentos.newType': '+ New type',
   'documentos.noTypes': 'No document types',
-  'documentos.noTypesHint': 'Create types like "W-2", "1099", "Bank statement", etc.',
+  'documentos.noTypesHint': 'Create types like {examples}, etc.',
   'documentos.createFirstType': '+ Create first type',
   'documentos.colFiles': 'Files',
   'documentos.allCount': 'All ({n})',

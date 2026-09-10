@@ -19,6 +19,26 @@ export const ENTITY_TYPES: Record<BusinessCountry, string[]> = {
   CO: ['Persona Natural', 'SAS', 'S.A.', 'Ltda.', 'Empresa Unipersonal'],
 }
 
+export const INDUSTRIES: Record<BusinessCountry, string[]> = {
+  US: [
+    'Food Service & Restaurants', 'Retail Trade', 'Professional Services',
+    'Healthcare', 'Construction', 'Manufacturing', 'Technology',
+    'Real Estate', 'Transportation', 'Other',
+  ],
+  CO: [
+    'Alimentos y Restaurantes', 'Comercio Minorista', 'Servicios Profesionales',
+    'Salud', 'Construcción', 'Manufactura', 'Tecnología',
+    'Bienes Raíces', 'Transporte', 'Otro',
+  ],
+}
+
+// Example document types shown as a hint on the Documentos page — just
+// copy, since document types themselves are user-created free text either way.
+export const DOCUMENT_TYPE_EXAMPLES: Record<BusinessCountry, string> = {
+  US: 'W-2, 1099, Estado de cuenta',
+  CO: 'RUT, Cámara de Comercio, Certificado de Ingresos y Retenciones',
+}
+
 export const TAX_ID_LABEL: Record<BusinessCountry, string> = {
   US: 'EIN / Tax ID',
   CO: 'NIT',

@@ -20,6 +20,15 @@ export function getPlanLimits(plan: string, trialEndsAt?: string | Date | null) 
   return LIMITS[resolved as keyof typeof LIMITS] ?? LIMITS.NONE
 }
 
+// A Colombian PERSONA_NATURAL account is capped at 1 business — its own —
+// no matter what plan it's on; PERSONA_JURIDICA, CONTADOR, and every US
+// account (clientType null) just get the plan's normal limit.
+export function getBusinessLimit(plan: string, trialEndsAt: string | Date | null | undefined, clientType?: string | null): number {
+  const planLimit = getPlanLimits(plan, trialEndsAt).businesses
+  if (clientType === 'PERSONA_NATURAL') return Math.min(planLimit, 1)
+  return planLimit
+}
+
 export function requirePlanFeature(session: any, feature: PlanFeature): NextResponse | null {
   // session.user.isActive is revalidated against the DB every ~60s (see
   // lib/auth.ts) — this is what actually stops a deactivated user's

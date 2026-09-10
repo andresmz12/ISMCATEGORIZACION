@@ -693,6 +693,28 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Quick jump to the Colombia-specific reports below — they're easy to
+          miss at the bottom of a long page. */}
+      {report && activeBizCountry === 'CO' && (
+        <div className="card p-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-400 font-medium">Reportes para Colombia:</span>
+          {[
+            { id: 'report-cost-centers', label: 'Centros de costo', show: report.costCenters.length > 0 },
+            { id: 'report-cashflow', label: 'Flujo de caja / mes a mes', show: true },
+            { id: 'report-iva', label: 'IVA', show: report.vat.length > 0 },
+            { id: 'report-vendors', label: 'Proveedores', show: report.vendors.length > 0 },
+          ].filter(l => l.show).map(l => (
+            <a
+              key={l.id}
+              href={`#${l.id}`}
+              className="text-xs px-2.5 py-1 rounded-full bg-[#1B4965]/10 text-[#1B4965] font-medium hover:bg-[#1B4965]/20 transition-colors"
+            >
+              {l.label}
+            </a>
+          ))}
+        </div>
+      )}
+
       {loading && <div className="text-center py-8 text-gray-400 text-sm">{t('common.loading')}</div>}
       {!loading && !report && activeBiz && (
         <div className="card p-8 text-center text-gray-400 text-sm">{t('reports.noData')}</div>
@@ -783,7 +805,7 @@ export default function ReportsPage() {
           <>
           {/* % participation by cost center */}
           {report.costCenters.length > 0 && (
-            <div className="card p-5">
+            <div id="report-cost-centers" className="card p-5 scroll-mt-4">
               <h2 className="text-base font-semibold text-gray-800 mb-1">Participación por centro de costos</h2>
               <p className="text-xs text-gray-400 mb-4">% que representa cada categoría dentro del gasto de cada centro de costos.</p>
               <div className="space-y-5">
@@ -817,7 +839,7 @@ export default function ReportsPage() {
 
           {/* IVA filter — for Colombian VAT filings */}
           {report.vat.length > 0 && (
-            <div className="card p-5">
+            <div id="report-iva" className="card p-5 scroll-mt-4">
               <h2 className="text-base font-semibold text-gray-800 mb-1">Gastos por tipo de IVA</h2>
               <p className="text-xs text-gray-400 mb-4">Agrupado por la tarifa de IVA de cada categoría — para armar la declaración de IVA.</p>
               <div className="overflow-x-auto">
@@ -847,7 +869,7 @@ export default function ReportsPage() {
 
           {/* Spend by vendor */}
           {report.vendors.length > 0 && (
-            <div className="card p-5">
+            <div id="report-vendors" className="card p-5 scroll-mt-4">
               <h2 className="text-base font-semibold text-gray-800 mb-1">Gasto por proveedor</h2>
               <p className="text-xs text-gray-400 mb-4">Total gastado, frecuencia de compra y promedio por transacción.</p>
               <div className="overflow-x-auto">
@@ -913,7 +935,7 @@ function CashFlowSection({ report, fmt }: { report: any; fmt: (n: number) => str
     .sort((x: any, y: any) => Math.abs(y.delta) - Math.abs(x.delta))
 
   return (
-    <div className="card p-5">
+    <div id="report-cashflow" className="card p-5 scroll-mt-4">
       <h2 className="text-base font-semibold text-gray-800 mb-1">Flujo de caja y comparación mes a mes</h2>
       <p className="text-xs text-gray-400 mb-4">Cuánto efectivo sale cada mes, en qué categorías se gasta más, y cómo varía entre dos meses.</p>
 

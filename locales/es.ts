@@ -641,14 +641,14 @@ const es = {
 
   // Documentos
   'documentos.title': 'Documentos',
-  'documentos.subtitle': 'Gestiona los documentos del negocio: W-2, 1099, estados de cuenta y más.',
+  'documentos.subtitle': 'Gestiona los documentos del negocio: {examples} y más.',
   'documentos.uploadBtn': '+ Subir documento',
   'documentos.tabFiles': 'Archivos subidos',
   'documentos.tabTypes': 'Tipos de documento',
   'documentos.selectBusiness': 'Selecciona un negocio para ver sus documentos.',
   'documentos.newType': '+ Nuevo tipo',
   'documentos.noTypes': 'Sin tipos de documento',
-  'documentos.noTypesHint': 'Crea tipos como "W-2", "1099", "Estado de cuenta", etc.',
+  'documentos.noTypesHint': 'Crea tipos como {examples}, etc.',
   'documentos.createFirstType': '+ Crear primer tipo',
   'documentos.colFiles': 'Archivos',
   'documentos.allCount': 'Todos ({n})',

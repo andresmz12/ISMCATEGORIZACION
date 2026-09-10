@@ -4,7 +4,7 @@ import { customAlphabet } from 'nanoid'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
-import { getPlanLimits, countOwnedBusinesses } from '@/lib/plan-limits'
+import { getBusinessLimit, countOwnedBusinesses } from '@/lib/plan-limits'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { isBusinessCountry, DEFAULT_CURRENCY } from '@/lib/countries'
 
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
   const accountId = (session.user as any).accountId
   const plan = (session.user as any).plan
   const trialEndsAt = (session.user as any).trialEndsAt
+  const clientType = (session.user as any).clientType
 
   const rl = rateLimit(`business-create:${userId}`, 20, 60 * 60 * 1000)
   if (!rl.ok) return rateLimitResponse()
@@ -73,12 +74,14 @@ export async function POST(req: Request) {
           // limit — the lock is held for the rest of this transaction and
           // released automatically on commit/rollback.
           await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${accountId}))`
-          const limits = getPlanLimits(plan, trialEndsAt)
+          const bizLimit = getBusinessLimit(plan, trialEndsAt, clientType)
           const existingCount = await countOwnedBusinesses(accountId, tx)
-          if (existingCount >= limits.businesses) {
-            const planLabel = plan ?? 'BASIC'
-            const cap = limits.businesses === Infinity ? 'ilimitados' : limits.businesses
-            throw new BusinessLimitError(`Tu plan ${planLabel} permite hasta ${cap} negocio(s)`)
+          if (existingCount >= bizLimit) {
+            const cap = bizLimit === Infinity ? 'ilimitados' : bizLimit
+            const message = clientType === 'PERSONA_NATURAL' && bizLimit <= 1
+              ? 'Una cuenta Persona Natural solo puede tener un negocio propio'
+              : `Tu plan ${plan ?? 'BASIC'} permite hasta ${cap} negocio(s)`
+            throw new BusinessLimitError(message)
           }
         }
 

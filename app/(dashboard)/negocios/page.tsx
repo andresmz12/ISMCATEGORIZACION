@@ -5,13 +5,8 @@ import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
 import { PLAN_LIMITS } from '@/lib/plan-config'
 import { effectivePlan } from '@/lib/billing-access'
-import { COUNTRIES, DEFAULT_CURRENCY, ENTITY_TYPES, TAX_ID_LABEL, BusinessCountry } from '@/lib/countries'
+import { COUNTRIES, DEFAULT_CURRENCY, ENTITY_TYPES, INDUSTRIES, TAX_ID_LABEL, BusinessCountry } from '@/lib/countries'
 
-const INDUSTRIES = [
-  'Food Service & Restaurants', 'Retail Trade', 'Professional Services',
-  'Healthcare', 'Construction', 'Manufacturing', 'Technology',
-  'Real Estate', 'Transportation', 'Other',
-]
 const CURRENCIES = [
   { value: 'USD', label: 'USD — Dólar estadounidense' },
   { value: 'COP', label: 'COP — Peso colombiano' },
@@ -29,7 +24,12 @@ export default function NegociosPage() {
   // user would see "your plan allows 0 businesses" and never get past
   // onboarding, even though the backend already lets them create one.
   const resolvedPlan = effectivePlan(plan, trialEndsAt)
-  const bizLimit = (PLAN_LIMITS[resolvedPlan as keyof typeof PLAN_LIMITS] ?? PLAN_LIMITS.BASIC).businesses
+  const clientType = (session?.user as any)?.clientType
+  const planBizLimit = (PLAN_LIMITS[resolvedPlan as keyof typeof PLAN_LIMITS] ?? PLAN_LIMITS.BASIC).businesses
+  // A Colombian PERSONA_NATURAL account is capped at 1 business (its own)
+  // regardless of plan — see getBusinessLimit in lib/plan-limits.ts, which
+  // the backend enforces; this mirrors it for the UI's own limit message.
+  const bizLimit = clientType === 'PERSONA_NATURAL' ? Math.min(planBizLimit, 1) : planBizLimit
 
   const [businesses, setBusinesses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,11 +42,11 @@ export default function NegociosPage() {
   const prefilledCountry = useRef(false)
 
   function setFormCountry(country: BusinessCountry) {
-    setForm(f => ({ ...f, country, currency: DEFAULT_CURRENCY[country], entityType: '' }))
+    setForm(f => ({ ...f, country, currency: DEFAULT_CURRENCY[country], entityType: '', industry: '' }))
   }
 
   function setEditFormCountry(country: BusinessCountry) {
-    setEditForm(f => ({ ...f, country, currency: DEFAULT_CURRENCY[country], entityType: '' }))
+    setEditForm(f => ({ ...f, country, currency: DEFAULT_CURRENCY[country], entityType: '', industry: '' }))
   }
 
   useEffect(() => {
@@ -174,7 +174,7 @@ export default function NegociosPage() {
                       </select>
                       <select className="input" value={editForm.industry} onChange={e => setEditForm(f => ({ ...f, industry: e.target.value }))}>
                         <option value="">— Industria —</option>
-                        {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                        {INDUSTRIES[editForm.country].map(i => <option key={i} value={i}>{i}</option>)}
                       </select>
                       <select className="input" value={editForm.entityType} onChange={e => setEditForm(f => ({ ...f, entityType: e.target.value }))}>
                         <option value="">— Tipo de entidad —</option>
@@ -244,7 +244,9 @@ export default function NegociosPage() {
       {accountType === 'ACCOUNTANT' && businesses.length >= bizLimit ? (
         <div className="card p-4 bg-amber-50 border-amber-100">
           <p className="text-sm text-amber-700">
-            Tu plan <span className="font-semibold">{plan}</span> permite hasta {bizLimit === Infinity ? 'negocios ilimitados' : `${bizLimit} negocio(s)`}. Para agregar más, actualiza a un plan superior.
+            {clientType === 'PERSONA_NATURAL' && bizLimit <= 1
+              ? 'Una cuenta Persona Natural solo puede tener un negocio propio.'
+              : <>Tu plan <span className="font-semibold">{plan}</span> permite hasta {bizLimit === Infinity ? 'negocios ilimitados' : `${bizLimit} negocio(s)`}. Para agregar más, actualiza a un plan superior.</>}
           </p>
         </div>
       ) : accountType === 'TEAM_MEMBER' ? (
@@ -276,7 +278,7 @@ export default function NegociosPage() {
                 <label className="label">{t('business.industry')}</label>
                 <select className="input" value={form.industry} onChange={e => setForm(f => ({ ...f, industry: e.target.value }))}>
                   <option value="">{t('common.select')}</option>
-                  {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                  {INDUSTRIES[form.country].map(i => <option key={i} value={i}>{i}</option>)}
                 </select>
               </div>
               <div>

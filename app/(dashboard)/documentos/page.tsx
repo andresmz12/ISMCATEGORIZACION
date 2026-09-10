@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useActiveBiz } from '@/lib/use-active-biz'
 import { useTranslation } from '@/lib/i18n'
+import { DOCUMENT_TYPE_EXAMPLES } from '@/lib/countries'
 
 interface DocType {
   id: string
@@ -24,7 +25,8 @@ interface Doc {
 
 export default function DocumentosPage() {
   const { t } = useTranslation()
-  const { activeBizId } = useActiveBiz()
+  const { businesses, activeBizId } = useActiveBiz()
+  const activeBizCountry = (businesses.find((b: any) => b.id === activeBizId)?.country || 'US') as 'US' | 'CO'
   const [docTypes, setDocTypes] = useState<DocType[]>([])
   const [docs, setDocs] = useState<Doc[]>([])
   const [loading, setLoading] = useState(true)
@@ -172,7 +174,7 @@ export default function DocumentosPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">{t('documentos.title')}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{t('documentos.subtitle')}</p>
+          <p className="text-sm text-gray-500 mt-0.5">{t('documentos.subtitle').replace('{examples}', DOCUMENT_TYPE_EXAMPLES[activeBizCountry])}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => { setShowUploadModal(true); setUploadError('') }} className="btn-primary">
@@ -210,7 +212,7 @@ export default function DocumentosPage() {
             <div className="card p-10 text-center">
               <div className="text-4xl mb-3">📁</div>
               <p className="text-gray-600 font-medium">{t('documentos.noTypes')}</p>
-              <p className="text-sm text-gray-400 mt-1">{t('documentos.noTypesHint')}</p>
+              <p className="text-sm text-gray-400 mt-1">{t('documentos.noTypesHint').replace('{examples}', DOCUMENT_TYPE_EXAMPLES[activeBizCountry])}</p>
               <button onClick={openNewType} className="btn-primary mt-5">{t('documentos.createFirstType')}</button>
             </div>
           ) : (
