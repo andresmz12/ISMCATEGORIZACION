@@ -212,7 +212,7 @@ const en = {
   'import.map': 'Map columns',
   'import.result': 'Result',
   'import.dragDrop': 'Drag your bank statement here or click to browse',
-  'import.formats': 'Supported formats: CSV, XLSX',
+  'import.formats': 'Supported formats: CSV, XLSX, PDF',
   'import.chooseFile': 'Choose File',
   'import.bankName': 'Bank name (to save this mapping)',
   'import.savedFormats': 'Saved formats',
@@ -274,7 +274,7 @@ const en = {
 
   // Import extras
   'import.uploadTitle': 'Upload Bank Statement',
-  'import.formatsError': 'Only CSV and XLSX files supported',
+  'import.formatsError': 'Only CSV, XLSX and PDF files supported',
   'import.mapRequired': 'Please map: date, description, and amount (or debit+credit)',
   'import.importFailed': 'Import failed',
   'import.required_fields': '* Required. Map "amount" OR both "debit" and "credit".',

@@ -212,7 +212,7 @@ const es = {
   'import.map': 'Mapear columnas',
   'import.result': 'Resultado',
   'import.dragDrop': 'Arrastra tu estado bancario aquí o haz clic para buscar',
-  'import.formats': 'Formatos soportados: CSV, XLSX',
+  'import.formats': 'Formatos soportados: CSV, XLSX, PDF',
   'import.chooseFile': 'Seleccionar Archivo',
   'import.bankName': 'Nombre del banco (para guardar este mapeo)',
   'import.savedFormats': 'Formatos guardados',
@@ -274,7 +274,7 @@ const es = {
 
   // Import extras
   'import.uploadTitle': 'Subir Estado Bancario',
-  'import.formatsError': 'Solo se soportan archivos CSV y XLSX',
+  'import.formatsError': 'Solo se soportan archivos CSV, XLSX y PDF',
   'import.mapRequired': 'Mapea: fecha, descripción, y monto (o débito+crédito)',
   'import.importFailed': 'Error en importación',
   'import.required_fields': '* Requerido. Mapea "monto" O ambos "débito" y "crédito".',

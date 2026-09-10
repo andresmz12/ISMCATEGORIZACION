@@ -141,6 +141,14 @@ export default function ImportPage() {
       setPreviewRows(rows)
       autoDetectMapping(cols)
       setStep('map')
+    } else if (ext === 'pdf') {
+      // No columns to preview/map for a PDF — an AI call on the server reads
+      // the statement directly. Just confirm the file and let the user hit
+      // Import from the map step (rendered differently for isPdf below).
+      setHeaders([])
+      setPreviewRows([])
+      setMapping({})
+      setStep('map')
     } else if (ext === 'xlsx' || ext === 'xls') {
       const ExcelJS = await import('exceljs')
       const buffer = await f.arrayBuffer()
@@ -226,12 +234,16 @@ export default function ImportPage() {
     setMapping(saved.mapping as Record<string, string>)
   }
 
+  const isPdf = file?.name.split('.').pop()?.toLowerCase() === 'pdf'
+
   async function handleImport() {
     if (!file || !activeBiz) return
-    const hasAmount = mapping['amount'] || (mapping['debit'] && mapping['credit'])
-    if (!mapping['date'] || !mapping['description'] || !hasAmount) {
-      setError(t('import.mapRequired'))
-      return
+    if (!isPdf) {
+      const hasAmount = mapping['amount'] || (mapping['debit'] && mapping['credit'])
+      if (!mapping['date'] || !mapping['description'] || !hasAmount) {
+        setError(t('import.mapRequired'))
+        return
+      }
     }
     setLoading(true)
     setError('')
@@ -309,7 +321,7 @@ export default function ImportPage() {
           <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-[#1B4965] transition-colors">
             <div className="text-4xl mb-3">📁</div>
             <p className="text-sm text-gray-600 mb-3">{t('import.dragDrop')}</p>
-            <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileSelect} className="hidden" id="file-input" />
+            <input type="file" accept=".csv,.xlsx,.xls,.pdf" onChange={handleFileSelect} className="hidden" id="file-input" />
             <label htmlFor="file-input" className="btn-primary cursor-pointer text-sm">{t('import.chooseFile')}</label>
           </div>
         </div>
@@ -357,51 +369,61 @@ export default function ImportPage() {
             </div>
           )}
 
-          {/* Mapping form */}
+          {/* Mapping form (PDF: no columns to map — AI reads the statement directly) */}
           <div className="card p-6 space-y-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-800">{t('import.map')}</h2>
+              <h2 className="text-base font-semibold text-gray-800">{isPdf ? file?.name : t('import.map')}</h2>
             </div>
 
-            <div>
-              <label className="label">{t('import.bankName')}</label>
-              <input
-                className="input"
-                list="bank-suggestions"
-                placeholder={`${suggestedBanks[0]}, ${suggestedBanks[1]}...`}
-                value={bankName}
-                onChange={e => setBankName(e.target.value)}
-              />
-              <datalist id="bank-suggestions">
-                {suggestedBanks.map(b => <option key={b} value={b} />)}
-              </datalist>
-            </div>
+            {isPdf && (
+              <div className="p-3 bg-[#1B4965]/5 border border-[#1B4965]/10 rounded-lg text-[#1B4965] text-sm">
+                Este PDF no tiene columnas para mapear — una IA lee el estado de cuenta y extrae las transacciones directamente. Revísalas después en Transacciones antes de clasificarlas.
+              </div>
+            )}
 
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-700">{t('import.mapColumns')}</p>
-              {FIELD_KEYS.map(field => (
-                <div key={field} className="flex items-center gap-4">
-                  <label className="text-sm font-medium text-gray-600 w-28">
-                    {fieldLabels[field]} {['date', 'description'].includes(field) ? '*' : ''}
-                  </label>
-                  <select
-                    className="input flex-1 text-sm"
-                    value={mapping[field] || ''}
-                    onChange={e => setMapping(m => ({ ...m, [field]: e.target.value }))}
-                  >
-                    <option value="">{t('import.notMapped')}</option>
-                    {headers.map(h => <option key={h} value={h}>{h}</option>)}
-                  </select>
-                </div>
-              ))}
-            </div>
+            {!isPdf && (
+              <div>
+                <label className="label">{t('import.bankName')}</label>
+                <input
+                  className="input"
+                  list="bank-suggestions"
+                  placeholder={`${suggestedBanks[0]}, ${suggestedBanks[1]}...`}
+                  value={bankName}
+                  onChange={e => setBankName(e.target.value)}
+                />
+                <datalist id="bank-suggestions">
+                  {suggestedBanks.map(b => <option key={b} value={b} />)}
+                </datalist>
+              </div>
+            )}
 
-            <p className="text-xs text-gray-400">{t('import.required_fields')}</p>
+            {!isPdf && (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-gray-700">{t('import.mapColumns')}</p>
+                {FIELD_KEYS.map(field => (
+                  <div key={field} className="flex items-center gap-4">
+                    <label className="text-sm font-medium text-gray-600 w-28">
+                      {fieldLabels[field]} {['date', 'description'].includes(field) ? '*' : ''}
+                    </label>
+                    <select
+                      className="input flex-1 text-sm"
+                      value={mapping[field] || ''}
+                      onChange={e => setMapping(m => ({ ...m, [field]: e.target.value }))}
+                    >
+                      <option value="">{t('import.notMapped')}</option>
+                      {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!isPdf && <p className="text-xs text-gray-400">{t('import.required_fields')}</p>}
 
             <div className="flex gap-3">
               <button onClick={() => { setStep('upload'); setFile(null); setHeaders([]); setPreviewRows([]); setHeaderRowNum(1) }} className="btn-secondary">{t('import.back')}</button>
               <button onClick={handleImport} disabled={loading} className="btn-primary disabled:opacity-50">
-                {loading ? t('import.importing') : t('import.importBtn')}
+                {loading ? (isPdf ? 'Extrayendo con IA...' : t('import.importing')) : (isPdf ? 'Extraer e importar' : t('import.importBtn'))}
               </button>
             </div>
           </div>

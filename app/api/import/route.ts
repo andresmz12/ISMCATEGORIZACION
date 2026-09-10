@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import Anthropic from '@anthropic-ai/sdk'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkBusinessAccess, checkBusinessWriteAccess } from '@/lib/check-business-access'
 import { logAudit } from '@/lib/audit'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { requirePlanFeature } from '@/lib/plan-limits'
+import { checkAiBudget, withAiBudget } from '@/lib/ai-budget'
 import crypto from 'crypto'
 
 function makeChecksum(date: string, description: string, amount: number): string {
@@ -150,12 +153,77 @@ export async function POST(req: Request) {
         })
         rows.push(rowObj)
       })
+    } else if (ext === 'pdf') {
+      // No columns to map in a PDF bank statement — an AI vision call reads
+      // the document directly and returns transactions in the same shape
+      // (date/description/amount) the CSV/XLSX branches produce, so the
+      // dedup/create loop below runs unchanged regardless of source format.
+      const denied = requirePlanFeature(session, 'receiptScan')
+      if (denied) return denied
+      const budgetDenied = await checkAiBudget(businessId)
+      if (budgetDenied) return budgetDenied
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return NextResponse.json({ error: 'AI service not configured' }, { status: 503 })
+      }
+
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+      const base64Data = buffer.toString('base64')
+      const documentContent: any = { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
+
+      const budgetResult = await withAiBudget(businessId, async () => {
+        const response = await client.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 8192,
+          messages: [{
+            role: 'user',
+            content: [
+              documentContent,
+              {
+                type: 'text',
+                text: `Extract every transaction line from this bank statement (may span multiple pages). Return ONLY a JSON array (no markdown, no backticks, no explanation) of objects:
+[{"date": "YYYY-MM-DD", "description": "merchant or memo text", "amount": 0.00, "type": "DEBIT" or "CREDIT"}]
+DEBIT = money leaving the account (withdrawals, purchases, fees, payments). CREDIT = money entering it (deposits, refunds, transfers in). amount is always positive. The statement may be in English or Spanish. Merge a transaction that wraps across lines into a single entry. Skip balance/summary lines that aren't individual transactions. Return [] if no transactions are found.`,
+              },
+            ],
+          }],
+        })
+        return { result: response, inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens, classifiedCount: 0 }
+      })
+      if (!budgetResult.ok) return budgetResult.response
+      const response = budgetResult.result
+
+      const raw = response.content[0].type === 'text' ? response.content[0].text : ''
+      let extracted: any[] = []
+      try {
+        const m = raw.match(/\[[\s\S]*\]/)
+        if (m) extracted = JSON.parse(m[0])
+      } catch {
+        extracted = []
+      }
+      if (!Array.isArray(extracted) || extracted.length === 0) {
+        return NextResponse.json({ error: 'No se pudieron extraer transacciones de este PDF. Verifica que sea un estado de cuenta bancario legible (no escaneado como imagen borrosa).' }, { status: 400 })
+      }
+
+      rows = extracted.map((tx: any) => ({
+        date: tx.date,
+        description: tx.description,
+        amount: tx.type === 'DEBIT' ? `-${tx.amount}` : `${tx.amount}`,
+      }))
+      // No real column mapping exists for a PDF — the rows above always use
+      // these fixed keys, so force the lookup below to match regardless of
+      // whatever mapping (if any) the client sent.
+      mapping.date = 'date'
+      mapping.description = 'description'
+      mapping.amount = 'amount'
+      delete mapping.debit
+      delete mapping.credit
     } else {
-      return NextResponse.json({ error: 'Only CSV and XLSX supported for import' }, { status: 400 })
+      return NextResponse.json({ error: 'Only CSV, XLSX and PDF supported for import' }, { status: 400 })
     }
 
-    // Save bank mapping for reuse
-    if (bankName) {
+    // Save bank mapping for reuse — not meaningful for a PDF (there's no
+    // real column format to remember, just the fixed keys set above).
+    if (bankName && ext !== 'pdf') {
       await prisma.bankFormatMapping.upsert({
         where: { id: `${businessId}_${bankName.replace(/\s+/g, '_')}` },
         update: { mapping },
