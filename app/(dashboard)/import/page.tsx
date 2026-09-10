@@ -247,19 +247,30 @@ export default function ImportPage() {
     }
     setLoading(true)
     setError('')
-    const fd = new FormData()
-    fd.append('businessId', activeBiz)
-    fd.append('file', file)
-    fd.append('mapping', JSON.stringify(mapping))
-    fd.append('headerRow', String(headerRowNum))
-    if (bankName) fd.append('bankName', bankName)
-    const res = await fetch('/api/import', { method: 'POST', body: fd })
-    const data = await res.json()
-    setLoading(false)
-    if (!res.ok) { setError(data.error || t('import.importFailed')); return }
-    setResult(data)
-    setImportedIds(data.importedIds || [])
-    setStep('result')
+    try {
+      const fd = new FormData()
+      fd.append('businessId', activeBiz)
+      fd.append('file', file)
+      fd.append('mapping', JSON.stringify(mapping))
+      fd.append('headerRow', String(headerRowNum))
+      if (bankName) fd.append('bankName', bankName)
+      // A PDF extraction call to Claude can take a while on a long statement —
+      // bound it client-side so a stalled request surfaces an error instead of
+      // leaving the button stuck on "Extrayendo..." forever.
+      const res = await fetch('/api/import', { method: 'POST', body: fd, signal: AbortSignal.timeout(120_000) })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || t('import.importFailed')); return }
+      setResult(data)
+      setImportedIds(data.importedIds || [])
+      setStep('result')
+    } catch (err) {
+      console.error('Import failed:', err)
+      setError(isPdf
+        ? 'La extracción con IA tardó demasiado o falló. Intenta de nuevo — si el PDF tiene muchas páginas, prueba subir un rango más corto.'
+        : t('import.importFailed'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   const fieldLabels: Record<string, string> = {
