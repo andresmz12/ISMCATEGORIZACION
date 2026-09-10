@@ -182,7 +182,14 @@ export async function POST(req: Request) {
                 type: 'text',
                 text: `Extract every transaction line from this bank statement (may span multiple pages). Return ONLY a JSON array (no markdown, no backticks, no explanation) of objects:
 [{"date": "YYYY-MM-DD", "description": "merchant or memo text", "amount": 0.00, "type": "DEBIT" or "CREDIT"}]
-DEBIT = money leaving the account (withdrawals, purchases, fees, payments). CREDIT = money entering it (deposits, refunds, transfers in). amount is always positive. The statement may be in English or Spanish. Merge a transaction that wraps across lines into a single entry. Skip balance/summary lines that aren't individual transactions. Return [] if no transactions are found.`,
+
+Rules:
+- DEBIT = money leaving the account (withdrawals, purchases, fees, payments, transfers out — often shown with a "-" or "$-" sign). CREDIT = money entering it (deposits, refunds, transfers in, interest paid). "amount" is always positive; put the sign information only in "type".
+- The statement may be in English or Spanish, and use US (MM/DD/YYYY) or Colombian/Latin American (DD/MM/YYYY) date order — infer which from the statement's own locale (Spanish column headers like "Fecha del movimiento", "Descripción", "Valor" indicate Colombian format) and always output "date" as YYYY-MM-DD.
+- Many Colombian statements (Bancolombia, Nequi, Davivienda, etc.) show a transaction table with a "Valor" (or "Monto") column AND a separate running "Saldo" (balance) column — extract only "Valor" as the amount; never use "Saldo".
+- Skip anything that isn't an individual transaction row: repeated table headers on each page, and any account summary block (e.g. "Resumen", "Saldo anterior", "Saldo actual", "Total abonos", "Total cargos", "Saldo promedio", "Cuentas por cobrar", "Retefuente" — these are period totals, not transactions).
+- Merge a transaction whose description wraps across lines into a single entry.
+- Return [] if no transactions are found.`,
               },
             ],
           }],
