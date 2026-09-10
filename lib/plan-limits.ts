@@ -32,6 +32,13 @@ export function requirePlanFeature(session: any, feature: PlanFeature): NextResp
   const plan = session?.user?.plan
   const trialEndsAt = session?.user?.trialEndsAt
   if (accountType === 'SUPERADMIN') return null
+  // Colombia-only hard rule: a PERSONA_NATURAL account can never use the
+  // team feature, no matter what plan it's on — PERSONA_JURIDICA and
+  // CONTADOR (and every US account, clientType null) just follow the
+  // plan-based check below.
+  if (feature === 'team' && session?.user?.clientType === 'PERSONA_NATURAL') {
+    return NextResponse.json({ error: 'Una cuenta Persona Natural no puede invitar usuarios a su equipo' }, { status: 403 })
+  }
   if (!getPlanLimits(plan, trialEndsAt)[feature]) {
     return NextResponse.json({ error: FEATURE_MESSAGES[feature] }, { status: 403 })
   }

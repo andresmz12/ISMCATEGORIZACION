@@ -23,6 +23,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const accountType = (session?.user as any)?.accountType
   const plan = (session?.user as any)?.plan
   const trialEndsAt = (session?.user as any)?.trialEndsAt
+  const clientType = (session?.user as any)?.clientType
 
   // No active plan (never paid, nothing granted by an admin, no signup
   // trial still running) — send them to billing. This used to be a
@@ -147,7 +148,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Nav */}
       <nav className={`flex-1 overflow-y-auto py-2 ${isCollapsed ? 'px-2 space-y-1' : 'px-3 space-y-3'}`}>
-        {navGroups.map((group, gi) => (
+        {navGroups
+          .map(group => clientType === 'PERSONA_NATURAL'
+            ? { ...group, items: group.items.filter(item => item.href !== '/usuarios') }
+            : group)
+          .map((group, gi) => (
           <div key={gi}>
             {group.label && !isCollapsed && (
               <>

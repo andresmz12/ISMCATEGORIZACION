@@ -28,6 +28,22 @@ export function isBusinessCountry(v: unknown): v is BusinessCountry {
   return v === 'US' || v === 'CO'
 }
 
+// Colombia-only classification picked at registration (see the ClientType
+// enum in schema.prisma). PERSONA_NATURAL can never use the team feature,
+// regardless of plan; PERSONA_JURIDICA and CONTADOR follow the normal
+// plan-based gating.
+export type ClientType = 'PERSONA_NATURAL' | 'PERSONA_JURIDICA' | 'CONTADOR'
+
+export const CLIENT_TYPES: { value: ClientType; label: string; description: string }[] = [
+  { value: 'PERSONA_NATURAL', label: 'Persona Natural', description: 'Trabajas por tu cuenta — sin equipo, solo tú.' },
+  { value: 'PERSONA_JURIDICA', label: 'Persona Jurídica', description: 'Una empresa — puedes invitar a tu equipo.' },
+  { value: 'CONTADOR', label: 'Contador', description: 'Llevas la contabilidad de otros negocios — puedes invitar a tu equipo.' },
+]
+
+export function isClientType(v: unknown): v is ClientType {
+  return v === 'PERSONA_NATURAL' || v === 'PERSONA_JURIDICA' || v === 'CONTADOR'
+}
+
 // Just suggestions for the bank-name field on import (free text either way) —
 // shown as a datalist and used for the input's placeholder example.
 export const COMMON_BANKS: Record<BusinessCountry, string[]> = {

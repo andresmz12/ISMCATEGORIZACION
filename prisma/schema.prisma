@@ -41,6 +41,17 @@ enum Country {
   CO
 }
 
+// Colombia-only classification picked at registration. PERSONA_NATURAL can
+// never use the team feature, regardless of plan — PERSONA_JURIDICA and
+// CONTADOR follow the normal plan-based team gating (see requirePlanFeature
+// in lib/plan-limits.ts). Null for US accounts and any account that
+// registered before this field existed.
+enum ClientType {
+  PERSONA_NATURAL
+  PERSONA_JURIDICA
+  CONTADOR
+}
+
 enum TxType {
   DEBIT
   CREDIT
@@ -113,6 +124,8 @@ model BillingAccount {
   // country field when this account creates its first Business. Each
   // Business still carries its own country and can differ from this.
   defaultCountry       Country   @default(US)
+  // Colombia-only — see the ClientType enum comment. Null for US accounts.
+  clientType           ClientType?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   users                User[]

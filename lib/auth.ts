@@ -40,6 +40,7 @@ export const authOptions: NextAuthOptions = {
         token.chatbotEnabled = (user as any).chatbotEnabled
         token.trialEndsAt = (user as any).trialEndsAt
         token.defaultCountry = (user as any).defaultCountry
+        token.clientType = (user as any).clientType
         token.isActive = true // authorize() already filtered out inactive users
         token.validatedAt = Date.now()
         return token
@@ -53,7 +54,7 @@ export const authOptions: NextAuthOptions = {
             where: { id: token.id as string },
             select: {
               isActive: true, accountType: true, accountRole: true,
-              billingAccount: { select: { plan: true, chatbotEnabled: true, trialEndsAt: true, defaultCountry: true } },
+              billingAccount: { select: { plan: true, chatbotEnabled: true, trialEndsAt: true, defaultCountry: true, clientType: true } },
             },
           })
         : null
@@ -67,6 +68,7 @@ export const authOptions: NextAuthOptions = {
         token.chatbotEnabled = dbUser.billingAccount.chatbotEnabled
         token.trialEndsAt = dbUser.billingAccount.trialEndsAt
         token.defaultCountry = dbUser.billingAccount.defaultCountry
+        token.clientType = dbUser.billingAccount.clientType
         token.isActive = true
       }
       token.validatedAt = Date.now()
@@ -82,6 +84,7 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as any).chatbotEnabled = token.chatbotEnabled
         ;(session.user as any).trialEndsAt = token.trialEndsAt
         ;(session.user as any).defaultCountry = token.defaultCountry
+        ;(session.user as any).clientType = token.clientType
         ;(session.user as any).isActive = token.isActive !== false
       }
       return session
@@ -114,7 +117,7 @@ export const authOptions: NextAuthOptions = {
             select: {
               id: true, email: true, passwordHash: true, name: true, accountType: true, isActive: true,
               accountId: true, accountRole: true,
-              billingAccount: { select: { plan: true, chatbotEnabled: true, trialEndsAt: true, defaultCountry: true } },
+              billingAccount: { select: { plan: true, chatbotEnabled: true, trialEndsAt: true, defaultCountry: true, clientType: true } },
             },
           })
           if (!user || !user.isActive) return null
@@ -126,7 +129,7 @@ export const authOptions: NextAuthOptions = {
             id: user.id, email: user.email, name: user.name, accountType: user.accountType,
             accountId: user.accountId, accountRole: user.accountRole, plan: user.billingAccount.plan,
             chatbotEnabled: user.billingAccount.chatbotEnabled, trialEndsAt: user.billingAccount.trialEndsAt,
-            defaultCountry: user.billingAccount.defaultCountry,
+            defaultCountry: user.billingAccount.defaultCountry, clientType: user.billingAccount.clientType,
           }
         } catch (err) {
           console.error('authorize error:', err)

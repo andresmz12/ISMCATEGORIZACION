@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { validatePassword, validateEmail, getClientIp } from '@/lib/validate'
 import { TRIAL_DURATION_MS } from '@/lib/billing-access'
-import { isBusinessCountry } from '@/lib/countries'
+import { isBusinessCountry, isClientType } from '@/lib/countries'
 
 export async function POST(req: Request) {
   const ip = getClientIp(req)
@@ -12,11 +12,19 @@ export async function POST(req: Request) {
   if (!rl.ok) return rateLimitResponse()
 
   try {
-    const { email, password, name, firmName, country, termsAccepted } = await req.json()
+    const { email, password, name, firmName, country, clientType, termsAccepted } = await req.json()
 
     if (!termsAccepted) return NextResponse.json({ error: 'Debes aceptar los Términos de Uso para continuar' }, { status: 400 })
     if (!email || !password) return NextResponse.json({ error: 'Email y contraseña requeridos' }, { status: 400 })
     if (!validateEmail(email)) return NextResponse.json({ error: 'Correo electrónico inválido' }, { status: 400 })
+
+    // Colombia requires picking one of the 3 client types up front (it
+    // decides whether this account can ever use the team feature — see
+    // requirePlanFeature in lib/plan-limits.ts); not applicable to US.
+    const resolvedCountry = isBusinessCountry(country) ? country : 'US'
+    if (resolvedCountry === 'CO' && !isClientType(clientType)) {
+      return NextResponse.json({ error: 'Selecciona el tipo de cliente (Persona Natural, Persona Jurídica o Contador)' }, { status: 400 })
+    }
 
     const pwError = validatePassword(password)
     if (pwError) return NextResponse.json({ error: pwError }, { status: 400 })
@@ -49,7 +57,8 @@ export async function POST(req: Request) {
             name: firmName?.trim()?.slice(0, 100) || null,
             plan: 'NONE',
             trialEndsAt: new Date(Date.now() + TRIAL_DURATION_MS),
-            defaultCountry: isBusinessCountry(country) ? country : 'US',
+            defaultCountry: resolvedCountry,
+            clientType: resolvedCountry === 'CO' && isClientType(clientType) ? clientType : null,
           },
         },
       },

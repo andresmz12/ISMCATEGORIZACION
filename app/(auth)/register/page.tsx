@@ -5,7 +5,7 @@ import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
-import { COUNTRIES, BusinessCountry } from '@/lib/countries'
+import { COUNTRIES, BusinessCountry, CLIENT_TYPES, ClientType } from '@/lib/countries'
 
 type Step = 1 | 2
 
@@ -38,6 +38,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [firmName, setFirmName] = useState('')
   const [country, setCountry] = useState<BusinessCountry>('US')
+  const [clientType, setClientType] = useState<ClientType | ''>('')
   const [termsAccepted, setTermsAccepted] = useState(false)
 
   async function handleSubmit() {
@@ -46,13 +47,14 @@ export default function RegisterPage() {
     if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
       setError(t('auth.passwordShort')); return
     }
+    if (country === 'CO' && !clientType) { setError('Selecciona el tipo de cliente'); return }
     setLoading(true)
     setError('')
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, firmName, country, termsAccepted }),
+        body: JSON.stringify({ name, email, password, firmName, country, clientType: country === 'CO' ? clientType : undefined, termsAccepted }),
       })
       if (!res.ok) {
         const d = await res.json()
@@ -188,6 +190,32 @@ export default function RegisterPage() {
                   </select>
                 </div>
 
+                {country === 'CO' && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de cliente</label>
+                    <div className="space-y-2">
+                      {CLIENT_TYPES.map(ct => (
+                        <label
+                          key={ct.value}
+                          className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${clientType === ct.value ? 'border-[#1B4965] bg-[#1B4965]/5' : 'border-gray-200 hover:bg-gray-50'}`}
+                        >
+                          <input
+                            type="radio"
+                            name="clientType"
+                            className="mt-0.5 accent-[#1B4965]"
+                            checked={clientType === ct.value}
+                            onChange={() => setClientType(ct.value)}
+                          />
+                          <span>
+                            <span className="block text-sm font-medium text-gray-800">{ct.label}</span>
+                            <span className="block text-xs text-gray-400">{ct.description}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-start gap-3 mt-6">
                   <input
                     type="checkbox"
@@ -214,7 +242,7 @@ export default function RegisterPage() {
                   </button>
                   <button
                     onClick={handleSubmit}
-                    disabled={loading || !termsAccepted}
+                    disabled={loading || !termsAccepted || (country === 'CO' && !clientType)}
                     className="flex-1 h-11 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-40"
                     style={{ background: '#1B4965' }}
                     onMouseEnter={e => { if (!loading && termsAccepted) (e.target as HTMLButtonElement).style.background = '#143A52' }}

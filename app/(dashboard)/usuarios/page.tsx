@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { useTranslation } from '@/lib/i18n'
 
 interface TeamMember {
@@ -15,6 +16,8 @@ interface TeamMember {
 
 export default function UsuariosPage() {
   const { t } = useTranslation()
+  const { data: session } = useSession()
+  const isPersonaNatural = (session?.user as any)?.clientType === 'PERSONA_NATURAL'
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -95,6 +98,18 @@ export default function UsuariosPage() {
     if (!confirm(t('team.deleteConfirm').replace('{name}', name))) return
     await fetch(`/api/team/${id}`, { method: 'DELETE' })
     load()
+  }
+
+  if (isPersonaNatural) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="card p-10 text-center">
+          <div className="text-4xl mb-3">🙋</div>
+          <p className="text-gray-600 font-medium">Las cuentas Persona Natural no pueden invitar usuarios a su equipo</p>
+          <p className="text-sm text-gray-400 mt-1">Esta función está disponible para cuentas Persona Jurídica y Contador.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
