@@ -46,6 +46,14 @@ export const SYSTEM_CATEGORIES: SystemCategorySeed[] = [
   // de administración/ventas), 53 (no operacionales), 42 (ingresos no
   // operacionales), 54 (impuesto de renta) y 61 (costo de ventas), tal como
   // los define el Decreto 2650 de 1993. + tarifa de IVA típica.
+  //
+  // No category name bakes in a fixed deductibility % (e.g. "Alimentación
+  // (50% deducible)", removed — that copied the US "Meals (50%)" rule by
+  // analogy, but Colombia has no such blanket rule; deductibility under
+  // Estatuto Tributario Art. 107 is a necessity/causality/proportionality
+  // test decided per expense). Deductibility is a per-transaction field
+  // (YES/NO/FIFTY) the accountant sets on each transaction, independent of
+  // its category.
   { name: 'Nómina y Prestaciones Sociales', irsCode: 'PUC 5105', country: 'CO', vatRate: 'Excluido' },
   { name: 'Honorarios', irsCode: 'PUC 5110', country: 'CO', vatRate: '19%' },
   { name: 'Comisiones', irsCode: 'PUC 5110', country: 'CO', vatRate: '19%' },
@@ -64,7 +72,7 @@ export const SYSTEM_CATEGORIES: SystemCategorySeed[] = [
   { name: 'Publicidad y Mercadeo', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
   { name: 'Gastos de Oficina', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
   { name: 'Suministros', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
-  { name: 'Alimentación (50% deducible)', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
+  { name: 'Alimentación', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
   { name: 'Otros Gastos', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
   { name: 'Gastos Financieros e Intereses', irsCode: 'PUC 5305', country: 'CO', vatRate: 'Exento' },
   { name: 'Impuesto de Renta', irsCode: 'PUC 5405', country: 'CO', vatRate: 'Excluido' },
