@@ -6,15 +6,15 @@ import { prisma } from './prisma'
 // revalidated on any category mutation via revalidateCategories() below.
 //
 // System categories are scoped by the business's country: a US business
-// never sees Colombian PUC categories and vice versa. Categories with
-// country: null (Transfer, Uncategorized) are shown to every business.
+// never sees Colombian PUC categories and vice versa, including the
+// Transfer/Uncategorized buckets which now have a translated CO pair
+// (Transferencia/Sin Categorizar) instead of a single shared English row.
 export const getBusinessCategories = unstable_cache(
   async (businessId: string) => {
     const business = await prisma.business.findUnique({ where: { id: businessId }, select: { country: true } })
     return prisma.category.findMany({
       where: {
         OR: [
-          { isSystem: true, country: null },
           { isSystem: true, country: business?.country ?? 'US' },
           { businessId },
         ],
@@ -29,7 +29,7 @@ export const getBusinessCategories = unstable_cache(
 export const getSystemCategories = unstable_cache(
   async (country?: 'US' | 'CO') => {
     return prisma.category.findMany({
-      where: { isSystem: true, ...(country ? { OR: [{ country: null }, { country }] } : {}) },
+      where: { isSystem: true, ...(country ? { country } : {}) },
     })
   },
   ['system-categories'],

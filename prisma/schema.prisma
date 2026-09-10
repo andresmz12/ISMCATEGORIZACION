@@ -347,9 +347,9 @@ model Category {
   businessId            String?
   name                  String
   irsCode               String?
-  // Which country a system category applies to. Null means it's shown to
-  // every business regardless of country (e.g. "Transfer", "Uncategorized").
-  // Ignored for business-owned (non-system) categories.
+  // Which country a system category applies to (US or CO — every system
+  // category has one now, including the translated Transfer/Uncategorized
+  // pairs). Ignored for business-owned (non-system) categories.
   country               Country?
   // Free-text VAT/IVA rate this category's expenses typically carry (e.g.
   // "19%", "5%", "Exento", "Excluido") — powers the IVA-filter report used

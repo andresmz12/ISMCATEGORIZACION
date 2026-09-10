@@ -8,12 +8,14 @@ import { PrismaClient } from '@prisma/client'
 // every business, regardless of country." That leaked the whole US category
 // list into Colombian businesses' dropdowns and reports.
 //
-// Only the two genuinely shared buckets (Transfer, Uncategorized) should
-// stay NULL; every other still-unset system category gets backfilled to US,
-// since that's what every category was before this app supported Colombia.
-// Runs after `prisma db push` (see package.json) so the column already
-// exists; idempotent — a category admins have since explicitly tagged
-// (country no longer NULL) is left untouched.
+// Transfer/Uncategorized used to be the two genuinely shared (country: NULL)
+// buckets, but they now have a translated Colombian pair (Transferencia/Sin
+// Categorizar — see lib/system-categories.ts and
+// scripts/migrate-co-shared-categories.ts), so the English originals are
+// US-only like every other still-unset system category and get backfilled
+// here too. Runs after `prisma db push` (see package.json) so the column
+// already exists; idempotent — a category admins have since explicitly
+// tagged (country no longer NULL) is left untouched.
 async function main() {
   const prisma = new PrismaClient()
   try {
@@ -22,7 +24,6 @@ async function main() {
       SET country = 'US'
       WHERE "isSystem" = true
         AND country IS NULL
-        AND name NOT IN ('Transfer', 'Uncategorized')
     `)
     console.log(`migrate-category-country: backfilled ${count} system categories to country=US`)
   } catch (e: any) {

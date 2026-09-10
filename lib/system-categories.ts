@@ -73,9 +73,14 @@ export const SYSTEM_CATEGORIES: SystemCategorySeed[] = [
   { name: 'Ingresos No Operacionales', irsCode: 'PUC 42', country: 'CO' },
   { name: 'Retiro de Socios', irsCode: 'No deducible', country: 'CO', vatRate: 'Excluido' },
 
-  // Shared — same bucket regardless of the business's country
-  { name: 'Transfer', irsCode: 'Non-Deductible', country: null },
-  { name: 'Uncategorized', irsCode: 'Unclassified', country: null },
+  // Transfer / Uncategorized exist for every business, but the label must
+  // match the business's own language — a Colombian business should never
+  // see English category names in its dropdowns. Same bucket, one pair of
+  // rows per country instead of a single shared (country: null) row.
+  { name: 'Transfer', irsCode: 'Non-Deductible', country: 'US' },
+  { name: 'Uncategorized', irsCode: 'Unclassified', country: 'US' },
+  { name: 'Transferencia', irsCode: 'No deducible', country: 'CO' },
+  { name: 'Sin Categorizar', irsCode: 'Sin clasificar', country: 'CO' },
 ]
 
 export function systemCategoryId(name: string): string {
