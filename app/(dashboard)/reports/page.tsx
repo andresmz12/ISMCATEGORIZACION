@@ -149,6 +149,28 @@ export default function ReportsPage() {
     setExporting(false)
   }
 
+  // A dedicated one-click download for a single Colombia-only section (IVA,
+  // cost centers, vendors) — the general Exportar PDF/Excel buttons already
+  // bundle these in, but that isn't obvious from the button label, so each
+  // section also gets its own visible download right next to its table.
+  async function downloadSectionExcel(filenamePrefix: string, sheetName: string, header: string[], rows: (string | number)[][]) {
+    setExporting(true)
+    try {
+      const ExcelJS = await import('exceljs')
+      const wb = new ExcelJS.Workbook()
+      const ws = wb.addWorksheet(sheetName)
+      ws.addRow(header)
+      rows.forEach(r => ws.addRow(r))
+      const buf = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url; a.download = `${filenamePrefix}_${activeBiz}_${from}_${to}.xlsx`; a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   async function exportExcel() {
     if (!report) return
     setExporting(true)
@@ -861,7 +883,16 @@ export default function ReportsPage() {
           {/* % participation by cost center */}
           {report.costCenters.length > 0 && (
             <div id="report-cost-centers" className="card p-5 scroll-mt-4">
-              <h2 className="text-base font-semibold text-gray-800 mb-1">Participación por centro de costos</h2>
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <h2 className="text-base font-semibold text-gray-800">Participación por centro de costos</h2>
+                <button
+                  onClick={() => downloadSectionExcel('centros-de-costo', 'Centros de costo', ['Centro de costo', t('reports.total'), t('reports.count')], report.costCenters.map((cc: any) => [cc.costCenter, cc.total, cc.count]))}
+                  disabled={exporting}
+                  className="btn-secondary text-xs py-1 px-2 flex-shrink-0 disabled:opacity-50"
+                >
+                  Descargar Excel
+                </button>
+              </div>
               <p className="text-xs text-gray-400 mb-4">% que representa cada categoría dentro del gasto de cada centro de costos.</p>
               <div className="space-y-5">
                 {report.costCenters.map((cc: any) => (
@@ -895,7 +926,16 @@ export default function ReportsPage() {
           {/* IVA filter — for Colombian VAT filings */}
           {report.vat.length > 0 && (
             <div id="report-iva" className="card p-5 scroll-mt-4">
-              <h2 className="text-base font-semibold text-gray-800 mb-1">Gastos por tipo de IVA</h2>
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <h2 className="text-base font-semibold text-gray-800">Gastos por tipo de IVA</h2>
+                <button
+                  onClick={() => downloadSectionExcel('iva', 'IVA', ['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')], report.vat.map((v: any) => [v.vatRate, v.total, v.deductible, v.count]))}
+                  disabled={exporting}
+                  className="btn-secondary text-xs py-1 px-2 flex-shrink-0 disabled:opacity-50"
+                >
+                  Descargar Excel
+                </button>
+              </div>
               <p className="text-xs text-gray-400 mb-4">Agrupado por la tarifa de IVA de cada categoría — para armar la declaración de IVA.</p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -925,7 +965,16 @@ export default function ReportsPage() {
           {/* Spend by vendor */}
           {report.vendors.length > 0 && (
             <div id="report-vendors" className="card p-5 scroll-mt-4">
-              <h2 className="text-base font-semibold text-gray-800 mb-1">Gasto por proveedor</h2>
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <h2 className="text-base font-semibold text-gray-800">Gasto por proveedor</h2>
+                <button
+                  onClick={() => downloadSectionExcel('proveedores', 'Proveedores', ['Proveedor', t('reports.total'), t('reports.count'), 'Promedio', 'Última compra'], report.vendors.map((v: any) => [v.vendor, v.total, v.count, v.avg, new Date(v.lastDate).toLocaleDateString()]))}
+                  disabled={exporting}
+                  className="btn-secondary text-xs py-1 px-2 flex-shrink-0 disabled:opacity-50"
+                >
+                  Descargar Excel
+                </button>
+              </div>
               <p className="text-xs text-gray-400 mb-4">Total gastado, frecuencia de compra y promedio por transacción.</p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
