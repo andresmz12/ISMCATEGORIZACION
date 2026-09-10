@@ -6,6 +6,50 @@ import { useToast } from '@/components/Toast'
 import { useActiveBiz } from '@/lib/use-active-biz'
 import { formatCurrency } from '@/lib/currency'
 
+// Vendor/cost-center picker: a native <datalist> renders inconsistently on
+// iPad/Safari (no dropdown, or none at all), so this draws its own list of
+// previously-used values instead — click one to reuse it, or keep typing to
+// create a new one.
+function ComboBox({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+  const filtered = options.filter(o => o.toLowerCase().includes(value.toLowerCase())).slice(0, 8)
+  return (
+    <div className="relative" ref={ref}>
+      <input
+        className="input w-full text-sm"
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        placeholder={placeholder}
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+          {filtered.map(o => (
+            <button
+              key={o}
+              type="button"
+              className="block w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { onChange(o); setOpen(false) }}
+            >
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TransactionsContent() {
   const { t } = useTranslation()
   const toast = useToast()
@@ -61,16 +105,27 @@ function TransactionsContent() {
     setDetailsForm({ vendor: tx.vendor || '', costCenter: tx.costCenter || '', deductibility: tx.deductibility || '', notes: tx.notes || '' })
   }
 
+  // A vendor/cost-center typed for the first time should show up as a pick-
+  // able suggestion right away, not only after the meta list refetches on
+  // next page load.
+  function rememberVendorAndCostCenter(vendor: string, costCenter: string) {
+    if (vendor) setMetaVendors(v => v.includes(vendor) ? v : [...v, vendor].sort())
+    if (costCenter) setMetaCostCenters(v => v.includes(costCenter) ? v : [...v, costCenter].sort())
+  }
+
   async function saveDetails() {
     if (!detailsTx) return
     setDetailsSaving(true)
     try {
+      const vendor = detailsForm.vendor.trim()
+      const costCenter = detailsForm.costCenter.trim()
       await updateTx(detailsTx.id, {
-        vendor: detailsForm.vendor.trim() || null,
-        costCenter: detailsForm.costCenter.trim() || null,
+        vendor: vendor || null,
+        costCenter: costCenter || null,
         deductibility: detailsForm.deductibility || null,
         notes: detailsForm.notes.trim() || null,
       })
+      rememberVendorAndCostCenter(vendor, costCenter)
       setDetailsTx(null)
     } finally {
       setDetailsSaving(false)
@@ -251,6 +306,7 @@ function TransactionsContent() {
       })
       const data = await res.json()
       if (!res.ok) { setAddError(data.error || t('tx.addFailed')); return }
+      rememberVendorAndCostCenter(addForm.vendor.trim(), addForm.costCenter.trim())
       setShowAddModal(false)
       setAddForm({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', costCenter: '', vendor: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
       setPage(1)
@@ -532,13 +588,6 @@ function TransactionsContent() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-4">
-      <datalist id="tx-vendor-suggestions">
-        {metaVendors.map(v => <option key={v} value={v} />)}
-      </datalist>
-      <datalist id="tx-cost-center-suggestions">
-        {metaCostCenters.map(c => <option key={c} value={c} />)}
-      </datalist>
-
       {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-gray-900">{t('nav.transactions')}</h1>
@@ -847,21 +896,19 @@ function TransactionsContent() {
               {isColombia && <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Proveedor</label>
-                  <input
-                    className="input w-full text-sm"
-                    list="tx-vendor-suggestions"
+                  <ComboBox
+                    options={metaVendors}
                     value={addForm.vendor}
-                    onChange={e => setAddForm(f => ({ ...f, vendor: e.target.value }))}
+                    onChange={v => setAddForm(f => ({ ...f, vendor: v }))}
                     placeholder="Nombre del proveedor"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Centro de costos</label>
-                  <input
-                    className="input w-full text-sm"
-                    list="tx-cost-center-suggestions"
+                  <ComboBox
+                    options={metaCostCenters}
                     value={addForm.costCenter}
-                    onChange={e => setAddForm(f => ({ ...f, costCenter: e.target.value }))}
+                    onChange={v => setAddForm(f => ({ ...f, costCenter: v }))}
                     placeholder="Ej: Ventas, Operaciones"
                   />
                 </div>
@@ -932,21 +979,19 @@ function TransactionsContent() {
               {isColombia && <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Proveedor</label>
-                  <input
-                    className="input w-full text-sm"
-                    list="tx-vendor-suggestions"
+                  <ComboBox
+                    options={metaVendors}
                     value={detailsForm.vendor}
-                    onChange={e => setDetailsForm(f => ({ ...f, vendor: e.target.value }))}
+                    onChange={v => setDetailsForm(f => ({ ...f, vendor: v }))}
                     placeholder="Nombre del proveedor"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Centro de costos</label>
-                  <input
-                    className="input w-full text-sm"
-                    list="tx-cost-center-suggestions"
+                  <ComboBox
+                    options={metaCostCenters}
                     value={detailsForm.costCenter}
-                    onChange={e => setDetailsForm(f => ({ ...f, costCenter: e.target.value }))}
+                    onChange={v => setDetailsForm(f => ({ ...f, costCenter: v }))}
                     placeholder="Ej: Ventas, Operaciones"
                   />
                 </div>

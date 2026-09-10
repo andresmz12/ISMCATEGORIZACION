@@ -111,6 +111,40 @@ export default function ReportsPage() {
         c.name, fmt(c.total), fmt(c.deductible), c.count,
       ]),
     })
+
+    // Colombia-only sections (IVA, cost centers, vendors) — only rendered
+    // when the report actually has data for them, same condition the
+    // on-screen cards below use.
+    if (report.vat.length > 0) {
+      const yVat = (doc as any).lastAutoTable.finalY + 10
+      doc.text('Gastos por tipo de IVA', 14, yVat)
+      autoTable(doc, {
+        startY: yVat + 4,
+        head: [['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')]],
+        body: report.vat.map((v: any) => [v.vatRate, fmt(v.total), fmt(v.deductible), v.count]),
+      })
+    }
+
+    if (report.costCenters.length > 0) {
+      const yCc = (doc as any).lastAutoTable.finalY + 10
+      doc.text('Gastos por centro de costo', 14, yCc)
+      autoTable(doc, {
+        startY: yCc + 4,
+        head: [['Centro de costo', t('reports.total'), t('reports.count')]],
+        body: report.costCenters.map((cc: any) => [cc.costCenter, fmt(cc.total), cc.count]),
+      })
+    }
+
+    if (report.vendors.length > 0) {
+      const yV = (doc as any).lastAutoTable.finalY + 10
+      doc.text('Gasto por proveedor', 14, yV)
+      autoTable(doc, {
+        startY: yV + 4,
+        head: [['Proveedor', t('reports.total'), t('reports.count'), 'Promedio']],
+        body: report.vendors.map((v: any) => [v.vendor, fmt(v.total), v.count, fmt(v.avg)]),
+      })
+    }
+
     doc.save(`report_${activeBiz}_${from}_${to}.pdf`)
     setExporting(false)
   }
@@ -141,6 +175,27 @@ export default function ReportsPage() {
     const ws3 = wb.addWorksheet(t('reports.monthly'))
     ws3.addRow([t('reports.month'), t('dashboard.income'), t('dashboard.expenses'), t('reports.net')])
     report.byMonth.forEach((m: any) => ws3.addRow([m.month, m.income, m.expenses, m.income - m.expenses]))
+
+    // Colombia-only sections (IVA, cost centers, vendors) — only added when
+    // the report actually has data for them, same condition the on-screen
+    // cards below use.
+    if (report.vat.length > 0) {
+      const wsVat = wb.addWorksheet('IVA')
+      wsVat.addRow(['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')])
+      report.vat.forEach((v: any) => wsVat.addRow([v.vatRate, v.total, v.deductible, v.count]))
+    }
+
+    if (report.costCenters.length > 0) {
+      const wsCc = wb.addWorksheet('Centros de costo')
+      wsCc.addRow(['Centro de costo', t('reports.total'), t('reports.count')])
+      report.costCenters.forEach((cc: any) => wsCc.addRow([cc.costCenter, cc.total, cc.count]))
+    }
+
+    if (report.vendors.length > 0) {
+      const wsV = wb.addWorksheet('Proveedores')
+      wsV.addRow(['Proveedor', t('reports.total'), t('reports.count'), 'Promedio', 'Última compra'])
+      report.vendors.forEach((v: any) => wsV.addRow([v.vendor, v.total, v.count, v.avg, new Date(v.lastDate).toLocaleDateString()]))
+    }
 
     const buf = await wb.xlsx.writeBuffer()
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
