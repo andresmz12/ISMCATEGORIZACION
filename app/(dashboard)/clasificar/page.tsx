@@ -6,6 +6,7 @@ import { useToast } from '@/components/Toast'
 import { useActiveBiz } from '@/lib/use-active-biz'
 import { useTranslation } from '@/lib/i18n'
 import { formatCurrency, excelNumFmt } from '@/lib/currency'
+import { COMMON_BANKS } from '@/lib/countries'
 
 const FIELD_KEYS = ['date', 'description', 'amount', 'debit', 'credit'] as const
 
@@ -37,6 +38,7 @@ export default function ClasificarPage() {
 
   const { businesses, activeBizId: activeBiz } = useActiveBiz()
   const fmt = (n: number) => formatCurrency(n, businesses.find(b => b.id === activeBiz)?.currency)
+  const suggestedBanks = COMMON_BANKS[(businesses.find(b => b.id === activeBiz)?.country || 'US') as 'US' | 'CO']
   const [savedMappings, setSavedMappings] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [aiUsage, setAiUsage] = useState<{ classifiedCount: number; limit: number | null } | null>(null)
@@ -679,7 +681,16 @@ export default function ClasificarPage() {
             <h2 className="text-base font-semibold text-gray-800">{t('clasificar.columnMapping')}</h2>
             <div>
               <label className="label">{t('clasificar.bankNameLabel')}</label>
-              <input className="input" placeholder={t('clasificar.bankNamePlaceholder')} value={bankName} onChange={e => setBankName(e.target.value)} />
+              <input
+                className="input"
+                list="clasificar-bank-suggestions"
+                placeholder={`${suggestedBanks[0]}, ${suggestedBanks[1]}, ${suggestedBanks[2]}...`}
+                value={bankName}
+                onChange={e => setBankName(e.target.value)}
+              />
+              <datalist id="clasificar-bank-suggestions">
+                {suggestedBanks.map(b => <option key={b} value={b} />)}
+              </datalist>
               <p className="text-xs text-gray-400 mt-1">{t('clasificar.bankNameHint')}</p>
             </div>
             <div className="space-y-3">

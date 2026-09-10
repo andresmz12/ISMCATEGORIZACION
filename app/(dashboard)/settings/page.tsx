@@ -1,5 +1,5 @@
 'use client'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
@@ -31,6 +31,8 @@ function SettingsPageInner() {
   const [pwLoading, setPwLoading] = useState(false)
 
   const [businesses, setBusinesses] = useState<any[]>([])
+  const billingCardRef = useRef<HTMLDivElement>(null)
+  const [highlightBilling, setHighlightBilling] = useState(false)
 
   function loadProfile() {
     return fetch('/api/settings')
@@ -53,6 +55,16 @@ function SettingsPageInner() {
       .then(d => { if (Array.isArray(d)) setBusinesses(d) })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (searchParams.get('onboarding') === '1') {
+      router.replace('/settings')
+      setHighlightBilling(true)
+      billingCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const timer = setTimeout(() => setHighlightBilling(false), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (searchParams.get('checkout') === 'complete') {
@@ -168,8 +180,14 @@ function SettingsPageInner() {
       </div>
 
       {/* Billing */}
-      <div className="card p-5">
+      <div ref={billingCardRef} className={`card p-5 transition-shadow ${highlightBilling ? 'ring-2 ring-[#2EC4B6] ring-offset-2' : ''}`}>
         <h2 className="text-sm font-semibold text-gray-700 mb-4">{t('settings.billing')}</h2>
+
+        {highlightBilling && (
+          <div className="mb-4 p-3 bg-[#1B4965]/5 border border-[#1B4965]/10 rounded-lg text-[#1B4965] text-sm">
+            ¡Cuenta creada! Elige un plan para empezar, o sigue con tu prueba gratis de 7 días.
+          </div>
+        )}
 
         {profile.aiUsage && (
           profile.aiUsage.limit ? (

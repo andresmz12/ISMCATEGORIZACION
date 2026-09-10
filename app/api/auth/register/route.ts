@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { validatePassword, validateEmail, getClientIp } from '@/lib/validate'
 import { TRIAL_DURATION_MS } from '@/lib/billing-access'
+import { isBusinessCountry } from '@/lib/countries'
 
 export async function POST(req: Request) {
   const ip = getClientIp(req)
@@ -11,7 +12,7 @@ export async function POST(req: Request) {
   if (!rl.ok) return rateLimitResponse()
 
   try {
-    const { email, password, name, firmName, termsAccepted } = await req.json()
+    const { email, password, name, firmName, country, termsAccepted } = await req.json()
 
     if (!termsAccepted) return NextResponse.json({ error: 'Debes aceptar los Términos de Uso para continuar' }, { status: 400 })
     if (!email || !password) return NextResponse.json({ error: 'Email y contraseña requeridos' }, { status: 400 })
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
             name: firmName?.trim()?.slice(0, 100) || null,
             plan: 'NONE',
             trialEndsAt: new Date(Date.now() + TRIAL_DURATION_MS),
+            defaultCountry: isBusinessCountry(country) ? country : 'US',
           },
         },
       },

@@ -1,9 +1,11 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { COUNTRIES, BusinessCountry } from '@/lib/countries'
 
 type Step = 1 | 2
 
@@ -35,6 +37,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [firmName, setFirmName] = useState('')
+  const [country, setCountry] = useState<BusinessCountry>('US')
   const [termsAccepted, setTermsAccepted] = useState(false)
 
   async function handleSubmit() {
@@ -49,14 +52,18 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, firmName, termsAccepted }),
+        body: JSON.stringify({ name, email, password, firmName, country, termsAccepted }),
       })
       if (!res.ok) {
         const d = await res.json()
         setError(d.error || t('common.error'))
         return
       }
-      router.push('/signin?registered=1')
+      // Log them in right away so they land on plan selection instead of
+      // having to sign in again just to see the same account they created.
+      const signInRes = await signIn('credentials', { email, password, redirect: false })
+      if (signInRes?.error) { router.push('/signin?registered=1'); return }
+      router.push('/settings?onboarding=1')
     } catch {
       setError(t('common.error'))
     } finally {
@@ -172,6 +179,13 @@ export default function RegisterPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.firmName')} <span className="text-gray-300 font-normal">(opcional)</span></label>
                   <input className={inputCls} value={firmName} onChange={e => setFirmName(e.target.value)} placeholder="García & Asociados LLC" />
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">País</label>
+                  <select className={inputCls} value={country} onChange={e => setCountry(e.target.value as BusinessCountry)}>
+                    {COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
                 </div>
 
                 <div className="flex items-start gap-3 mt-6">

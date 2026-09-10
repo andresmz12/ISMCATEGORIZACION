@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import { useActiveBiz } from '@/lib/use-active-biz'
 import { formatCurrency } from '@/lib/currency'
+import { COMMON_BANKS } from '@/lib/countries'
 
 const FIELD_KEYS = ['date', 'description', 'amount', 'debit', 'credit'] as const
 
@@ -99,6 +100,8 @@ export default function ImportPage() {
   const { t } = useTranslation()
   const { businesses, activeBizId: activeBiz } = useActiveBiz()
   const activeBizCurrency = businesses.find(b => b.id === activeBiz)?.currency
+  const activeBizCountry = (businesses.find(b => b.id === activeBiz)?.country || 'US') as 'US' | 'CO'
+  const suggestedBanks = COMMON_BANKS[activeBizCountry]
   const [file, setFile] = useState<File | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
   const [previewRows, setPreviewRows] = useState<string[][]>([])
@@ -362,7 +365,16 @@ export default function ImportPage() {
 
             <div>
               <label className="label">{t('import.bankName')}</label>
-              <input className="input" placeholder="Chase, Bank of America..." value={bankName} onChange={e => setBankName(e.target.value)} />
+              <input
+                className="input"
+                list="bank-suggestions"
+                placeholder={`${suggestedBanks[0]}, ${suggestedBanks[1]}...`}
+                value={bankName}
+                onChange={e => setBankName(e.target.value)}
+              />
+              <datalist id="bank-suggestions">
+                {suggestedBanks.map(b => <option key={b} value={b} />)}
+              </datalist>
             </div>
 
             <div className="space-y-3">

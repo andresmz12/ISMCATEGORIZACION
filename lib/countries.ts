@@ -27,3 +27,10 @@ export const TAX_ID_LABEL: Record<BusinessCountry, string> = {
 export function isBusinessCountry(v: unknown): v is BusinessCountry {
   return v === 'US' || v === 'CO'
 }
+
+// Just suggestions for the bank-name field on import (free text either way) —
+// shown as a datalist and used for the input's placeholder example.
+export const COMMON_BANKS: Record<BusinessCountry, string[]> = {
+  US: ['Chase', 'Bank of America', 'Wells Fargo', 'Citi', 'TD Bank', 'Capital One'],
+  CO: ['Bancolombia', 'Davivienda', 'BBVA Colombia', 'Banco de Bogotá', 'Banco Popular', 'Nequi', 'Daviplata'],
+}

@@ -109,6 +109,10 @@ model BillingAccount {
   // that applies to every business and team member under it. See lib/account.ts.
   aiMonthlyBudgetCents Int?
   chatbotEnabled       Boolean   @default(false)
+  // Country picked at registration — just a default that pre-fills the
+  // country field when this account creates its first Business. Each
+  // Business still carries its own country and can differ from this.
+  defaultCountry       Country   @default(US)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   users                User[]

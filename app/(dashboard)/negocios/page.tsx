@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
@@ -32,6 +32,7 @@ export default function NegociosPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ name: '', industry: '', entityType: '', currency: 'USD', country: 'US' as BusinessCountry, taxId: '' })
   const [saving, setSaving] = useState(false)
+  const prefilledCountry = useRef(false)
 
   function setFormCountry(country: BusinessCountry) {
     setForm(f => ({ ...f, country, currency: DEFAULT_CURRENCY[country], entityType: '' }))
@@ -52,10 +53,18 @@ export default function NegociosPage() {
             setActiveBizId(d[0].id)
             localStorage.setItem('activeBusiness', d[0].id)
           }
+          // Prefill the create-business form with the account's registration
+          // country, but only before they've created their first business —
+          // afterwards this effect no longer runs against an empty list.
+          const defaultCountry = (session?.user as any)?.defaultCountry
+          if (!prefilledCountry.current && d.length === 0 && (defaultCountry === 'US' || defaultCountry === 'CO')) {
+            prefilledCountry.current = true
+            setFormCountry(defaultCountry)
+          }
         }
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [session])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
