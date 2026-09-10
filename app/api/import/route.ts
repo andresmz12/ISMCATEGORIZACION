@@ -8,7 +8,6 @@ import { logAudit } from '@/lib/audit'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { requirePlanFeature } from '@/lib/plan-limits'
 import { checkAiBudget, withAiBudget } from '@/lib/ai-budget'
-import { getBusinessCategories } from '@/lib/categories'
 import crypto from 'crypto'
 
 function makeChecksum(date: string, description: string, amount: number): string {
@@ -124,10 +123,6 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(await file.arrayBuffer())
 
     let rows: Record<string, unknown>[] = []
-    // PDF-only: AI-suggested {categoryId, deductibility} per row index (same
-    // order as `rows`), applied to the transaction the create loop below
-    // makes from that row — null entries are left uncategorized as usual.
-    let aiClassification: ({ categoryId: string; deductibility: 'YES' | 'NO' | 'FIFTY' | null } | null)[] = []
 
     if (ext === 'csv') {
       const { parse } = await import('csv-parse/sync')
@@ -175,13 +170,10 @@ export async function POST(req: Request) {
       const base64Data = buffer.toString('base64')
       const documentContent: any = { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
 
-      // Classify in the same call that extracts — the business's own category
-      // list (already scoped to its country by getBusinessCategories) so a
-      // Colombian PDF import lands with PUC categories already assigned,
-      // the same as CSV/XLSX get via the separate "Clasificar con IA" step.
-      const categories = await getBusinessCategories(businessId)
-      const categoryNames = categories.map((c: { name: string }) => c.name)
-
+      // Extraction only — matches CSV/XLSX import, which never classifies
+      // either. Imported transactions always land as PENDING; classifying
+      // them (by category, with AI or a rule) only ever happens through the
+      // separate "Clasificar con IA" flow the user explicitly runs.
       const budgetResult = await withAiBudget(businessId, async () => {
         const response = await client.messages.create({
           model: 'claude-haiku-4-5-20251001',
@@ -193,7 +185,7 @@ export async function POST(req: Request) {
               {
                 type: 'text',
                 text: `Extract every transaction line from this bank statement (may span multiple pages). Return ONLY a JSON array (no markdown, no backticks, no explanation) of objects:
-[{"date": "YYYY-MM-DD", "description": "merchant or memo text", "amount": 0.00, "type": "DEBIT" or "CREDIT", "category": "one of the list below", "deductibility": "YES", "confidence": "HIGH"}]
+[{"date": "YYYY-MM-DD", "description": "merchant or memo text", "amount": 0.00, "type": "DEBIT" or "CREDIT"}]
 
 Extraction rules:
 - DEBIT = money leaving the account (withdrawals, purchases, fees, payments, transfers out — often shown with a "-" or "$-" sign). CREDIT = money entering it (deposits, refunds, transfers in, interest paid). "amount" is always positive; put the sign information only in "type".
@@ -201,12 +193,7 @@ Extraction rules:
 - Many Colombian statements (Bancolombia, Nequi, Davivienda, etc.) show a transaction table with a "Valor" (or "Monto") column AND a separate running "Saldo" (balance) column — extract only "Valor" as the amount; never use "Saldo".
 - Skip anything that isn't an individual transaction row: repeated table headers on each page, and any account summary block (e.g. "Resumen", "Saldo anterior", "Saldo actual", "Total abonos", "Total cargos", "Saldo promedio", "Cuentas por cobrar", "Retefuente" — these are period totals, not transactions).
 - Merge a transaction whose description wraps across lines into a single entry.
-- Return [] if no transactions are found.
-
-Classification rules:
-- "category" must be EXACTLY one of these names (copy verbatim), whichever best fits the description: ${categoryNames.join(', ')}. If genuinely unsure, use "Uncategorized".
-- "deductibility": "YES" (fully deductible business expense), "NO" (not deductible — personal, transfers, income), or "FIFTY" (50% deductible, e.g. meals). For CREDIT transactions (income) use "NO".
-- "confidence": "HIGH", "MEDIUM", or "LOW", reflecting how sure you are about the category.`,
+- Return [] if no transactions are found.`,
               },
             ],
           }],
@@ -241,17 +228,6 @@ Classification rules:
       mapping.amount = 'amount'
       delete mapping.debit
       delete mapping.credit
-
-      // Resolve each row's AI-suggested category name to a real categoryId,
-      // by row index — applied to the newly-created transaction after the
-      // shared create/dedup loop below runs (see aiClassification usage).
-      const categoryByName = new Map(categories.map((c: { name: string; id: string }) => [c.name.toLowerCase().trim(), c.id]))
-      const VALID_DEDUCT = new Set(['YES', 'NO', 'FIFTY'])
-      aiClassification = extracted.map((tx: any) => {
-        const categoryId = categoryByName.get(String(tx.category ?? '').toLowerCase().trim()) ?? null
-        const deductibility = VALID_DEDUCT.has(tx.deductibility) ? tx.deductibility : null
-        return categoryId ? { categoryId, deductibility } : null
-      })
     } else {
       return NextResponse.json({ error: 'Only CSV, XLSX and PDF supported for import' }, { status: 400 })
     }
@@ -308,7 +284,6 @@ Classification rules:
         if (!descVal) { errors.push(`Row ${i + 2}: empty description`); continue }
 
         const checksum = makeChecksum(date.toISOString().split('T')[0], descVal, amount)
-        const suggested = aiClassification[i]
 
         // Use transaction to prevent race condition duplicates
         const result = await prisma.$transaction(async (tx: any) => {
@@ -319,9 +294,7 @@ Classification rules:
           const created = await tx.transaction.create({
             data: {
               businessId, date, description: descVal, amount, type, checksum, sourceFile: file.name,
-              ...(suggested
-                ? { categoryId: suggested.categoryId, deductibility: suggested.deductibility, status: 'CLASSIFIED', method: 'AI' }
-                : { status: 'PENDING' }),
+              status: 'PENDING',
             },
           })
           return { type: 'created', id: created.id }
