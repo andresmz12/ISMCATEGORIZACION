@@ -180,7 +180,7 @@ export async function GET(req: Request) {
       await prisma.category.upsert({
         where: { id },
         update: {},
-        create: { id, name: c.name, irsCode: c.irsCode, country: c.country, isSystem: true },
+        create: { id, name: c.name, irsCode: c.irsCode, country: c.country, vatRate: c.vatRate || null, isSystem: true },
       })
     }
     results.push(`✓ ${SYSTEM_CATEGORIES.length} system categories`)

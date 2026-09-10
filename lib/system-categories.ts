@@ -11,6 +11,12 @@ export type SystemCategorySeed = {
   name: string
   irsCode: string
   country: 'US' | 'CO' | null
+  // Typical VAT/IVA rate this category's expenses carry in Colombia — only
+  // meaningful for country: 'CO' rows. These are reasonable defaults, not
+  // tax advice: the real rate depends on the specific good/service and
+  // should be corrected per category from the superadmin screen when it
+  // doesn't match what the accountant actually files.
+  vatRate?: string
 }
 
 export const SYSTEM_CATEGORIES: SystemCategorySeed[] = [
@@ -36,27 +42,27 @@ export const SYSTEM_CATEGORIES: SystemCategorySeed[] = [
   { name: 'Business Income', irsCode: 'Schedule C Line 1', country: 'US' },
   { name: 'Owner Draw / Personal', irsCode: 'Non-Deductible', country: 'US' },
 
-  // Colombia — PUC (Plan Único de Cuentas)
-  { name: 'Publicidad y Mercadeo', irsCode: 'PUC 5195', country: 'CO' },
-  { name: 'Vehículos y Transporte', irsCode: 'PUC 5135', country: 'CO' },
-  { name: 'Comisiones', irsCode: 'PUC 5110', country: 'CO' },
-  { name: 'Honorarios', irsCode: 'PUC 5110', country: 'CO' },
-  { name: 'Seguros', irsCode: 'PUC 5130', country: 'CO' },
-  { name: 'Gastos Financieros e Intereses', irsCode: 'PUC 5305', country: 'CO' },
-  { name: 'Servicios Legales y Contables', irsCode: 'PUC 5140', country: 'CO' },
-  { name: 'Gastos de Oficina', irsCode: 'PUC 5195', country: 'CO' },
-  { name: 'Arrendamientos', irsCode: 'PUC 5120', country: 'CO' },
-  { name: 'Mantenimiento y Reparaciones', irsCode: 'PUC 5145', country: 'CO' },
-  { name: 'Suministros', irsCode: 'PUC 5195', country: 'CO' },
-  { name: 'Impuestos y Tasas', irsCode: 'PUC 5115', country: 'CO' },
-  { name: 'Viajes', irsCode: 'PUC 5155', country: 'CO' },
-  { name: 'Alimentación (50% deducible)', irsCode: 'PUC 5195', country: 'CO' },
-  { name: 'Servicios Públicos', irsCode: 'PUC 5135', country: 'CO' },
-  { name: 'Nómina y Prestaciones Sociales', irsCode: 'PUC 5105', country: 'CO' },
-  { name: 'Otros Gastos', irsCode: 'PUC 5195', country: 'CO' },
-  { name: 'Costo de Ventas', irsCode: 'PUC 61', country: 'CO' },
+  // Colombia — PUC (Plan Único de Cuentas) + typical IVA rate
+  { name: 'Publicidad y Mercadeo', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
+  { name: 'Vehículos y Transporte', irsCode: 'PUC 5135', country: 'CO', vatRate: '19%' },
+  { name: 'Comisiones', irsCode: 'PUC 5110', country: 'CO', vatRate: '19%' },
+  { name: 'Honorarios', irsCode: 'PUC 5110', country: 'CO', vatRate: '19%' },
+  { name: 'Seguros', irsCode: 'PUC 5130', country: 'CO', vatRate: 'Exento' },
+  { name: 'Gastos Financieros e Intereses', irsCode: 'PUC 5305', country: 'CO', vatRate: 'Exento' },
+  { name: 'Servicios Legales y Contables', irsCode: 'PUC 5140', country: 'CO', vatRate: '19%' },
+  { name: 'Gastos de Oficina', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
+  { name: 'Arrendamientos', irsCode: 'PUC 5120', country: 'CO', vatRate: 'Excluido' },
+  { name: 'Mantenimiento y Reparaciones', irsCode: 'PUC 5145', country: 'CO', vatRate: '19%' },
+  { name: 'Suministros', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
+  { name: 'Impuestos y Tasas', irsCode: 'PUC 5115', country: 'CO', vatRate: 'Excluido' },
+  { name: 'Viajes', irsCode: 'PUC 5155', country: 'CO', vatRate: '19%' },
+  { name: 'Alimentación (50% deducible)', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
+  { name: 'Servicios Públicos', irsCode: 'PUC 5135', country: 'CO', vatRate: 'Excluido' },
+  { name: 'Nómina y Prestaciones Sociales', irsCode: 'PUC 5105', country: 'CO', vatRate: 'Excluido' },
+  { name: 'Otros Gastos', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
+  { name: 'Costo de Ventas', irsCode: 'PUC 61', country: 'CO', vatRate: '19%' },
   { name: 'Ingresos Operacionales', irsCode: 'PUC 4135', country: 'CO' },
-  { name: 'Retiro de Socios', irsCode: 'No deducible', country: 'CO' },
+  { name: 'Retiro de Socios', irsCode: 'No deducible', country: 'CO', vatRate: 'Excluido' },
 
   // Shared — same bucket regardless of the business's country
   { name: 'Transfer', irsCode: 'Non-Deductible', country: null },

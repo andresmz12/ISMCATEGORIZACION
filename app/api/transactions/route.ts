@@ -26,6 +26,8 @@ export async function GET(req: Request) {
   const from = searchParams.get('from')
   const to = searchParams.get('to')
   const search = searchParams.get('search')
+  const vendor = searchParams.get('vendor')
+  const costCenter = searchParams.get('costCenter')
   const ids = searchParams.get('ids') // comma-separated list of specific IDs
   const page = parseInt(searchParams.get('page') || '1')
   const limit = Math.min(1000, parseInt(searchParams.get('limit') || '50'))
@@ -44,6 +46,8 @@ export async function GET(req: Request) {
       if (to) where.date.lte = endOfDay(to)
     }
     if (search) where.description = { contains: search, mode: 'insensitive' }
+    if (vendor) where.vendor = vendor
+    if (costCenter) where.costCenter = costCenter
   }
 
   const [transactions, total] = await Promise.all([
@@ -70,7 +74,7 @@ export async function POST(req: Request) {
   const userId = (session.user as any).id
   const accountType = (session.user as any).accountType
   const body = await req.json()
-  const { businessId, date, description, amount, type, categoryId, deductibility, notes, repeatCount, repeatFrequency } = body
+  const { businessId, date, description, amount, type, categoryId, deductibility, notes, costCenter, vendor, repeatCount, repeatFrequency } = body
   if (!businessId || !date || !description) return NextResponse.json({ error: 'businessId, date, description required' }, { status: 400 })
   const parsedAmount = Number(amount)
   if (!isFinite(parsedAmount) || parsedAmount <= 0) return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
@@ -95,6 +99,8 @@ export async function POST(req: Request) {
   }
   const resolvedDeductibility = VALID_DEDUCTIBILITY.has(deductibility) ? deductibility : null
   const trimmedNotes = typeof notes === 'string' && notes.trim() ? notes.trim().slice(0, 2000) : null
+  const trimmedCostCenter = typeof costCenter === 'string' && costCenter.trim() ? costCenter.trim().slice(0, 100) : null
+  const trimmedVendor = typeof vendor === 'string' && vendor.trim() ? vendor.trim().slice(0, 100) : null
 
   // Recurring entry: same amount/category/notes repeated on a cadence — e.g.
   // "rent, monthly, for the next 12 months". Count includes the first entry.
@@ -112,6 +118,8 @@ export async function POST(req: Request) {
     deductibility: resolvedDeductibility,
     method: resolvedCategoryId ? 'MANUAL' : undefined,
     notes: trimmedNotes,
+    costCenter: trimmedCostCenter,
+    vendor: trimmedVendor,
   } as const))
 
   const created = await prisma.$transaction(rowsData.map(data => prisma.transaction.create({ data })))

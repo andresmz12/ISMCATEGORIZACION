@@ -43,9 +43,35 @@ function TransactionsContent() {
   const [bulkLoading, setBulkLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [addForm, setAddForm] = useState({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
+  const [addForm, setAddForm] = useState({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', costCenter: '', vendor: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
   const [addError, setAddError] = useState('')
   const [addLoading, setAddLoading] = useState(false)
+  const [metaVendors, setMetaVendors] = useState<string[]>([])
+  const [metaCostCenters, setMetaCostCenters] = useState<string[]>([])
+  const [detailsTx, setDetailsTx] = useState<any>(null)
+  const [detailsForm, setDetailsForm] = useState({ vendor: '', costCenter: '', deductibility: '', notes: '' })
+  const [detailsSaving, setDetailsSaving] = useState(false)
+
+  function openDetails(tx: any) {
+    setDetailsTx(tx)
+    setDetailsForm({ vendor: tx.vendor || '', costCenter: tx.costCenter || '', deductibility: tx.deductibility || '', notes: tx.notes || '' })
+  }
+
+  async function saveDetails() {
+    if (!detailsTx) return
+    setDetailsSaving(true)
+    try {
+      await updateTx(detailsTx.id, {
+        vendor: detailsForm.vendor.trim() || null,
+        costCenter: detailsForm.costCenter.trim() || null,
+        deductibility: detailsForm.deductibility || null,
+        notes: detailsForm.notes.trim() || null,
+      })
+      setDetailsTx(null)
+    } finally {
+      setDetailsSaving(false)
+    }
+  }
   const [rules, setRules] = useState<any[]>([])
   const [ruleSuggestion, setRuleSuggestion] = useState<{ pattern: string; categoryId: string; categoryName: string; count: number } | null>(null)
   const [ruleSuggestionLoading, setRuleSuggestionLoading] = useState(false)
@@ -54,6 +80,9 @@ function TransactionsContent() {
     if (!activeBiz) return
     fetch(`/api/categories?businessId=${activeBiz}`).then(r => r.ok ? r.json() : []).then(setCategories)
     fetch(`/api/rules?businessId=${activeBiz}`).then(r => r.ok ? r.json() : []).then(d => setRules(Array.isArray(d) ? d : []))
+    fetch(`/api/transactions/meta?businessId=${activeBiz}`).then(r => r.ok ? r.json() : null).then(d => {
+      if (d) { setMetaVendors(d.vendors || []); setMetaCostCenters(d.costCenters || []) }
+    })
   }, [activeBiz])
 
   // A manual correction that repeats a pattern already seen elsewhere is a
@@ -210,6 +239,8 @@ function TransactionsContent() {
           categoryId: addForm.categoryId || undefined,
           deductibility: addForm.deductibility || undefined,
           notes: addForm.notes || undefined,
+          costCenter: addForm.costCenter || undefined,
+          vendor: addForm.vendor || undefined,
           repeatCount: repeatCountNum,
           repeatFrequency: addForm.recurring ? addForm.repeatFrequency : undefined,
         }),
@@ -217,7 +248,7 @@ function TransactionsContent() {
       const data = await res.json()
       if (!res.ok) { setAddError(data.error || t('tx.addFailed')); return }
       setShowAddModal(false)
-      setAddForm({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
+      setAddForm({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', costCenter: '', vendor: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
       setPage(1)
       loadTransactions(1, false)
       toast(data.count > 1 ? t('tx.transactionsAdded').replace('{n}', String(data.count)) : t('tx.transactionAdded'), 'success')
@@ -497,6 +528,13 @@ function TransactionsContent() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-4">
+      <datalist id="tx-vendor-suggestions">
+        {metaVendors.map(v => <option key={v} value={v} />)}
+      </datalist>
+      <datalist id="tx-cost-center-suggestions">
+        {metaCostCenters.map(c => <option key={c} value={c} />)}
+      </datalist>
+
       {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-gray-900">{t('nav.transactions')}</h1>
@@ -687,6 +725,11 @@ function TransactionsContent() {
                         {t('tx.splitParts').replace('{n}', tx.splits.length)}
                       </p>
                     )}
+                    {(tx.vendor || tx.costCenter) && (
+                      <p className="text-xs text-gray-400 truncate">
+                        {[tx.vendor, tx.costCenter].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
                   </td>
                   <td className={`px-3 py-2.5 text-right font-semibold whitespace-nowrap text-sm ${tx.type === 'CREDIT' ? 'text-emerald-600' : 'text-red-600'}`}>
                     {tx.type === 'CREDIT' ? '+' : '−'}{fmt(tx.amount)}
@@ -710,6 +753,9 @@ function TransactionsContent() {
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => openDetails(tx)} className="text-xs text-[#1B4965] hover:underline font-medium">
+                        Detalles
+                      </button>
                       <button
                         onClick={() => {
                           setSplitTx(tx)
@@ -794,6 +840,28 @@ function TransactionsContent() {
                   <option value="FIFTY">{t('common.fifty')}</option>
                 </select>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Proveedor</label>
+                  <input
+                    className="input w-full text-sm"
+                    list="tx-vendor-suggestions"
+                    value={addForm.vendor}
+                    onChange={e => setAddForm(f => ({ ...f, vendor: e.target.value }))}
+                    placeholder="Nombre del proveedor"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Centro de costos</label>
+                  <input
+                    className="input w-full text-sm"
+                    list="tx-cost-center-suggestions"
+                    value={addForm.costCenter}
+                    onChange={e => setAddForm(f => ({ ...f, costCenter: e.target.value }))}
+                    placeholder="Ej: Ventas, Operaciones"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.notesOptional')}</label>
                 <textarea className="input w-full text-sm" rows={2} placeholder={t('tx.notesPlaceholder')} value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} />
@@ -844,6 +912,58 @@ function TransactionsContent() {
               <button onClick={() => setShowAddModal(false)} className="btn-secondary">{t('common.cancel')}</button>
               <button onClick={createTx} disabled={addLoading} className="btn-primary disabled:opacity-50">
                 {addLoading ? t('common.saving') : t('tx.saveTransaction')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Details Modal — vendor, cost center, deductibility, notes */}
+      {detailsTx && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-1">Detalles de la transacción</h3>
+            <p className="text-sm text-gray-400 mb-4 truncate">{detailsTx.description}</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Proveedor</label>
+                  <input
+                    className="input w-full text-sm"
+                    list="tx-vendor-suggestions"
+                    value={detailsForm.vendor}
+                    onChange={e => setDetailsForm(f => ({ ...f, vendor: e.target.value }))}
+                    placeholder="Nombre del proveedor"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Centro de costos</label>
+                  <input
+                    className="input w-full text-sm"
+                    list="tx-cost-center-suggestions"
+                    value={detailsForm.costCenter}
+                    onChange={e => setDetailsForm(f => ({ ...f, costCenter: e.target.value }))}
+                    placeholder="Ej: Ventas, Operaciones"
+                  />
+                </div>
+              </div>
+              <div>
+                <select className="input w-full text-sm" value={detailsForm.deductibility} onChange={e => setDetailsForm(f => ({ ...f, deductibility: e.target.value }))}>
+                  <option value="">{t('tx.deductible')}</option>
+                  <option value="YES">{t('common.yes100')}</option>
+                  <option value="NO">{t('common.no')}</option>
+                  <option value="FIFTY">{t('common.fifty')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.notesOptional')}</label>
+                <textarea className="input w-full text-sm" rows={2} value={detailsForm.notes} onChange={e => setDetailsForm(f => ({ ...f, notes: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setDetailsTx(null)} className="flex-1 h-10 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">{t('common.cancel')}</button>
+              <button onClick={saveDetails} disabled={detailsSaving} className="flex-1 h-10 bg-[#1B4965] text-white rounded-lg text-sm font-semibold hover:bg-[#143A52] disabled:opacity-60">
+                {detailsSaving ? t('common.loading') : t('common.save')}
               </button>
             </div>
           </div>

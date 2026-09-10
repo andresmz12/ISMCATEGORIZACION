@@ -259,6 +259,11 @@ model Transaction {
   aiConfidence  String?
   aiSuggestion  String?
   notes         String?
+  // Free-text fields (no separate catalog) driving the cost-center and
+  // vendor-spend reports — grouped by whatever string was typed, with
+  // datalist suggestions of previously-used values in the UI.
+  costCenter    String?
+  vendor        String?
   sourceFile    String?
   checksum      String?
   recurringId   String?
@@ -273,6 +278,7 @@ model Transaction {
   @@index([businessId, status])
   @@index([businessId, date])
   @@index([businessId, categoryId])
+  @@index([businessId, vendor])
   @@index([categoryId])
   @@index([recurringId])
 }
@@ -332,6 +338,11 @@ model Category {
   // every business regardless of country (e.g. "Transfer", "Uncategorized").
   // Ignored for business-owned (non-system) categories.
   country               Country?
+  // Free-text VAT/IVA rate this category's expenses typically carry (e.g.
+  // "19%", "5%", "Exento", "Excluido") — powers the IVA-filter report used
+  // for Colombian VAT filings. Defaults come from lib/system-categories.ts
+  // and are editable per category from the superadmin category screen.
+  vatRate               String?
   description           String?
   isSystem              Boolean                @default(false)
   createdAt             DateTime               @default(now())

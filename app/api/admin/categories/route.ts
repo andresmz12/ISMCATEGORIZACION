@@ -27,7 +27,7 @@ export async function GET() {
 export async function POST(req: Request) {
   if (!await requireSuperadmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { name, irsCode, description, isSystem, country } = await req.json()
+  const { name, irsCode, description, isSystem, country, vatRate } = await req.json()
   if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 })
 
   const category = await prisma.category.create({
@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       description: description || null,
       isSystem: isSystem === true,
       country: country === 'US' || country === 'CO' ? country : null,
+      vatRate: vatRate || null,
     },
   })
   revalidateCategories()

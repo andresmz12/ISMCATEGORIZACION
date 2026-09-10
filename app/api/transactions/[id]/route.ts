@@ -17,9 +17,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   const body = await req.json()
-  const { categoryId, deductibility, status, notes, method, splits } = body
+  const { categoryId, deductibility, status, notes, method, splits, costCenter, vendor } = body
 
   if (notes && notes.length > 1000) return NextResponse.json({ error: 'Notes too long' }, { status: 400 })
+  if (costCenter && costCenter.length > 100) return NextResponse.json({ error: 'Cost center too long' }, { status: 400 })
+  if (vendor && vendor.length > 100) return NextResponse.json({ error: 'Vendor too long' }, { status: 400 })
 
   if (categoryId) {
     // isSystem, not businessId: null — see app/api/transactions/route.ts for why.
@@ -68,6 +70,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
           ...(status !== undefined && { status }),
           ...(notes !== undefined && { notes }),
           ...(method !== undefined && { method }),
+          ...(costCenter !== undefined && { costCenter: costCenter || null }),
+          ...(vendor !== undefined && { vendor: vendor || null }),
         },
         include: { category: true, splits: { include: { category: true } } },
       })
@@ -87,6 +91,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       ...(status !== undefined && { status }),
       ...(notes !== undefined && { notes }),
       ...(method !== undefined && { method }),
+      ...(costCenter !== undefined && { costCenter: costCenter || null }),
+      ...(vendor !== undefined && { vendor: vendor || null }),
     },
     include: { category: true, splits: { include: { category: true } } },
   })

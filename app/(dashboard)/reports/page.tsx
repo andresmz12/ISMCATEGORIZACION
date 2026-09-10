@@ -32,6 +32,7 @@ export default function ReportsPage() {
   const { businesses, activeBizId } = useActiveBiz()
   const activeBiz = activeBizId
   const fmt = (n: number) => formatCurrency(n, businesses.find((b: any) => b.id === activeBiz)?.currency)
+  const activeBizCountry = businesses.find((b: any) => b.id === activeBiz)?.country
   const accountType = (session?.user as any)?.accountType
   const plan = (session?.user as any)?.plan || 'BASIC'
   const isPremium = accountType === 'SUPERADMIN' || plan === 'PLUS' || plan === 'ENTERPRISE' || plan === 'CUSTOM'
@@ -773,8 +774,182 @@ export default function ReportsPage() {
               </div>
             )}
           </div>
+
+          {/* % participation by cost center */}
+          {report.costCenters.length > 0 && (
+            <div className="card p-5">
+              <h2 className="text-base font-semibold text-gray-800 mb-1">Participación por centro de costos</h2>
+              <p className="text-xs text-gray-400 mb-4">% que representa cada categoría dentro del gasto de cada centro de costos.</p>
+              <div className="space-y-5">
+                {report.costCenters.map((cc: any) => (
+                  <div key={cc.costCenter}>
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="font-semibold text-gray-800">{cc.costCenter}</span>
+                      <span className="text-gray-500">{fmt(cc.total)} · {cc.count} transacciones</span>
+                    </div>
+                    <div className="space-y-2 pl-3 border-l-2 border-gray-100">
+                      {cc.categories.map((c: any) => (
+                        <div key={c.name}>
+                          <div className="flex items-center justify-between text-xs mb-0.5">
+                            <span className="text-gray-700">{c.name}</span>
+                            <span className="text-gray-500">{fmt(c.total)} · {c.percent.toFixed(1)}%</span>
+                          </div>
+                          <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#2EC4B6] rounded-full" style={{ width: `${c.percent}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cash flow / month-to-month variation */}
+          <CashFlowSection report={report} fmt={fmt} />
+
+          {/* IVA filter — for Colombian VAT filings */}
+          {activeBizCountry === 'CO' && report.vat.length > 0 && (
+            <div className="card p-5">
+              <h2 className="text-base font-semibold text-gray-800 mb-1">Gastos por tipo de IVA</h2>
+              <p className="text-xs text-gray-400 mb-4">Agrupado por la tarifa de IVA de cada categoría — para armar la declaración de IVA.</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="pb-2 text-left text-xs font-semibold text-gray-500 uppercase">Tarifa IVA</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Total gasto</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Deducible</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Transacciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {report.vat.map((v: any) => (
+                      <tr key={v.vatRate}>
+                        <td className="py-2 text-gray-700">{v.vatRate}</td>
+                        <td className="py-2 text-right text-gray-800 font-medium">{fmt(v.total)}</td>
+                        <td className="py-2 text-right text-gray-500">{fmt(v.deductible)}</td>
+                        <td className="py-2 text-right text-gray-500">{v.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Spend by vendor */}
+          {report.vendors.length > 0 && (
+            <div className="card p-5">
+              <h2 className="text-base font-semibold text-gray-800 mb-1">Gasto por proveedor</h2>
+              <p className="text-xs text-gray-400 mb-4">Total gastado, frecuencia de compra y promedio por transacción.</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="pb-2 text-left text-xs font-semibold text-gray-500 uppercase">Proveedor</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Total</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Compras</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Promedio</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Última compra</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {report.vendors.map((v: any) => (
+                      <tr key={v.vendor}>
+                        <td className="py-2 text-gray-700">{v.vendor}</td>
+                        <td className="py-2 text-right text-gray-800 font-medium">{fmt(v.total)}</td>
+                        <td className="py-2 text-right text-gray-500">{v.count}</td>
+                        <td className="py-2 text-right text-gray-500">{fmt(v.avg)}</td>
+                        <td className="py-2 text-right text-gray-500">{new Date(v.lastDate).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
+    </div>
+  )
+}
+
+// Lets the accountant pick any two months in range and see which expense
+// categories moved the most between them — the "qué varía mes a mes" filter,
+// plus the net cash in/out per month (cash flow) that motivated it.
+function CashFlowSection({ report, fmt }: { report: any; fmt: (n: number) => string }) {
+  const months: string[] = report.months || []
+  const [monthA, setMonthA] = useState(months[months.length - 2] || '')
+  const [monthB, setMonthB] = useState(months[months.length - 1] || '')
+
+  useEffect(() => {
+    if (months.length === 0) return
+    if (!months.includes(monthA)) setMonthA(months[Math.max(0, months.length - 2)])
+    if (!months.includes(monthB)) setMonthB(months[months.length - 1])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [months.join(',')])
+
+  if (months.length === 0) return null
+
+  const variations = (report.categoryMonthly || [])
+    .map((c: any) => {
+      const a = c.months[monthA] || 0
+      const b = c.months[monthB] || 0
+      const delta = b - a
+      const deltaPercent = a > 0 ? (delta / a) * 100 : (b > 0 ? 100 : 0)
+      return { name: c.name, a, b, delta, deltaPercent }
+    })
+    .filter((c: any) => c.a > 0 || c.b > 0)
+    .sort((x: any, y: any) => Math.abs(y.delta) - Math.abs(x.delta))
+
+  return (
+    <div className="card p-5">
+      <h2 className="text-base font-semibold text-gray-800 mb-1">Flujo de caja y comparación mes a mes</h2>
+      <p className="text-xs text-gray-400 mb-4">Cuánto efectivo sale cada mes, en qué categorías se gasta más, y cómo varía entre dos meses.</p>
+
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div>
+          <label className="label">Mes A</label>
+          <select className="input text-sm" value={monthA} onChange={e => setMonthA(e.target.value)}>
+            {months.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Mes B</label>
+          <select className="input text-sm" value={monthB} onChange={e => setMonthB(e.target.value)}>
+            {months.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="pb-2 text-left text-xs font-semibold text-gray-500 uppercase">Categoría</th>
+              <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">{monthA || '—'}</th>
+              <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">{monthB || '—'}</th>
+              <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Variación</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {variations.length === 0 ? (
+              <tr><td colSpan={4} className="py-4 text-center text-gray-400 text-sm">Sin datos para estos meses</td></tr>
+            ) : variations.map((c: any) => (
+              <tr key={c.name}>
+                <td className="py-2 text-gray-700">{c.name}</td>
+                <td className="py-2 text-right text-gray-500">{fmt(c.a)}</td>
+                <td className="py-2 text-right text-gray-500">{fmt(c.b)}</td>
+                <td className={`py-2 text-right font-medium ${c.delta > 0 ? 'text-red-600' : c.delta < 0 ? 'text-emerald-700' : 'text-gray-400'}`}>
+                  {c.delta > 0 ? '+' : ''}{fmt(c.delta)} ({c.deltaPercent > 0 ? '+' : ''}{c.deltaPercent.toFixed(0)}%)
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

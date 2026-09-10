@@ -1,15 +1,15 @@
 import { PrismaClient, AccountType, Plan, Role, TxType, TxStatus, Deductibility, ClassMethod } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-import { SYSTEM_CATEGORIES, systemCategoryId } from '../lib/system-categories'
+import { SYSTEM_CATEGORIES, SystemCategorySeed, systemCategoryId } from '../lib/system-categories'
 
 const prisma = new PrismaClient()
 
-async function upsertSystemCategory(name: string, irsCode: string, country: 'US' | 'CO' | null) {
-  const id = systemCategoryId(name)
+async function upsertSystemCategory(c: SystemCategorySeed) {
+  const id = systemCategoryId(c.name)
   return prisma.category.upsert({
     where: { id },
     update: {},
-    create: { id, name, irsCode, country, isSystem: true },
+    create: { id, name: c.name, irsCode: c.irsCode, country: c.country, vatRate: c.vatRate || null, isSystem: true },
   })
 }
 
@@ -19,7 +19,7 @@ async function main() {
   // System categories
   const catMap: Record<string, string> = {}
   for (const c of SYSTEM_CATEGORIES) {
-    const cat = await upsertSystemCategory(c.name, c.irsCode, c.country)
+    const cat = await upsertSystemCategory(c)
     catMap[c.name] = cat.id
   }
   console.log('✓ System categories created')
