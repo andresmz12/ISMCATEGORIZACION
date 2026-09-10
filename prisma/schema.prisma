@@ -356,6 +356,13 @@ model Category {
   // for Colombian VAT filings. Defaults come from lib/system-categories.ts
   // and are editable per category from the superadmin category screen.
   vatRate               String?
+  // Free-text retención en la fuente rate typically withheld on payments in
+  // this category (e.g. "11%" honorarios, "4%" servicios, "3.5%" arrendamiento
+  // de inmuebles, "2.5%" compras) — reference only, not tax advice: the real
+  // rate depends on who's being paid (declarante/no declarante, persona
+  // natural/jurídica) and the payment's amount vs. the UVT base. "N/A" where
+  // no single typical rate applies. Only meaningful for country: 'CO'.
+  retefuente            String?
   description           String?
   isSystem              Boolean                @default(false)
   createdAt             DateTime               @default(now())

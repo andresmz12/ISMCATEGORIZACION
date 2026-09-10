@@ -163,6 +163,21 @@ export default function ReportsPage() {
       })
     }
 
+    if (report.retefuente.length > 0) {
+      const yRf = (doc as any).lastAutoTable.finalY + 10
+      doc.setTextColor(...BLUE)
+      doc.text('Retención en la fuente', 14, yRf)
+      autoTable(doc, {
+        startY: yRf + 4,
+        head: [['Tarifa', t('reports.total'), 'Retención estimada', t('reports.count')]],
+        body: report.retefuente.map((r: any) => [r.retefuente, fmt(r.total), r.estimated > 0 ? fmt(r.estimated) : '—', r.count]),
+        headStyles: tableHeadStyles,
+        bodyStyles: tableBodyStyles,
+        alternateRowStyles: tableAltStyles,
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'center' } },
+      })
+    }
+
     if (report.costCenters.length > 0) {
       const yCc = (doc as any).lastAutoTable.finalY + 10
       doc.setTextColor(...BLUE)
@@ -292,6 +307,12 @@ export default function ReportsPage() {
       const wsVat = wb.addWorksheet('IVA')
       wsVat.addRow(['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')])
       report.vat.forEach((v: any) => wsVat.addRow([v.vatRate, v.total, v.deductible, v.count]))
+    }
+
+    if (report.retefuente.length > 0) {
+      const wsRf = wb.addWorksheet('Retención')
+      wsRf.addRow(['Tarifa', t('reports.total'), 'Retención estimada', t('reports.count')])
+      report.retefuente.forEach((r: any) => wsRf.addRow([r.retefuente, r.total, r.estimated, r.count]))
     }
 
     if (report.costCenters.length > 0) {
@@ -866,6 +887,7 @@ export default function ReportsPage() {
             { id: 'report-cost-centers', label: 'Centros de costo', show: report.costCenters.length > 0 },
             { id: 'report-cashflow', label: 'Flujo de caja / mes a mes', show: true },
             { id: 'report-iva', label: 'IVA', show: report.vat.length > 0 },
+            { id: 'report-retefuente', label: 'Retención en la fuente', show: report.retefuente.length > 0 },
             { id: 'report-vendors', label: 'Proveedores', show: report.vendors.length > 0 },
           ].filter(l => l.show).map(l => (
             <a
@@ -1059,6 +1081,58 @@ export default function ReportsPage() {
                         <td className="py-2 text-right text-gray-800 font-medium">{fmt(v.total)}</td>
                         <td className="py-2 text-right text-gray-500">{fmt(v.deductible)}</td>
                         <td className="py-2 text-right text-gray-500">{v.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Retención en la fuente estimate — cross-check against certificados de retención */}
+          {report.retefuente.length > 0 && (
+            <div id="report-retefuente" className="card p-5 scroll-mt-4">
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <h2 className="text-base font-semibold text-gray-800">Retención en la fuente</h2>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => downloadSectionPDF('retencion', 'Retención en la fuente', ['Tarifa', t('reports.total'), 'Retención estimada', t('reports.count')], report.retefuente.map((r: any) => [r.retefuente, fmt(r.total), fmt(r.estimated), r.count]))}
+                    disabled={exporting}
+                    className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
+                  >
+                    Descargar PDF
+                  </button>
+                  <button
+                    onClick={() => downloadSectionExcel('retencion', 'Retención', ['Tarifa', t('reports.total'), 'Retención estimada', t('reports.count')], report.retefuente.map((r: any) => [r.retefuente, r.total, r.estimated, r.count]))}
+                    disabled={exporting}
+                    className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
+                  >
+                    Descargar Excel
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mb-4">
+                Agrupado por la tarifa de retención típica de cada categoría — un estimado para cruzar contra los
+                certificados de retención reales, no un cálculo oficial (la tarifa real depende de si el proveedor
+                declara renta y de la base mínima en UVT).
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="pb-2 text-left text-xs font-semibold text-gray-500 uppercase">Tarifa</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Total gasto</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Retención estimada</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Transacciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {report.retefuente.map((r: any) => (
+                      <tr key={r.retefuente}>
+                        <td className="py-2 text-gray-700">{r.retefuente}</td>
+                        <td className="py-2 text-right text-gray-800 font-medium">{fmt(r.total)}</td>
+                        <td className="py-2 text-right text-gray-500">{r.estimated > 0 ? fmt(r.estimated) : '—'}</td>
+                        <td className="py-2 text-right text-gray-500">{r.count}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -7,13 +7,14 @@ interface Category {
   irsCode: string | null
   country: 'US' | 'CO' | null
   vatRate: string | null
+  retefuente: string | null
   description: string | null
   isSystem: boolean
   businessId: string | null
   _count?: { transactions: number; splits: number }
 }
 
-const EMPTY_FORM = { name: '', irsCode: '', description: '', isSystem: true, country: '' as '' | 'US' | 'CO', vatRate: '' }
+const EMPTY_FORM = { name: '', irsCode: '', description: '', isSystem: true, country: '' as '' | 'US' | 'CO', vatRate: '', retefuente: '' }
 
 export default function AdminCategoriasPage() {
   const [cats, setCats] = useState<Category[]>([])
@@ -23,7 +24,7 @@ export default function AdminCategoriasPage() {
   const [filterCountry, setFilterCountry] = useState('')
 
   const [editCat, setEditCat] = useState<Category | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', irsCode: '', description: '', isSystem: true, country: '' as '' | 'US' | 'CO', vatRate: '' })
+  const [editForm, setEditForm] = useState({ name: '', irsCode: '', description: '', isSystem: true, country: '' as '' | 'US' | 'CO', vatRate: '', retefuente: '' })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState('')
 
@@ -48,7 +49,7 @@ export default function AdminCategoriasPage() {
 
   function openEdit(cat: Category) {
     setEditCat(cat)
-    setEditForm({ name: cat.name, irsCode: cat.irsCode || '', description: cat.description || '', isSystem: cat.isSystem, country: cat.country || '', vatRate: cat.vatRate || '' })
+    setEditForm({ name: cat.name, irsCode: cat.irsCode || '', description: cat.description || '', isSystem: cat.isSystem, country: cat.country || '', vatRate: cat.vatRate || '', retefuente: cat.retefuente || '' })
     setEditError('')
   }
 
@@ -67,6 +68,7 @@ export default function AdminCategoriasPage() {
         isSystem: editForm.isSystem,
         country: editForm.country || null,
         vatRate: editForm.vatRate || null,
+        retefuente: editForm.retefuente || null,
       }),
     })
     setEditLoading(false)
@@ -89,6 +91,7 @@ export default function AdminCategoriasPage() {
         isSystem: createForm.isSystem,
         country: createForm.country || null,
         vatRate: createForm.vatRate || null,
+        retefuente: createForm.retefuente || null,
       }),
     })
     setCreateLoading(false)
@@ -165,6 +168,7 @@ export default function AdminCategoriasPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Código fiscal</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">País</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">IVA</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Retención</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tipo</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Transacciones</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Acciones</th>
@@ -180,6 +184,7 @@ export default function AdminCategoriasPage() {
                     <td className="px-4 py-3 text-gray-500 text-xs font-mono">{cat.irsCode || '—'}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{cat.country || 'Todos'}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{cat.vatRate || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{cat.retefuente || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cat.isSystem ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
                         {cat.isSystem ? 'Sistema' : 'Personalizada'}
@@ -250,6 +255,10 @@ export default function AdminCategoriasPage() {
                 <input className={inputCls} value={editForm.vatRate} onChange={e => setEditForm(f => ({ ...f, vatRate: e.target.value }))} placeholder="Ej: 19%, 5%, Exento, Excluido" />
               </div>
               <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Retención en la fuente</label>
+                <input className={inputCls} value={editForm.retefuente} onChange={e => setEditForm(f => ({ ...f, retefuente: e.target.value }))} placeholder="Ej: 11%, 4%, 3.5%, N/A" />
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
                 <textarea className={inputCls} rows={2} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
               </div>
@@ -306,6 +315,10 @@ export default function AdminCategoriasPage() {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Tarifa de IVA</label>
                 <input className={inputCls} value={createForm.vatRate} onChange={e => setCreateForm(f => ({ ...f, vatRate: e.target.value }))} placeholder="Ej: 19%, 5%, Exento, Excluido" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Retención en la fuente</label>
+                <input className={inputCls} value={createForm.retefuente} onChange={e => setCreateForm(f => ({ ...f, retefuente: e.target.value }))} placeholder="Ej: 11%, 4%, 3.5%, N/A" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>

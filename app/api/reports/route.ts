@@ -121,6 +121,23 @@ export async function GET(req: Request) {
   }
   const vat = Object.values(vatMap).sort((a, b) => b.total - a.total)
 
+  // Grouped by the retención en la fuente rate carried on each transaction's
+  // category — an estimate of what should have been withheld, to cross-check
+  // against certificados de retención. Only categories with a parseable %
+  // (e.g. "11%") get an estimate; "N/A" / unset ones are grouped separately
+  // since there's no single rate to apply.
+  const retefuenteMap: Record<string, { retefuente: string; total: number; estimated: number; count: number }> = {}
+  for (const t of debits) {
+    const retefuente = t.category?.retefuente || 'Sin retención asignada'
+    if (!retefuenteMap[retefuente]) retefuenteMap[retefuente] = { retefuente, total: 0, estimated: 0, count: 0 }
+    const r = retefuenteMap[retefuente]
+    r.total = round(r.total + t.amount)
+    r.count += 1
+    const pct = parseFloat(retefuente)
+    if (!isNaN(pct) && retefuente.trim().endsWith('%')) r.estimated = round(r.estimated + t.amount * (pct / 100))
+  }
+  const retefuente = Object.values(retefuenteMap).sort((a, b) => b.total - a.total)
+
   // Spend + purchase frequency by vendor (only transactions with a vendor set).
   const vendorMap: Record<string, { vendor: string; total: number; count: number; lastDate: string }> = {}
   for (const t of debits) {
@@ -143,6 +160,7 @@ export async function GET(req: Request) {
     categoryMonthly,
     costCenters,
     vat,
+    retefuente,
     vendors,
   })
 }

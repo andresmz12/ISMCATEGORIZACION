@@ -18,7 +18,7 @@ async function main() {
       const existing = await prisma.category.findUnique({ where: { id }, select: { id: true } })
       if (existing) continue
       await prisma.category.create({
-        data: { id, name: c.name, irsCode: c.irsCode, country: c.country, vatRate: c.vatRate || null, isSystem: true },
+        data: { id, name: c.name, irsCode: c.irsCode, country: c.country, vatRate: c.vatRate || null, retefuente: c.retefuente || null, isSystem: true },
       })
       created++
     }

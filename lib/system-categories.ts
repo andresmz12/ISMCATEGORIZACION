@@ -17,6 +17,17 @@ export type SystemCategorySeed = {
   // should be corrected per category from the superadmin screen when it
   // doesn't match what the accountant actually files.
   vatRate?: string
+  // Typical retención en la fuente rate withheld on payments in this
+  // category — only meaningful for country: 'CO' rows. Sourced from the
+  // 2026 retention table (honorarios/comisiones 11%, servicios 4%,
+  // arrendamiento de inmuebles 3.5%, compras 2.5%). Reference only, not tax
+  // advice: the real rate depends on who's being paid (declarante/no
+  // declarante, persona natural/jurídica) and the payment vs. the UVT
+  // minimum base. 'N/A' where no single typical rate applies (payroll runs
+  // its own withholding table, accounting entries like depreciation aren't
+  // payments, income categories are what OTHERS withhold from this
+  // business, not a rate it applies itself).
+  retefuente?: string
 }
 
 export const SYSTEM_CATEGORIES: SystemCategorySeed[] = [
@@ -54,32 +65,41 @@ export const SYSTEM_CATEGORIES: SystemCategorySeed[] = [
   // test decided per expense). Deductibility is a per-transaction field
   // (YES/NO/FIFTY) the accountant sets on each transaction, independent of
   // its category.
-  { name: 'Nómina y Prestaciones Sociales', irsCode: 'PUC 5105', country: 'CO', vatRate: 'Excluido' },
-  { name: 'Honorarios', irsCode: 'PUC 5110', country: 'CO', vatRate: '19%' },
-  { name: 'Comisiones', irsCode: 'PUC 5110', country: 'CO', vatRate: '19%' },
-  { name: 'Impuestos y Tasas', irsCode: 'PUC 5115', country: 'CO', vatRate: 'Excluido' },
-  { name: 'Arrendamientos', irsCode: 'PUC 5120', country: 'CO', vatRate: 'Excluido' },
-  { name: 'Contribuciones y Afiliaciones', irsCode: 'PUC 5125', country: 'CO', vatRate: 'Excluido' },
-  { name: 'Seguros', irsCode: 'PUC 5130', country: 'CO', vatRate: 'Exento' },
-  { name: 'Servicios Públicos', irsCode: 'PUC 5135', country: 'CO', vatRate: 'Excluido' },
-  { name: 'Vehículos y Transporte', irsCode: 'PUC 5135', country: 'CO', vatRate: '19%' },
-  { name: 'Servicios Legales y Contables', irsCode: 'PUC 5140', country: 'CO', vatRate: '19%' },
-  { name: 'Mantenimiento y Reparaciones', irsCode: 'PUC 5145', country: 'CO', vatRate: '19%' },
-  { name: 'Adecuación e Instalación', irsCode: 'PUC 5150', country: 'CO', vatRate: '19%' },
-  { name: 'Viajes', irsCode: 'PUC 5155', country: 'CO', vatRate: '19%' },
-  { name: 'Depreciación de Activos', irsCode: 'PUC 5160', country: 'CO', vatRate: 'Excluido' },
-  { name: 'Amortizaciones', irsCode: 'PUC 5165', country: 'CO', vatRate: 'Excluido' },
-  { name: 'Publicidad y Mercadeo', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
-  { name: 'Gastos de Oficina', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
-  { name: 'Suministros', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
-  { name: 'Alimentación', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
-  { name: 'Otros Gastos', irsCode: 'PUC 5195', country: 'CO', vatRate: '19%' },
-  { name: 'Gastos Financieros e Intereses', irsCode: 'PUC 5305', country: 'CO', vatRate: 'Exento' },
-  { name: 'Impuesto de Renta', irsCode: 'PUC 5405', country: 'CO', vatRate: 'Excluido' },
-  { name: 'Costo de Ventas', irsCode: 'PUC 61', country: 'CO', vatRate: '19%' },
-  { name: 'Ingresos Operacionales', irsCode: 'PUC 4135', country: 'CO' },
-  { name: 'Ingresos No Operacionales', irsCode: 'PUC 42', country: 'CO' },
-  { name: 'Retiro de Socios', irsCode: 'No deducible', country: 'CO', vatRate: 'Excluido' },
+  //
+  // irsCode also cites the Formulario 110 casilla (62 Costos, 63 Gastos de
+  // administración, 64 Gastos de distribución y ventas, 65 Gastos
+  // financieros, 66 Otros gastos y deducciones) each PUC subcuenta rolls up
+  // to when filing renta — the real Estatuto Tributario/DIAN structure is
+  // only these 5 broad buckets, so this is how each detailed bookkeeping
+  // category traces back to the actual tax return line, the same way a US
+  // category cites its Schedule C line.
+  { name: 'Nómina y Prestaciones Sociales', irsCode: 'PUC 5105 · F.110 Casilla 63', country: 'CO', vatRate: 'Excluido', retefuente: 'N/A — tabla de retención salarial propia' },
+  { name: 'Honorarios', irsCode: 'PUC 5110 · F.110 Casilla 63', country: 'CO', vatRate: '19%', retefuente: '11%' },
+  { name: 'Comisiones', irsCode: 'PUC 5110 · F.110 Casilla 63', country: 'CO', vatRate: '19%', retefuente: '11%' },
+  { name: 'Impuestos y Tasas', irsCode: 'PUC 5115 · F.110 Casilla 63', country: 'CO', vatRate: 'Excluido', retefuente: 'N/A' },
+  { name: 'Industria y Comercio (ICA)', irsCode: 'PUC 5115 · F.110 Casilla 63', country: 'CO', vatRate: 'Excluido', retefuente: 'N/A — varía por municipio (2-10 x mil)' },
+  { name: 'Arrendamientos', irsCode: 'PUC 5120 · F.110 Casilla 63', country: 'CO', vatRate: 'Excluido', retefuente: '3.5%' },
+  { name: 'Contribuciones y Afiliaciones', irsCode: 'PUC 5125 · F.110 Casilla 63', country: 'CO', vatRate: 'Excluido', retefuente: 'N/A' },
+  { name: 'Seguros', irsCode: 'PUC 5130 · F.110 Casilla 63', country: 'CO', vatRate: 'Exento', retefuente: 'N/A' },
+  { name: 'Servicios Públicos', irsCode: 'PUC 5135 · F.110 Casilla 63', country: 'CO', vatRate: 'Excluido', retefuente: 'N/A' },
+  { name: 'Vehículos y Transporte', irsCode: 'PUC 5135 · F.110 Casilla 64', country: 'CO', vatRate: '19%', retefuente: 'N/A — depende del concepto' },
+  { name: 'Servicios Legales y Contables', irsCode: 'PUC 5140 · F.110 Casilla 63', country: 'CO', vatRate: '19%', retefuente: '11%' },
+  { name: 'Mantenimiento y Reparaciones', irsCode: 'PUC 5145 · F.110 Casilla 63', country: 'CO', vatRate: '19%', retefuente: '4%' },
+  { name: 'Adecuación e Instalación', irsCode: 'PUC 5150 · F.110 Casilla 63', country: 'CO', vatRate: '19%', retefuente: '4%' },
+  { name: 'Viajes', irsCode: 'PUC 5155 · F.110 Casilla 63', country: 'CO', vatRate: '19%', retefuente: 'N/A' },
+  { name: 'Depreciación de Activos', irsCode: 'PUC 5160 · F.110 Casilla 63', country: 'CO', vatRate: 'Excluido', retefuente: 'N/A — no es un pago' },
+  { name: 'Amortizaciones', irsCode: 'PUC 5165 · F.110 Casilla 63', country: 'CO', vatRate: 'Excluido', retefuente: 'N/A — no es un pago' },
+  { name: 'Publicidad y Mercadeo', irsCode: 'PUC 5195 · F.110 Casilla 64', country: 'CO', vatRate: '19%', retefuente: '4%' },
+  { name: 'Gastos de Oficina', irsCode: 'PUC 5195 · F.110 Casilla 63', country: 'CO', vatRate: '19%', retefuente: '2.5%' },
+  { name: 'Suministros', irsCode: 'PUC 5195 · F.110 Casilla 63', country: 'CO', vatRate: '19%', retefuente: '2.5%' },
+  { name: 'Alimentación', irsCode: 'PUC 5195 · F.110 Casilla 63', country: 'CO', vatRate: '19%', retefuente: 'N/A' },
+  { name: 'Otros Gastos', irsCode: 'PUC 5195 · F.110 Casilla 66', country: 'CO', vatRate: '19%', retefuente: 'N/A' },
+  { name: 'Gastos Financieros e Intereses', irsCode: 'PUC 5305 · F.110 Casilla 65', country: 'CO', vatRate: 'Exento', retefuente: 'N/A' },
+  { name: 'Impuesto de Renta', irsCode: 'PUC 5405 — no es un costo/deducción, es el impuesto mismo', country: 'CO', vatRate: 'Excluido', retefuente: 'N/A' },
+  { name: 'Costo de Ventas', irsCode: 'PUC 61 · F.110 Casilla 62', country: 'CO', vatRate: '19%', retefuente: '2.5%' },
+  { name: 'Ingresos Operacionales', irsCode: 'PUC 4135 — ingresos, no costos/deducciones', country: 'CO', retefuente: 'N/A — lo retienen terceros a este negocio' },
+  { name: 'Ingresos No Operacionales', irsCode: 'PUC 42 — ingresos, no costos/deducciones', country: 'CO', retefuente: 'N/A — lo retienen terceros a este negocio' },
+  { name: 'Retiro de Socios', irsCode: 'No deducible — movimiento de patrimonio, no P&L', country: 'CO', vatRate: 'Excluido', retefuente: 'N/A' },
 
   // Transfer / Uncategorized exist for every business, but the label must
   // match the business's own language — a Colombian business should never
