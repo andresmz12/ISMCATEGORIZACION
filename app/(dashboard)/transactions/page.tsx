@@ -14,6 +14,10 @@ function TransactionsContent() {
 
   const { businesses, activeBizId: activeBiz } = useActiveBiz()
   const fmt = (n: number) => formatCurrency(n, businesses.find(b => b.id === activeBiz)?.currency)
+  // Vendor / cost-center tracking was built for Colombian bookkeeping (feeds
+  // the CO-only reports on the reports page) — hidden for US businesses so
+  // they don't see fields with no report behind them.
+  const isColombia = businesses.find(b => b.id === activeBiz)?.country === 'CO'
   const [transactions, setTransactions] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [total, setTotal] = useState(0)
@@ -840,7 +844,7 @@ function TransactionsContent() {
                   <option value="FIFTY">{t('common.fifty')}</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              {isColombia && <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Proveedor</label>
                   <input
@@ -861,7 +865,7 @@ function TransactionsContent() {
                     placeholder="Ej: Ventas, Operaciones"
                   />
                 </div>
-              </div>
+              </div>}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">{t('tx.notesOptional')}</label>
                 <textarea className="input w-full text-sm" rows={2} placeholder={t('tx.notesPlaceholder')} value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))} />
@@ -925,7 +929,7 @@ function TransactionsContent() {
             <h3 className="text-lg font-bold text-gray-800 mb-1">Detalles de la transacción</h3>
             <p className="text-sm text-gray-400 mb-4 truncate">{detailsTx.description}</p>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              {isColombia && <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Proveedor</label>
                   <input
@@ -946,7 +950,7 @@ function TransactionsContent() {
                     placeholder="Ej: Ventas, Operaciones"
                   />
                 </div>
-              </div>
+              </div>}
               <div>
                 <select className="input w-full text-sm" value={detailsForm.deductibility} onChange={e => setDetailsForm(f => ({ ...f, deductibility: e.target.value }))}>
                   <option value="">{t('tx.deductible')}</option>

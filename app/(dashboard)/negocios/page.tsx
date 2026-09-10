@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
 import { PLAN_LIMITS } from '@/lib/plan-config'
+import { effectivePlan } from '@/lib/billing-access'
 import { COUNTRIES, DEFAULT_CURRENCY, ENTITY_TYPES, TAX_ID_LABEL, BusinessCountry } from '@/lib/countries'
 
 const INDUSTRIES = [
@@ -22,7 +23,13 @@ export default function NegociosPage() {
   const toast = useToast()
   const accountType = (session?.user as any)?.accountType
   const plan = (session?.user as any)?.plan || 'BASIC'
-  const bizLimit = (PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] ?? PLAN_LIMITS.BASIC).businesses
+  const trialEndsAt = (session?.user as any)?.trialEndsAt
+  // A NONE-plan account still inside its 7-day signup trial gets BASIC's
+  // limits (see lib/billing-access.ts) — without this, a brand-new trial
+  // user would see "your plan allows 0 businesses" and never get past
+  // onboarding, even though the backend already lets them create one.
+  const resolvedPlan = effectivePlan(plan, trialEndsAt)
+  const bizLimit = (PLAN_LIMITS[resolvedPlan as keyof typeof PLAN_LIMITS] ?? PLAN_LIMITS.BASIC).businesses
 
   const [businesses, setBusinesses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

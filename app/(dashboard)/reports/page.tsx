@@ -775,6 +775,12 @@ export default function ReportsPage() {
             )}
           </div>
 
+          {/* Colombia-only reports: cost center, cash flow / MoM, IVA, vendors.
+              These were built for Colombian bookkeeping (PUC categories, IVA
+              filings, PUC-style cost centers) — hidden for US businesses so
+              the reports page doesn't show sections that don't apply to them. */}
+          {activeBizCountry === 'CO' && (
+          <>
           {/* % participation by cost center */}
           {report.costCenters.length > 0 && (
             <div className="card p-5">
@@ -810,7 +816,7 @@ export default function ReportsPage() {
           <CashFlowSection report={report} fmt={fmt} />
 
           {/* IVA filter — for Colombian VAT filings */}
-          {activeBizCountry === 'CO' && report.vat.length > 0 && (
+          {report.vat.length > 0 && (
             <div className="card p-5">
               <h2 className="text-base font-semibold text-gray-800 mb-1">Gastos por tipo de IVA</h2>
               <p className="text-xs text-gray-400 mb-4">Agrupado por la tarifa de IVA de cada categoría — para armar la declaración de IVA.</p>
@@ -869,6 +875,8 @@ export default function ReportsPage() {
                 </table>
               </div>
             </div>
+          )}
+          </>
           )}
         </>
       )}
