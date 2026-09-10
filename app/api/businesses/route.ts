@@ -55,10 +55,12 @@ export async function POST(req: Request) {
   if (!rl.ok) return rateLimitResponse()
 
   try {
-    const { name, industry, entityType, taxYear, currency, country, taxId } = await req.json()
+    const { name, industry, entityType, taxYear, country, taxId } = await req.json()
     if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 })
     const businessCountry = isBusinessCountry(country) ? country : 'US'
-    const businessCurrency = currency === 'COP' || currency === 'USD' ? currency : DEFAULT_CURRENCY[businessCountry]
+    // Currency always follows the country — a Colombian business is COP, a US
+    // one is USD, no independent choice (never trust a client-supplied value here).
+    const businessCurrency = DEFAULT_CURRENCY[businessCountry]
 
     if (accountType === 'TEAM_MEMBER') {
       return NextResponse.json({ error: 'Los miembros del equipo no pueden crear negocios' }, { status: 403 })

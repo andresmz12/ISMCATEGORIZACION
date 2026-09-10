@@ -180,9 +180,9 @@ export default function NegociosPage() {
                         <option value="">— Tipo de entidad —</option>
                         {ENTITY_TYPES[editForm.country].map(e => <option key={e} value={e}>{e}</option>)}
                       </select>
-                      <select className="input" value={editForm.currency} onChange={e => setEditForm(f => ({ ...f, currency: e.target.value }))}>
-                        {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                      </select>
+                      <div className="input flex items-center text-gray-500 bg-gray-50" title="La moneda depende del país">
+                        {CURRENCIES.find(c => c.value === DEFAULT_CURRENCY[editForm.country])?.label}
+                      </div>
                       <input
                         className="input"
                         placeholder={TAX_ID_LABEL[editForm.country]}
@@ -292,9 +292,9 @@ export default function NegociosPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Moneda</label>
-                <select className="input" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
-                  {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
+                <div className="input flex items-center text-gray-500 bg-gray-50" title="La moneda depende del país">
+                  {CURRENCIES.find(c => c.value === DEFAULT_CURRENCY[form.country])?.label}
+                </div>
               </div>
               <div>
                 <label className="label">{TAX_ID_LABEL[form.country]}</label>
