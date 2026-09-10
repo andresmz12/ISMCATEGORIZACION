@@ -14,7 +14,7 @@ async function requireSuperadmin() {
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   if (!await requireSuperadmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { name, irsCode, description, isSystem } = await req.json()
+  const { name, irsCode, description, isSystem, country } = await req.json()
   if (name && name.length > 100) return NextResponse.json({ error: 'Name too long' }, { status: 400 })
 
   const category = await prisma.category.findUnique({ where: { id: params.id } })
@@ -27,6 +27,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       ...(irsCode !== undefined && { irsCode }),
       ...(description !== undefined && { description }),
       ...(isSystem !== undefined && { isSystem }),
+      ...(country !== undefined && { country: country === 'US' || country === 'CO' ? country : null }),
       // A system category must be global — clear any lingering businessId so a
       // business-owned row flipped to isSystem:true doesn't start leaking into
       // every other tenant's category list/AI-classification prompt (both key

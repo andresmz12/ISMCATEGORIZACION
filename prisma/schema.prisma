@@ -36,6 +36,11 @@ enum Currency {
   COP
 }
 
+enum Country {
+  US
+  CO
+}
+
 enum TxType {
   DEBIT
   CREDIT
@@ -185,6 +190,11 @@ model Business {
   entityType            String?
   taxYear               Int?
   currency              Currency               @default(USD)
+  // Which country's tax/accounting rules apply to this business — drives which
+  // system categories, entity types and tax-id label the app shows. Independent
+  // of currency (a US business could in principle hold COP, and vice versa).
+  country               Country                @default(US)
+  taxId                 String?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   users                 BusinessUser[]
@@ -314,6 +324,10 @@ model Category {
   businessId            String?
   name                  String
   irsCode               String?
+  // Which country a system category applies to. Null means it's shown to
+  // every business regardless of country (e.g. "Transfer", "Uncategorized").
+  // Ignored for business-owned (non-system) categories.
+  country               Country?
   description           String?
   isSystem              Boolean                @default(false)
   createdAt             DateTime               @default(now())
@@ -325,6 +339,7 @@ model Category {
 
   @@index([businessId])
   @@index([isSystem])
+  @@index([country])
 }
 
 model ClassificationRule {

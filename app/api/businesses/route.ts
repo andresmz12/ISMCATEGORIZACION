@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
 import { getPlanLimits, countOwnedBusinesses } from '@/lib/plan-limits'
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
+import { isBusinessCountry, DEFAULT_CURRENCY } from '@/lib/countries'
 
 const cuid = customAlphabet('36ghjkmnpqrtvwxyz2468', 24)
 
@@ -53,9 +54,10 @@ export async function POST(req: Request) {
   if (!rl.ok) return rateLimitResponse()
 
   try {
-    const { name, industry, entityType, taxYear, currency } = await req.json()
+    const { name, industry, entityType, taxYear, currency, country, taxId } = await req.json()
     if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 })
-    const businessCurrency = currency === 'COP' ? 'COP' : 'USD'
+    const businessCountry = isBusinessCountry(country) ? country : 'US'
+    const businessCurrency = currency === 'COP' || currency === 'USD' ? currency : DEFAULT_CURRENCY[businessCountry]
 
     if (accountType === 'TEAM_MEMBER') {
       return NextResponse.json({ error: 'Los miembros del equipo no pueden crear negocios' }, { status: 403 })
@@ -81,8 +83,8 @@ export async function POST(req: Request) {
         }
 
         await tx.$executeRaw`
-          INSERT INTO "Business" (id, name, industry, "entityType", "taxYear", currency, "createdAt", "updatedAt")
-          VALUES (${businessId}, ${name}, ${industry || null}, ${entityType || null}, ${taxYear ? Number(taxYear) : null}, ${businessCurrency}::"Currency", ${now}, ${now})
+          INSERT INTO "Business" (id, name, industry, "entityType", "taxYear", currency, country, "taxId", "createdAt", "updatedAt")
+          VALUES (${businessId}, ${name}, ${industry || null}, ${entityType || null}, ${taxYear ? Number(taxYear) : null}, ${businessCurrency}::"Currency", ${businessCountry}::"Country", ${taxId || null}, ${now}, ${now})
         `
         await tx.$executeRaw`
           INSERT INTO "BusinessUser" (id, "userId", "businessId", role, "createdAt")
@@ -99,7 +101,7 @@ export async function POST(req: Request) {
     // Team features disabled for now
 
     await logAudit({ userId, businessId, action: 'CREATE_BUSINESS', entity: 'Business', entityId: businessId, metadata: { name } })
-    return NextResponse.json({ id: businessId, name, industry, entityType, taxYear, currency: businessCurrency }, { status: 201 })
+    return NextResponse.json({ id: businessId, name, industry, entityType, taxYear, currency: businessCurrency, country: businessCountry, taxId: taxId || null }, { status: 201 })
   } catch (e: any) {
     console.error('create business error:', e)
     return NextResponse.json({ error: 'Error al crear el negocio' }, { status: 500 })

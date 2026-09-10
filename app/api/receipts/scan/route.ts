@@ -9,15 +9,7 @@ import { logAudit } from '@/lib/audit'
 import { requirePlanFeature } from '@/lib/plan-limits'
 import { withAiBudget } from '@/lib/ai-budget'
 import { noon } from '@/lib/date'
-import { getSystemCategories } from '@/lib/categories'
-
-const CATEGORIES = [
-  'Advertising', 'Car & Truck Expenses', 'Commissions & Fees', 'Contract Labor',
-  'Insurance', 'Interest - Other', 'Legal & Professional', 'Office Expenses',
-  'Rent - Other', 'Repairs & Maintenance', 'Supplies', 'Taxes & Licenses',
-  'Travel', 'Meals (50%)', 'Utilities', 'Wages', 'Other Expenses',
-  'Cost of Goods Sold', 'Business Income', 'Owner Draw / Personal', 'Uncategorized',
-]
+import { getBusinessCategories } from '@/lib/categories'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -67,6 +59,10 @@ export async function POST(req: Request) {
       ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
       : { type: 'image', source: { type: 'base64', media_type: claudeMime, data: base64Data } }
 
+    // Categories available to this business (system, scoped to its country, + custom)
+    const categories = await getBusinessCategories(businessId)
+    const categoryNames = categories.map((c: { name: string }) => c.name)
+
     const budgetResult = await withAiBudget(businessId, async () => {
       const response = await client.messages.create({
         model: 'claude-haiku-4-5-20251001',
@@ -86,7 +82,7 @@ export async function POST(req: Request) {
   "tax": 0.00,
   "items": [{"description": "item", "amount": 0.00}],
   "payment_method": "cash/credit/debit/other or null",
-  "category_suggestion": "one of: ${CATEGORIES.join(', ')}",
+  "category_suggestion": "one of: ${categoryNames.join(', ')}",
   "deductibility": "YES/NO/FIFTY",
   "confidence": "HIGH/MEDIUM/LOW"
 }
@@ -110,7 +106,6 @@ Use null for any field you cannot read. Receipt may be in English or Spanish.`,
     }
 
     // Resolve category
-    const categories = await getSystemCategories()
     const catMap = new Map(categories.map((c: any) => [c.name.toLowerCase().trim(), c.id]))
     const categoryId = catMap.get(extracted.category_suggestion?.toLowerCase().trim()) ?? catMap.get('uncategorized') ?? null
 

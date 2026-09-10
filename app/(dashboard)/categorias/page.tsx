@@ -104,7 +104,7 @@ export default function CategoriasPage() {
                 className="input"
                 value={form.irsCode}
                 onChange={e => setForm(f => ({ ...f, irsCode: e.target.value }))}
-                placeholder="Código IRS"
+                placeholder={t('cat.irsCode')}
               />
             </div>
           </div>
@@ -145,7 +145,7 @@ export default function CategoriasPage() {
                         className="input text-sm"
                         value={editForm.irsCode}
                         onChange={e => setEditForm(f => ({ ...f, irsCode: e.target.value }))}
-                        placeholder="Código IRS"
+                        placeholder={t('cat.irsCode')}
                       />
                     </div>
                     <input

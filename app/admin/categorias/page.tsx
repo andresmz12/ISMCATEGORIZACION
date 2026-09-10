@@ -5,13 +5,14 @@ interface Category {
   id: string
   name: string
   irsCode: string | null
+  country: 'US' | 'CO' | null
   description: string | null
   isSystem: boolean
   businessId: string | null
   _count?: { transactions: number; splits: number }
 }
 
-const EMPTY_FORM = { name: '', irsCode: '', description: '', isSystem: true }
+const EMPTY_FORM = { name: '', irsCode: '', description: '', isSystem: true, country: '' as '' | 'US' | 'CO' }
 
 export default function AdminCategoriasPage() {
   const [cats, setCats] = useState<Category[]>([])
@@ -20,7 +21,7 @@ export default function AdminCategoriasPage() {
   const [filterType, setFilterType] = useState('')
 
   const [editCat, setEditCat] = useState<Category | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', irsCode: '', description: '', isSystem: true })
+  const [editForm, setEditForm] = useState({ name: '', irsCode: '', description: '', isSystem: true, country: '' as '' | 'US' | 'CO' })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState('')
 
@@ -45,7 +46,7 @@ export default function AdminCategoriasPage() {
 
   function openEdit(cat: Category) {
     setEditCat(cat)
-    setEditForm({ name: cat.name, irsCode: cat.irsCode || '', description: cat.description || '', isSystem: cat.isSystem })
+    setEditForm({ name: cat.name, irsCode: cat.irsCode || '', description: cat.description || '', isSystem: cat.isSystem, country: cat.country || '' })
     setEditError('')
   }
 
@@ -62,6 +63,7 @@ export default function AdminCategoriasPage() {
         irsCode: editForm.irsCode || null,
         description: editForm.description || null,
         isSystem: editForm.isSystem,
+        country: editForm.country || null,
       }),
     })
     setEditLoading(false)
@@ -82,6 +84,7 @@ export default function AdminCategoriasPage() {
         irsCode: createForm.irsCode || null,
         description: createForm.description || null,
         isSystem: createForm.isSystem,
+        country: createForm.country || null,
       }),
     })
     setCreateLoading(false)
@@ -147,7 +150,8 @@ export default function AdminCategoriasPage() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Nombre</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Código IRS</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Código fiscal</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">País</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Tipo</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Transacciones</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Acciones</th>
@@ -161,6 +165,7 @@ export default function AdminCategoriasPage() {
                       {cat.description && <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{cat.description}</p>}
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs font-mono">{cat.irsCode || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{cat.country || 'Todos'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cat.isSystem ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
                         {cat.isSystem ? 'Sistema' : 'Personalizada'}
@@ -215,8 +220,16 @@ export default function AdminCategoriasPage() {
                 <input className={inputCls} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} required />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Código IRS</label>
-                <input className={inputCls} value={editForm.irsCode} onChange={e => setEditForm(f => ({ ...f, irsCode: e.target.value }))} placeholder="Código IRS" />
+                <label className="block text-xs font-medium text-gray-600 mb-1">Código fiscal</label>
+                <input className={inputCls} value={editForm.irsCode} onChange={e => setEditForm(f => ({ ...f, irsCode: e.target.value }))} placeholder="Ej: Schedule C Line 8, PUC 5195" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">País</label>
+                <select className={inputCls} value={editForm.country} onChange={e => setEditForm(f => ({ ...f, country: e.target.value as '' | 'US' | 'CO' }))}>
+                  <option value="">Todos (compartida)</option>
+                  <option value="US">Estados Unidos</option>
+                  <option value="CO">Colombia</option>
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
@@ -261,8 +274,16 @@ export default function AdminCategoriasPage() {
                 <input className={inputCls} value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} placeholder="Nombre de categoría" required />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Código IRS</label>
-                <input className={inputCls} value={createForm.irsCode} onChange={e => setCreateForm(f => ({ ...f, irsCode: e.target.value }))} placeholder="Código IRS" />
+                <label className="block text-xs font-medium text-gray-600 mb-1">Código fiscal</label>
+                <input className={inputCls} value={createForm.irsCode} onChange={e => setCreateForm(f => ({ ...f, irsCode: e.target.value }))} placeholder="Ej: Schedule C Line 8, PUC 5195" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">País</label>
+                <select className={inputCls} value={createForm.country} onChange={e => setCreateForm(f => ({ ...f, country: e.target.value as '' | 'US' | 'CO' }))}>
+                  <option value="">Todos (compartida)</option>
+                  <option value="US">Estados Unidos</option>
+                  <option value="CO">Colombia</option>
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Descripción</label>

@@ -8,6 +8,7 @@ interface Business {
   industry: string | null
   entityType: string | null
   taxYear: number | null
+  country: 'US' | 'CO' | null
   createdAt: string
   users: {
     role: string
@@ -94,7 +95,7 @@ export default function AdminNegociosPage() {
                 <div>
                   <p className="font-semibold text-gray-900 text-sm">{biz.name}</p>
                   <p className="text-xs text-gray-400">
-                    {biz.industry || 'Sin industria'} · {biz.entityType || 'Sin entidad'} · {biz._count.transactions} transacciones
+                    {biz.country === 'CO' ? 'Colombia' : 'USA'} · {biz.industry || 'Sin industria'} · {biz.entityType || 'Sin entidad'} · {biz._count.transactions} transacciones
                   </p>
                 </div>
               </div>

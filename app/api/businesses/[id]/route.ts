@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { logAudit } from '@/lib/audit'
+import { isBusinessCountry } from '@/lib/countries'
+import { revalidateCategories } from '@/lib/categories'
 
 async function checkOwner(userId: string, businessId: string, accountType?: string) {
   if (accountType === 'SUPERADMIN') return true
@@ -22,7 +24,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { name, industry, entityType, taxYear, currency } = await req.json()
+  const { name, industry, entityType, taxYear, currency, country, taxId } = await req.json()
   const updated = await prisma.business.update({
     where: { id: params.id },
     data: {
@@ -31,8 +33,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       ...(entityType !== undefined && { entityType }),
       ...(taxYear !== undefined && { taxYear: taxYear ? Number(taxYear) : null }),
       ...(currency !== undefined && { currency: currency === 'COP' ? 'COP' : 'USD' }),
+      ...(isBusinessCountry(country) && { country }),
+      ...(taxId !== undefined && { taxId: taxId || null }),
     },
   })
+  if (isBusinessCountry(country)) revalidateCategories()
   await logAudit({ userId, businessId: params.id, action: 'UPDATE_BUSINESS', entity: 'Business', entityId: params.id, metadata: { name: updated.name } })
   return NextResponse.json(updated)
 }

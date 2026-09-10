@@ -14,11 +14,13 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const businessId = searchParams.get('businessId')
 
-  const where: any = { OR: [{ isSystem: true }] }
+  const where: any = { OR: [{ isSystem: true, country: null }] }
   if (businessId) {
     if (!await checkBusinessAccess(userId, businessId, accountType)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+    const business = await prisma.business.findUnique({ where: { id: businessId }, select: { country: true } })
+    where.OR.push({ isSystem: true, country: business?.country ?? 'US' })
     where.OR.push({ businessId })
   }
 

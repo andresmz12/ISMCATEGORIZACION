@@ -4,13 +4,13 @@ import { useSession } from 'next-auth/react'
 import { useTranslation } from '@/lib/i18n'
 import { useToast } from '@/components/Toast'
 import { PLAN_LIMITS } from '@/lib/plan-config'
+import { COUNTRIES, DEFAULT_CURRENCY, ENTITY_TYPES, TAX_ID_LABEL, BusinessCountry } from '@/lib/countries'
 
 const INDUSTRIES = [
   'Food Service & Restaurants', 'Retail Trade', 'Professional Services',
   'Healthcare', 'Construction', 'Manufacturing', 'Technology',
   'Real Estate', 'Transportation', 'Other',
 ]
-const ENTITIES = ['Sole Proprietor (Schedule C)', 'S-Corp', 'C-Corp', 'Partnership', 'LLC']
 const CURRENCIES = [
   { value: 'USD', label: 'USD — Dólar estadounidense' },
   { value: 'COP', label: 'COP — Peso colombiano' },
@@ -27,11 +27,19 @@ export default function NegociosPage() {
   const [businesses, setBusinesses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeBizId, setActiveBizId] = useState<string>('')
-  const [form, setForm] = useState({ name: '', industry: '', entityType: '', taxYear: new Date().getFullYear().toString(), currency: 'USD' })
+  const [form, setForm] = useState({ name: '', industry: '', entityType: '', taxYear: new Date().getFullYear().toString(), currency: 'USD', country: 'US' as BusinessCountry, taxId: '' })
   const [submitting, setSubmitting] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', industry: '', entityType: '', currency: 'USD' })
+  const [editForm, setEditForm] = useState({ name: '', industry: '', entityType: '', currency: 'USD', country: 'US' as BusinessCountry, taxId: '' })
   const [saving, setSaving] = useState(false)
+
+  function setFormCountry(country: BusinessCountry) {
+    setForm(f => ({ ...f, country, currency: DEFAULT_CURRENCY[country], entityType: '' }))
+  }
+
+  function setEditFormCountry(country: BusinessCountry) {
+    setEditForm(f => ({ ...f, country, currency: DEFAULT_CURRENCY[country], entityType: '' }))
+  }
 
   useEffect(() => {
     setActiveBizId(localStorage.getItem('activeBusiness') || '')
@@ -61,7 +69,7 @@ export default function NegociosPage() {
       const data = await res.json()
       if (!res.ok) { toast(data.error || t('business.failed'), 'error'); return }
       setBusinesses(b => [...b, data])
-      setForm({ name: '', industry: '', entityType: '', taxYear: new Date().getFullYear().toString(), currency: 'USD' })
+      setForm({ name: '', industry: '', entityType: '', taxYear: new Date().getFullYear().toString(), currency: 'USD', country: 'US', taxId: '' })
       localStorage.setItem('activeBusiness', data.id)
       setActiveBizId(data.id)
       toast(t('business.created'), 'success')
@@ -80,7 +88,7 @@ export default function NegociosPage() {
 
   function startEdit(b: any) {
     setEditId(b.id)
-    setEditForm({ name: b.name, industry: b.industry || '', entityType: b.entityType || '', currency: b.currency || 'USD' })
+    setEditForm({ name: b.name, industry: b.industry || '', entityType: b.entityType || '', currency: b.currency || 'USD', country: (b.country || 'US') as BusinessCountry, taxId: b.taxId || '' })
   }
 
   async function saveEdit(id: string) {
@@ -145,17 +153,26 @@ export default function NegociosPage() {
                       onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                     />
                     <div className="grid grid-cols-3 gap-3">
+                      <select className="input" value={editForm.country} onChange={e => setEditFormCountry(e.target.value as BusinessCountry)}>
+                        {COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      </select>
                       <select className="input" value={editForm.industry} onChange={e => setEditForm(f => ({ ...f, industry: e.target.value }))}>
                         <option value="">— Industria —</option>
                         {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
                       </select>
                       <select className="input" value={editForm.entityType} onChange={e => setEditForm(f => ({ ...f, entityType: e.target.value }))}>
                         <option value="">— Tipo de entidad —</option>
-                        {ENTITIES.map(e => <option key={e} value={e}>{e}</option>)}
+                        {ENTITY_TYPES[editForm.country].map(e => <option key={e} value={e}>{e}</option>)}
                       </select>
                       <select className="input" value={editForm.currency} onChange={e => setEditForm(f => ({ ...f, currency: e.target.value }))}>
                         {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                       </select>
+                      <input
+                        className="input"
+                        placeholder={TAX_ID_LABEL[editForm.country]}
+                        value={editForm.taxId}
+                        onChange={e => setEditForm(f => ({ ...f, taxId: e.target.value }))}
+                      />
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => saveEdit(b.id)} disabled={saving} className="btn-primary text-sm py-1.5 px-4 disabled:opacity-50">
@@ -178,7 +195,7 @@ export default function NegociosPage() {
                           <span className="text-xs bg-emerald-100 text-emerald-700 font-medium px-2 py-0.5 rounded-full">Activo</span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400">{[b.industry, b.entityType, b.taxYear, b.currency].filter(Boolean).join(' · ')}</p>
+                      <p className="text-xs text-gray-400">{[COUNTRIES.find(c => c.value === b.country)?.label, b.industry, b.entityType, b.taxYear, b.currency].filter(Boolean).join(' · ')}</p>
                       {b.userRole && <span className="text-xs text-[#1B4965] font-medium">{b.userRole}</span>}
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
@@ -232,6 +249,12 @@ export default function NegociosPage() {
                 required
               />
             </div>
+            <div>
+              <label className="label">País</label>
+              <select className="input" value={form.country} onChange={e => setFormCountry(e.target.value as BusinessCountry)}>
+                {COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">{t('business.industry')}</label>
@@ -244,15 +267,26 @@ export default function NegociosPage() {
                 <label className="label">{t('business.entity')}</label>
                 <select className="input" value={form.entityType} onChange={e => setForm(f => ({ ...f, entityType: e.target.value }))}>
                   <option value="">{t('common.select')}</option>
-                  {ENTITIES.map(e => <option key={e} value={e}>{e}</option>)}
+                  {ENTITY_TYPES[form.country].map(e => <option key={e} value={e}>{e}</option>)}
                 </select>
               </div>
             </div>
-            <div>
-              <label className="label">Moneda</label>
-              <select className="input" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
-                {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Moneda</label>
+                <select className="input" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
+                  {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label">{TAX_ID_LABEL[form.country]}</label>
+                <input
+                  className="input"
+                  value={form.taxId}
+                  onChange={e => setForm(f => ({ ...f, taxId: e.target.value }))}
+                  placeholder={TAX_ID_LABEL[form.country]}
+                />
+              </div>
             </div>
             <button type="submit" disabled={submitting} className="btn-primary disabled:opacity-50">
               {submitting ? t('common.loading') : t('business.create')}

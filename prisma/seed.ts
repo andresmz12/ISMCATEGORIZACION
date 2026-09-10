@@ -1,39 +1,15 @@
 import { PrismaClient, AccountType, Plan, Role, TxType, TxStatus, Deductibility, ClassMethod } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { SYSTEM_CATEGORIES, systemCategoryId } from '../lib/system-categories'
 
 const prisma = new PrismaClient()
 
-const SYSTEM_CATEGORIES = [
-  { name: 'Advertising', irsCode: 'Schedule C Line 8' },
-  { name: 'Car & Truck Expenses', irsCode: 'Schedule C Line 9' },
-  { name: 'Commissions & Fees', irsCode: 'Schedule C Line 10' },
-  { name: 'Contract Labor', irsCode: 'Schedule C Line 11' },
-  { name: 'Insurance', irsCode: 'Schedule C Line 15' },
-  { name: 'Interest - Other', irsCode: 'Schedule C Line 16b' },
-  { name: 'Legal & Professional', irsCode: 'Schedule C Line 17' },
-  { name: 'Office Expenses', irsCode: 'Schedule C Line 18' },
-  { name: 'Rent - Other', irsCode: 'Schedule C Line 20b' },
-  { name: 'Repairs & Maintenance', irsCode: 'Schedule C Line 21' },
-  { name: 'Supplies', irsCode: 'Schedule C Line 22' },
-  { name: 'Taxes & Licenses', irsCode: 'Schedule C Line 23' },
-  { name: 'Travel', irsCode: 'Schedule C Line 24a' },
-  { name: 'Meals (50%)', irsCode: 'Schedule C Line 24b' },
-  { name: 'Utilities', irsCode: 'Schedule C Line 25' },
-  { name: 'Wages', irsCode: 'Schedule C Line 26' },
-  { name: 'Other Expenses', irsCode: 'Schedule C Line 27a' },
-  { name: 'Cost of Goods Sold', irsCode: 'Schedule C Part III' },
-  { name: 'Business Income', irsCode: 'Schedule C Line 1' },
-  { name: 'Owner Draw / Personal', irsCode: 'Non-Deductible' },
-  { name: 'Transfer', irsCode: 'Non-Deductible' },
-  { name: 'Uncategorized', irsCode: 'Unclassified' },
-]
-
-async function upsertSystemCategory(name: string, irsCode: string) {
-  const id = `sys_${name.replace(/[\s/&()]+/g, '_').toLowerCase()}`
+async function upsertSystemCategory(name: string, irsCode: string, country: 'US' | 'CO' | null) {
+  const id = systemCategoryId(name)
   return prisma.category.upsert({
     where: { id },
     update: {},
-    create: { id, name, irsCode, isSystem: true },
+    create: { id, name, irsCode, country, isSystem: true },
   })
 }
 
@@ -43,7 +19,7 @@ async function main() {
   // System categories
   const catMap: Record<string, string> = {}
   for (const c of SYSTEM_CATEGORIES) {
-    const cat = await upsertSystemCategory(c.name, c.irsCode)
+    const cat = await upsertSystemCategory(c.name, c.irsCode, c.country)
     catMap[c.name] = cat.id
   }
   console.log('✓ System categories created')
