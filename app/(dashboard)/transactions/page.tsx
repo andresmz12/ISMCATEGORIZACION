@@ -900,7 +900,6 @@ function TransactionsContent() {
                     options={metaVendors}
                     value={addForm.vendor}
                     onChange={v => setAddForm(f => ({ ...f, vendor: v }))}
-                    placeholder="Nombre del proveedor"
                   />
                 </div>
                 <div>
@@ -983,7 +982,6 @@ function TransactionsContent() {
                     options={metaVendors}
                     value={detailsForm.vendor}
                     onChange={v => setDetailsForm(f => ({ ...f, vendor: v }))}
-                    placeholder="Nombre del proveedor"
                   />
                 </div>
                 <div>

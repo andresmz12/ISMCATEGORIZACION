@@ -87,22 +87,51 @@ export default function ReportsPage() {
     const autoTable = (await import('jspdf-autotable')).default
     const doc = new jsPDF()
     const biz = businesses.find((b: any) => b.id === activeBiz)
-    doc.setFontSize(18)
-    doc.text(`${t('reports.expenseReport')} — ${biz?.name || ''}`, 14, 20)
+    const W = 210
+    const BLUE: [number, number, number] = [27, 73, 101]
+    const TEAL: [number, number, number] = [46, 196, 182]
+    const WHITE: [number, number, number] = [255, 255, 255]
+    const LIGHT_BLUE: [number, number, number] = [240, 246, 250]
+
+    // Header band — plain black-on-white jsPDF text with no table styling
+    // read as an unfinished draft, and the "→" period separator isn't in
+    // jsPDF's default font encoding (renders as garbled glyphs) — same
+    // colored-band look and em-dash separator as the other report PDFs.
+    doc.setFillColor(...BLUE)
+    doc.rect(0, 0, W, 24, 'F')
+    doc.setFillColor(...TEAL)
+    doc.rect(0, 0, 8, 24, 'F')
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...WHITE)
+    doc.text(`${t('reports.expenseReport')} — ${biz?.name || ''}`, 14, 14)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(180, 210, 225)
+    doc.text(`${t('reports.period')}: ${from} — ${to}`, 14, 20)
+
+    const tableHeadStyles = { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold' as const, fontSize: 9 }
+    const tableBodyStyles = { fontSize: 8 }
+    const tableAltStyles = { fillColor: LIGHT_BLUE }
+
     doc.setFontSize(11)
-    doc.text(`${t('reports.period')}: ${from} → ${to}`, 14, 30)
-    doc.setFontSize(12)
-    doc.text(t('reports.summary'), 14, 44)
+    doc.setTextColor(...BLUE)
+    doc.text(t('reports.summary'), 14, 34)
     autoTable(doc, {
-      startY: 48,
+      startY: 38,
       head: [['', t('reports.total')]],
       body: [
         [t('reports.totalIncome'), fmt(report.summary.income)],
         [t('reports.totalExpenses'), fmt(report.summary.totalExpenses)],
         [t('reports.netProfit'), fmt(report.summary.netProfit)],
       ],
+      headStyles: tableHeadStyles,
+      bodyStyles: tableBodyStyles,
+      alternateRowStyles: tableAltStyles,
+      columnStyles: { 1: { halign: 'right' } },
     })
     const y1 = (doc as any).lastAutoTable.finalY + 10
+    doc.setTextColor(...BLUE)
     doc.text(t('reports.expensesByCategory'), 14, y1)
     autoTable(doc, {
       startY: y1 + 4,
@@ -110,6 +139,10 @@ export default function ReportsPage() {
       body: report.expensesByCategory.map((c: any) => [
         c.name, fmt(c.total), fmt(c.deductible), c.count,
       ]),
+      headStyles: tableHeadStyles,
+      bodyStyles: tableBodyStyles,
+      alternateRowStyles: tableAltStyles,
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'center' } },
     })
 
     // Colombia-only sections (IVA, cost centers, vendors) — only rendered
@@ -117,31 +150,46 @@ export default function ReportsPage() {
     // on-screen cards below use.
     if (report.vat.length > 0) {
       const yVat = (doc as any).lastAutoTable.finalY + 10
+      doc.setTextColor(...BLUE)
       doc.text('Gastos por tipo de IVA', 14, yVat)
       autoTable(doc, {
         startY: yVat + 4,
         head: [['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')]],
         body: report.vat.map((v: any) => [v.vatRate, fmt(v.total), fmt(v.deductible), v.count]),
+        headStyles: tableHeadStyles,
+        bodyStyles: tableBodyStyles,
+        alternateRowStyles: tableAltStyles,
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'center' } },
       })
     }
 
     if (report.costCenters.length > 0) {
       const yCc = (doc as any).lastAutoTable.finalY + 10
+      doc.setTextColor(...BLUE)
       doc.text('Gastos por centro de costo', 14, yCc)
       autoTable(doc, {
         startY: yCc + 4,
         head: [['Centro de costo', t('reports.total'), t('reports.count')]],
         body: report.costCenters.map((cc: any) => [cc.costCenter, fmt(cc.total), cc.count]),
+        headStyles: tableHeadStyles,
+        bodyStyles: tableBodyStyles,
+        alternateRowStyles: tableAltStyles,
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'center' } },
       })
     }
 
     if (report.vendors.length > 0) {
       const yV = (doc as any).lastAutoTable.finalY + 10
+      doc.setTextColor(...BLUE)
       doc.text('Gasto por proveedor', 14, yV)
       autoTable(doc, {
         startY: yV + 4,
         head: [['Proveedor', t('reports.total'), t('reports.count'), 'Promedio']],
         body: report.vendors.map((v: any) => [v.vendor, fmt(v.total), v.count, fmt(v.avg)]),
+        headStyles: tableHeadStyles,
+        bodyStyles: tableBodyStyles,
+        alternateRowStyles: tableAltStyles,
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'center' }, 3: { halign: 'right' } },
       })
     }
 
@@ -153,6 +201,45 @@ export default function ReportsPage() {
   // cost centers, vendors) — the general Exportar PDF/Excel buttons already
   // bundle these in, but that isn't obvious from the button label, so each
   // section also gets its own visible download right next to its table.
+  async function downloadSectionPDF(filenamePrefix: string, title: string, header: string[], rows: (string | number)[][]) {
+    setExporting(true)
+    try {
+      const { jsPDF } = await import('jspdf')
+      const autoTable = (await import('jspdf-autotable')).default
+      const doc = new jsPDF()
+      const biz = businesses.find((b: any) => b.id === activeBiz)
+      const W = 210
+      const BLUE: [number, number, number] = [27, 73, 101]
+      const TEAL: [number, number, number] = [46, 196, 182]
+      const WHITE: [number, number, number] = [255, 255, 255]
+
+      doc.setFillColor(...BLUE)
+      doc.rect(0, 0, W, 24, 'F')
+      doc.setFillColor(...TEAL)
+      doc.rect(0, 0, 8, 24, 'F')
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...WHITE)
+      doc.text(`${title} — ${biz?.name || ''}`, 14, 14)
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(180, 210, 225)
+      doc.text(`${t('reports.period')}: ${from} — ${to}`, 14, 20)
+
+      autoTable(doc, {
+        startY: 32,
+        head: [header],
+        body: rows,
+        headStyles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        alternateRowStyles: { fillColor: [240, 246, 250] },
+      })
+      doc.save(`${filenamePrefix}_${activeBiz}_${from}_${to}.pdf`)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   async function downloadSectionExcel(filenamePrefix: string, sheetName: string, header: string[], rows: (string | number)[][]) {
     setExporting(true)
     try {
@@ -885,13 +972,22 @@ export default function ReportsPage() {
             <div id="report-cost-centers" className="card p-5 scroll-mt-4">
               <div className="flex items-start justify-between gap-3 mb-1">
                 <h2 className="text-base font-semibold text-gray-800">Participación por centro de costos</h2>
-                <button
-                  onClick={() => downloadSectionExcel('centros-de-costo', 'Centros de costo', ['Centro de costo', t('reports.total'), t('reports.count')], report.costCenters.map((cc: any) => [cc.costCenter, cc.total, cc.count]))}
-                  disabled={exporting}
-                  className="btn-secondary text-xs py-1 px-2 flex-shrink-0 disabled:opacity-50"
-                >
-                  Descargar Excel
-                </button>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => downloadSectionPDF('centros-de-costo', 'Gastos por centro de costo', ['Centro de costo', t('reports.total'), t('reports.count')], report.costCenters.map((cc: any) => [cc.costCenter, fmt(cc.total), cc.count]))}
+                    disabled={exporting}
+                    className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
+                  >
+                    Descargar PDF
+                  </button>
+                  <button
+                    onClick={() => downloadSectionExcel('centros-de-costo', 'Centros de costo', ['Centro de costo', t('reports.total'), t('reports.count')], report.costCenters.map((cc: any) => [cc.costCenter, cc.total, cc.count]))}
+                    disabled={exporting}
+                    className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
+                  >
+                    Descargar Excel
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-gray-400 mb-4">% que representa cada categoría dentro del gasto de cada centro de costos.</p>
               <div className="space-y-5">
@@ -928,13 +1024,22 @@ export default function ReportsPage() {
             <div id="report-iva" className="card p-5 scroll-mt-4">
               <div className="flex items-start justify-between gap-3 mb-1">
                 <h2 className="text-base font-semibold text-gray-800">Gastos por tipo de IVA</h2>
-                <button
-                  onClick={() => downloadSectionExcel('iva', 'IVA', ['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')], report.vat.map((v: any) => [v.vatRate, v.total, v.deductible, v.count]))}
-                  disabled={exporting}
-                  className="btn-secondary text-xs py-1 px-2 flex-shrink-0 disabled:opacity-50"
-                >
-                  Descargar Excel
-                </button>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => downloadSectionPDF('iva', 'Gastos por tipo de IVA', ['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')], report.vat.map((v: any) => [v.vatRate, fmt(v.total), fmt(v.deductible), v.count]))}
+                    disabled={exporting}
+                    className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
+                  >
+                    Descargar PDF
+                  </button>
+                  <button
+                    onClick={() => downloadSectionExcel('iva', 'IVA', ['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')], report.vat.map((v: any) => [v.vatRate, v.total, v.deductible, v.count]))}
+                    disabled={exporting}
+                    className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
+                  >
+                    Descargar Excel
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-gray-400 mb-4">Agrupado por la tarifa de IVA de cada categoría — para armar la declaración de IVA.</p>
               <div className="overflow-x-auto">
@@ -967,13 +1072,22 @@ export default function ReportsPage() {
             <div id="report-vendors" className="card p-5 scroll-mt-4">
               <div className="flex items-start justify-between gap-3 mb-1">
                 <h2 className="text-base font-semibold text-gray-800">Gasto por proveedor</h2>
-                <button
-                  onClick={() => downloadSectionExcel('proveedores', 'Proveedores', ['Proveedor', t('reports.total'), t('reports.count'), 'Promedio', 'Última compra'], report.vendors.map((v: any) => [v.vendor, v.total, v.count, v.avg, new Date(v.lastDate).toLocaleDateString()]))}
-                  disabled={exporting}
-                  className="btn-secondary text-xs py-1 px-2 flex-shrink-0 disabled:opacity-50"
-                >
-                  Descargar Excel
-                </button>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => downloadSectionPDF('proveedores', 'Gasto por proveedor', ['Proveedor', t('reports.total'), t('reports.count'), 'Promedio', 'Última compra'], report.vendors.map((v: any) => [v.vendor, fmt(v.total), v.count, fmt(v.avg), new Date(v.lastDate).toLocaleDateString()]))}
+                    disabled={exporting}
+                    className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
+                  >
+                    Descargar PDF
+                  </button>
+                  <button
+                    onClick={() => downloadSectionExcel('proveedores', 'Proveedores', ['Proveedor', t('reports.total'), t('reports.count'), 'Promedio', 'Última compra'], report.vendors.map((v: any) => [v.vendor, v.total, v.count, v.avg, new Date(v.lastDate).toLocaleDateString()]))}
+                    disabled={exporting}
+                    className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
+                  >
+                    Descargar Excel
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-gray-400 mb-4">Total gastado, frecuencia de compra y promedio por transacción.</p>
               <div className="overflow-x-auto">
