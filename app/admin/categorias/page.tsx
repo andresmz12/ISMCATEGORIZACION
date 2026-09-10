@@ -20,6 +20,7 @@ export default function AdminCategoriasPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
+  const [filterCountry, setFilterCountry] = useState('')
 
   const [editCat, setEditCat] = useState<Category | null>(null)
   const [editForm, setEditForm] = useState({ name: '', irsCode: '', description: '', isSystem: true, country: '' as '' | 'US' | 'CO', vatRate: '' })
@@ -108,6 +109,8 @@ export default function AdminCategoriasPage() {
   const filtered = cats.filter(c => {
     if (filterType === 'system' && !c.isSystem) return false
     if (filterType === 'custom' && c.isSystem) return false
+    if (filterCountry === 'shared' && c.country !== null) return false
+    if ((filterCountry === 'US' || filterCountry === 'CO') && c.country !== filterCountry) return false
     if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -141,6 +144,12 @@ export default function AdminCategoriasPage() {
           <option value="">Todas</option>
           <option value="system">Del sistema</option>
           <option value="custom">Personalizadas</option>
+        </select>
+        <select className="input text-sm w-44" value={filterCountry} onChange={e => setFilterCountry(e.target.value)}>
+          <option value="">Todos los países</option>
+          <option value="US">🇺🇸 Estados Unidos</option>
+          <option value="CO">🇨🇴 Colombia</option>
+          <option value="shared">Compartidas (ambos)</option>
         </select>
       </div>
 

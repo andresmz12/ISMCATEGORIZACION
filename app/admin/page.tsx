@@ -17,6 +17,12 @@ interface User {
   aiMonthlyBudgetCents: number | null
   chatbotEnabled: boolean
   aiUsage: { costCents: number; blocked: boolean; unblockedByAdmin: boolean }[]
+  // Country picked at registration (BillingAccount.defaultCountry) — a proxy
+  // for "which country is this account's business in", used by the country
+  // filter below. Not authoritative if the account owns businesses in more
+  // than one country.
+  country?: 'US' | 'CO' | null
+  clientType?: string | null
 }
 
 function fmtUsd(cents: number) {
@@ -42,6 +48,7 @@ export default function AdminPage() {
   const [filterType, setFilterType] = useState('')
   const [filterPlan, setFilterPlan] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [filterCountry, setFilterCountry] = useState('')
   const [search, setSearch] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
@@ -239,6 +246,7 @@ export default function AdminPage() {
     if (filterPlan && u.plan !== filterPlan) return false
     if (filterStatus === 'active' && !u.isActive) return false
     if (filterStatus === 'suspended' && u.isActive) return false
+    if (filterCountry && (u.country || 'US') !== filterCountry) return false
     if (search && !u.email.toLowerCase().includes(search.toLowerCase()) && !u.name?.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -282,6 +290,25 @@ export default function AdminPage() {
           ))}
         </div>
       )}
+
+      {/* Country tabs */}
+      <div className="flex gap-2">
+        {[
+          { value: '', label: 'Todos los países' },
+          { value: 'US', label: '🇺🇸 Estados Unidos' },
+          { value: 'CO', label: '🇨🇴 Colombia' },
+        ].map(c => (
+          <button
+            key={c.value}
+            onClick={() => setFilterCountry(c.value)}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+              filterCountry === c.value ? 'bg-[#1B4965] text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
 
       {/* Filters */}
       <div className="card p-4">
@@ -339,9 +366,17 @@ export default function AdminPage() {
                       <p className="text-xs text-gray-400">{user.email}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeBadge[user.accountType] || ''}`}>
-                        {user.accountType === 'SUPERADMIN' ? t('role.superadmin') : user.accountType === 'TEAM_MEMBER' ? t('role.team_member') : t('role.accountant')}
-                      </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeBadge[user.accountType] || ''}`}>
+                          {user.accountType === 'SUPERADMIN' ? t('role.superadmin') : user.accountType === 'TEAM_MEMBER' ? t('role.team_member') : t('role.accountant')}
+                        </span>
+                        {user.accountType !== 'SUPERADMIN' && (
+                          <span className="text-xs text-gray-400">
+                            {user.country === 'CO' ? '🇨🇴 Colombia' : '🇺🇸 USA'}
+                            {user.clientType && ` · ${user.clientType.replace('_', ' ')}`}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <select

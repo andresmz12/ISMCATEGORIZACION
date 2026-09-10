@@ -22,6 +22,7 @@ export default function AdminNegociosPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [filterCountry, setFilterCountry] = useState('')
 
   async function load() {
     setLoading(true)
@@ -34,6 +35,7 @@ export default function AdminNegociosPage() {
   useEffect(() => { load() }, [])
 
   const filtered = businesses.filter(b => {
+    if (filterCountry && (b.country || 'US') !== filterCountry) return false
     if (search && !b.name.toLowerCase().includes(search.toLowerCase())) {
       const userMatch = b.users.some(bu =>
         bu.user.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -56,7 +58,7 @@ export default function AdminNegociosPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Negocios</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{businesses.length} negocios registrados</p>
+          <p className="text-sm text-gray-500 mt-0.5">{filtered.length} de {businesses.length} negocios registrados</p>
         </div>
       </div>
 
@@ -66,6 +68,24 @@ export default function AdminNegociosPage() {
           una cuenta puede tener varios negocios y comparten un solo límite. Edítalos en{' '}
           <Link href="/admin" className="underline font-medium">Administración → Cuentas</Link>.
         </p>
+      </div>
+
+      <div className="flex gap-2">
+        {[
+          { value: '', label: 'Todos los países' },
+          { value: 'US', label: '🇺🇸 Estados Unidos' },
+          { value: 'CO', label: '🇨🇴 Colombia' },
+        ].map(c => (
+          <button
+            key={c.value}
+            onClick={() => setFilterCountry(c.value)}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+              filterCountry === c.value ? 'bg-[#1B4965] text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
 
       <div className="card p-4">

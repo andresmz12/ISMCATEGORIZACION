@@ -34,6 +34,8 @@ export async function GET() {
           name: true,
           aiMonthlyBudgetCents: true,
           chatbotEnabled: true,
+          defaultCountry: true,
+          clientType: true,
           aiUsage: { where: { period } },
         },
       },
@@ -47,6 +49,12 @@ export async function GET() {
     firmName: billingAccount.name,
     aiMonthlyBudgetCents: billingAccount.aiMonthlyBudgetCents,
     chatbotEnabled: billingAccount.chatbotEnabled,
+    // The country picked at registration — a proxy for "which country is
+    // this client's business in" for the admin panel's country filter (see
+    // BillingAccount.defaultCountry). Not authoritative if the account owns
+    // businesses in more than one country, but that's rare in practice.
+    country: billingAccount.defaultCountry,
+    clientType: billingAccount.clientType,
     aiUsage: billingAccount.aiUsage,
   })))
 }
