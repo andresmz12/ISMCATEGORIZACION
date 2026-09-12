@@ -223,6 +223,29 @@ model Business {
   documents             Document[]
   assignments           Assignment[]
   recurringTransactions RecurringTransaction[]
+  vendors               Vendor[]
+}
+
+// Per-business vendor details, keyed by the same free-text name already stored
+// on Transaction.vendor (which stays a plain string — no FK, no backfill of
+// existing rows). This exists because a Colombian certificado de retención has
+// to name the tercero by NIT, and the NIT belongs to the vendor, not to each
+// individual transaction. Rows are created lazily the first time someone fills
+// in a NIT for a vendor name.
+model Vendor {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  // NIT (Colombia) / tax id of the tercero. Free-text: formats vary
+  // (with or without the dígito de verificación) and the app never validates
+  // it against the DIAN — it's reproduced on the certificate as typed.
+  nit        String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, name])
+  @@index([businessId])
 }
 
 // Scoped to the BillingAccount (not Business) — an account's AI spend is

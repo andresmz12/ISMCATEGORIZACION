@@ -69,29 +69,53 @@ function Counter({ to, prefix = '', suffix = '', decimals = 0 }: { to: number; p
 
 type LedgerRow = { desc: string; amount: string; cat: { es: string; en: string }; income?: boolean }
 
-const LEDGER_POOL: LedgerRow[] = [
-  { desc: 'HOME DEPOT #4521 ATLANTA GA', amount: '-218.40', cat: { es: 'Suministros', en: 'Supplies' } },
-  { desc: 'ZELLE FROM RODRIGUEZ CONSTR', amount: '+3,500.00', cat: { es: 'Ingreso', en: 'Income' }, income: true },
-  { desc: 'SHELL OIL 57442 MIAMI FL', amount: '-64.12', cat: { es: 'Vehículo', en: 'Car & Truck' } },
-  { desc: 'GOOGLE ADS 88231', amount: '-380.00', cat: { es: 'Publicidad', en: 'Advertising' } },
-  { desc: 'USPS PO 4402 HOUSTON TX', amount: '-27.90', cat: { es: 'Oficina', en: 'Office' } },
-  { desc: 'STRIPE PAYOUT 2201', amount: '+1,842.75', cat: { es: 'Ingreso', en: 'Income' }, income: true },
-  { desc: 'CHIPOTLE 1187 DALLAS TX', amount: '-31.55', cat: { es: 'Comidas 50%', en: 'Meals 50%' } },
-  { desc: 'STATE FARM INSURANCE', amount: '-146.00', cat: { es: 'Seguro', en: 'Insurance' } },
-]
+// The demo is country-specific, not language-specific: a Spanish-speaking
+// contractor in Atlanta still files a Schedule C in dollars, so the region
+// toggle is separate from the ES/EN one. Everything a Colombian visitor would
+// use to judge "is this built for me" — merchants, currency, and the tax
+// framework in the footer — comes from here.
+export type Region = 'US' | 'CO'
 
-function LiveLedger({ lang }: { lang: 'es' | 'en' }) {
+const LEDGER_POOL: Record<Region, LedgerRow[]> = {
+  US: [
+    { desc: 'HOME DEPOT #4521 ATLANTA GA', amount: '-218.40', cat: { es: 'Suministros', en: 'Supplies' } },
+    { desc: 'ZELLE FROM RODRIGUEZ CONSTR', amount: '+3,500.00', cat: { es: 'Ingreso', en: 'Income' }, income: true },
+    { desc: 'SHELL OIL 57442 MIAMI FL', amount: '-64.12', cat: { es: 'Vehículo', en: 'Car & Truck' } },
+    { desc: 'GOOGLE ADS 88231', amount: '-380.00', cat: { es: 'Publicidad', en: 'Advertising' } },
+    { desc: 'USPS PO 4402 HOUSTON TX', amount: '-27.90', cat: { es: 'Oficina', en: 'Office' } },
+    { desc: 'STRIPE PAYOUT 2201', amount: '+1,842.75', cat: { es: 'Ingreso', en: 'Income' }, income: true },
+    { desc: 'CHIPOTLE 1187 DALLAS TX', amount: '-31.55', cat: { es: 'Comidas 50%', en: 'Meals 50%' } },
+    { desc: 'STATE FARM INSURANCE', amount: '-146.00', cat: { es: 'Seguro', en: 'Insurance' } },
+  ],
+  CO: [
+    { desc: 'PAGO PSE EXITO CALLE 80', amount: '-284.900', cat: { es: 'Suministros', en: 'Supplies' } },
+    { desc: 'NEQUI RECIBIDO DE C. TORRES', amount: '+1.850.000', cat: { es: 'Ingreso operacional', en: 'Operating income' }, income: true },
+    { desc: 'ARRIENDO LOCAL SEPTIEMBRE', amount: '-3.200.000', cat: { es: 'Arrendamientos', en: 'Rent' } },
+    { desc: 'TERPEL ESTACION AV BOYACA', amount: '-180.000', cat: { es: 'Vehículos', en: 'Vehicles' } },
+    { desc: 'HONORARIOS CONTADOR', amount: '-1.200.000', cat: { es: 'Honorarios', en: 'Professional fees' } },
+    { desc: 'TRANSF BANCOLOMBIA RECIBIDA', amount: '+4.300.000', cat: { es: 'Ingreso operacional', en: 'Operating income' }, income: true },
+    { desc: 'ENEL CODENSA FACTURA', amount: '-340.500', cat: { es: 'Servicios públicos', en: 'Utilities' } },
+    { desc: 'PAGO QR RAPPI RESTAURANTE', amount: '-96.800', cat: { es: 'Alimentación', en: 'Meals' } },
+  ],
+}
+
+function LiveLedger({ lang, region }: { lang: 'es' | 'en'; region: Region }) {
   const [rows, setRows] = useState<{ row: LedgerRow; id: number; tagged: boolean }[]>([])
   const idRef = useRef(0)
   const poolRef = useRef(0)
 
+  // Restarting on region change keeps the feed from mixing dollars and pesos
+  // in the same five visible rows.
   useEffect(() => {
     let cancelled = false
     const timers: ReturnType<typeof setTimeout>[] = []
+    const pool = LEDGER_POOL[region]
+    poolRef.current = 0
+    setRows([])
 
     const pushRow = () => {
       if (cancelled) return
-      const row = LEDGER_POOL[poolRef.current % LEDGER_POOL.length]
+      const row = pool[poolRef.current % pool.length]
       poolRef.current++
       const id = idRef.current++
       setRows(prev => [...prev.slice(-4), { row, id, tagged: false }])
@@ -107,7 +131,7 @@ function LiveLedger({ lang }: { lang: 'es' | 'en' }) {
       cancelled = true
       timers.forEach(clearTimeout)
     }
-  }, [])
+  }, [region])
 
   return (
     <div className="border border-black/10 bg-white">
@@ -117,7 +141,7 @@ function LiveLedger({ lang }: { lang: 'es' | 'en' }) {
         </span>
         <span className="flex items-center gap-1.5 font-mono text-[11px] text-black/40">
           <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: TEAL }} />
-          chase_export_jan.csv
+          {region === 'CO' ? 'bancolombia_movimientos.csv' : 'chase_export_jan.csv'}
         </span>
       </div>
       <div className="h-[300px] overflow-hidden px-4 py-3">
@@ -170,7 +194,9 @@ function LiveLedger({ lang }: { lang: 'es' | 'en' }) {
       </div>
       <div className="flex items-center justify-between border-t border-black/10 px-4 py-2.5">
         <span className="font-mono text-[11px] text-black/40">
-          {lang === 'es' ? 'IRS Schedule C · automático' : 'IRS Schedule C · automatic'}
+          {region === 'CO'
+            ? (lang === 'es' ? 'PUC · Formulario 110 · automático' : 'PUC · Formulario 110 · automatic')
+            : (lang === 'es' ? 'IRS Schedule C · automático' : 'IRS Schedule C · automatic')}
         </span>
         <span className="font-mono text-[11px] font-semibold" style={{ color: NAVY }}>
           ~95% acc.
@@ -182,8 +208,76 @@ function LiveLedger({ lang }: { lang: 'es' | 'en' }) {
 
 // ── Product demo tabs ─────────────────────────────────────────────────────────
 
-function DemoPanel({ tab, lang }: { tab: number; lang: 'es' | 'en' }) {
+// Per-region figures for the four demo tabs. Colombian amounts are in pesos
+// with the local thousands separator and no cents, and the classification
+// column cites the PUC subcuenta + Formulario 110 casilla instead of a
+// Schedule C line.
+const DEMO: Record<Region, {
+  stats: (es: boolean) => { l: string; v: string; d: string }[]
+  bankCols: { from: string; to: { es: string; en: string } }[]
+  review: (es: boolean) => { d: string; c: string; conf: string; clr: string }[]
+  pnl: (es: boolean) => { cat: string; line: string; val: string }[]
+  pnlTotal: string
+}> = {
+  US: {
+    stats: es => [
+      { l: es ? 'Ingresos YTD' : 'YTD Income', v: '$48,200', d: '+12.4%' },
+      { l: es ? 'Gastos YTD' : 'YTD Expenses', v: '$31,540', d: '−3.1%' },
+      { l: es ? 'Ganancia neta' : 'Net profit', v: '$16,660', d: '+8.9%' },
+      { l: es ? 'Total deducible' : 'Deductible total', v: '$22,180', d: 'Sched. C' },
+    ],
+    bankCols: [
+      { from: 'Transaction Date', to: { es: 'Fecha', en: 'Date' } },
+      { from: 'Merchant Name', to: { es: 'Descripción', en: 'Description' } },
+      { from: 'Debit Amount', to: { es: 'Monto', en: 'Amount' } },
+    ],
+    review: es => [
+      { d: 'AMAZON BUSINESS PRIME', c: es ? 'Oficina · Línea 18' : 'Office · Line 18', conf: 'HIGH', clr: '#059669' },
+      { d: 'DELTA AIR 0062341', c: es ? 'Viajes · Línea 24a' : 'Travel · Line 24a', conf: 'HIGH', clr: '#059669' },
+      { d: 'RESTAURANT LUNA 44', c: es ? 'Comidas 50% · 24b' : 'Meals 50% · 24b', conf: 'MED', clr: '#d97706' },
+      { d: 'MISC TRANSFER 9821', c: es ? 'Revisar manualmente' : 'Needs review', conf: 'LOW', clr: '#dc2626' },
+    ],
+    pnl: es => [
+      { cat: es ? 'Publicidad' : 'Advertising', line: 'Line 8', val: '$4,200' },
+      { cat: es ? 'Vehículo' : 'Car & truck', line: 'Line 9', val: '$3,120' },
+      { cat: es ? 'Legal y profesional' : 'Legal & professional', line: 'Line 17', val: '$3,600' },
+      { cat: es ? 'Oficina' : 'Office expense', line: 'Line 18', val: '$2,100' },
+      { cat: es ? 'Comidas (50%)' : 'Meals (50%)', line: 'Line 24b', val: '$1,890' },
+    ],
+    pnlTotal: '$14,910',
+  },
+  CO: {
+    stats: es => [
+      { l: es ? 'Ingresos YTD' : 'YTD Income', v: '$186.400.000', d: '+12.4%' },
+      { l: es ? 'Gastos YTD' : 'YTD Expenses', v: '$122.150.000', d: '−3.1%' },
+      { l: es ? 'Ganancia neta' : 'Net profit', v: '$64.250.000', d: '+8.9%' },
+      { l: es ? 'IVA descontable' : 'Deductible VAT', v: '$18.940.000', d: 'F. 300' },
+    ],
+    bankCols: [
+      { from: 'Fecha del movimiento', to: { es: 'Fecha', en: 'Date' } },
+      { from: 'Descripción', to: { es: 'Descripción', en: 'Description' } },
+      { from: 'Valor', to: { es: 'Monto', en: 'Amount' } },
+    ],
+    review: es => [
+      { d: 'ARRIENDO LOCAL SEPTIEMBRE', c: es ? 'Arrendamientos · PUC 5120' : 'Rent · PUC 5120', conf: 'HIGH', clr: '#059669' },
+      { d: 'HONORARIOS CONTADOR', c: es ? 'Honorarios · retefuente 11%' : 'Fees · 11% withholding', conf: 'HIGH', clr: '#059669' },
+      { d: 'PAGO QR RAPPI RESTAURANTE', c: es ? 'Alimentación · PUC 5195' : 'Meals · PUC 5195', conf: 'MED', clr: '#d97706' },
+      { d: 'TRANSF ENTRE CUENTAS 4471', c: es ? 'Revisar manualmente' : 'Needs review', conf: 'LOW', clr: '#dc2626' },
+    ],
+    pnl: es => [
+      { cat: es ? 'Arrendamientos' : 'Rent', line: 'PUC 5120', val: '$38.400.000' },
+      { cat: es ? 'Nómina y prestaciones' : 'Payroll', line: 'PUC 5105', val: '$31.200.000' },
+      { cat: es ? 'Honorarios' : 'Professional fees', line: 'PUC 5110', val: '$14.400.000' },
+      { cat: es ? 'Servicios públicos' : 'Utilities', line: 'PUC 5135', val: '$4.086.000' },
+      { cat: es ? 'Publicidad y mercadeo' : 'Advertising', line: 'PUC 5195', val: '$3.900.000' },
+    ],
+    pnlTotal: '$91.986.000',
+  },
+}
+
+function DemoPanel({ tab, lang, region }: { tab: number; lang: 'es' | 'en'; region: Region }) {
   const es = lang === 'es'
+  const demo = DEMO[region]
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -196,12 +290,7 @@ function DemoPanel({ tab, lang }: { tab: number; lang: 'es' | 'en' }) {
       >
         {tab === 0 && (
           <div className="grid gap-4 sm:grid-cols-2">
-            {[
-              { l: es ? 'Ingresos YTD' : 'YTD Income', v: '$48,200', d: '+12.4%' },
-              { l: es ? 'Gastos YTD' : 'YTD Expenses', v: '$31,540', d: '−3.1%' },
-              { l: es ? 'Ganancia neta' : 'Net profit', v: '$16,660', d: '+8.9%' },
-              { l: es ? 'Total deducible' : 'Deductible total', v: '$22,180', d: 'Sched. C' },
-            ].map((s, i) => (
+            {demo.stats(es).map((s, i) => (
               <motion.div
                 key={s.l}
                 initial={{ opacity: 0, y: 10 }}
@@ -241,11 +330,7 @@ function DemoPanel({ tab, lang }: { tab: number; lang: 'es' | 'en' }) {
             <p className="font-mono text-[11px] uppercase tracking-widest text-black/40">
               {es ? 'Mapeo automático de columnas' : 'Automatic column mapping'}
             </p>
-            {[
-              { from: 'Transaction Date', to: es ? 'Fecha' : 'Date' },
-              { from: 'Merchant Name', to: es ? 'Descripción' : 'Description' },
-              { from: 'Debit Amount', to: es ? 'Monto' : 'Amount' },
-            ].map((m, i) => (
+            {demo.bankCols.map((m, i) => (
               <motion.div
                 key={m.from}
                 initial={{ opacity: 0, x: -14 }}
@@ -255,7 +340,7 @@ function DemoPanel({ tab, lang }: { tab: number; lang: 'es' | 'en' }) {
               >
                 <span className="flex-1 border border-black/10 bg-white px-3 py-2 font-mono text-xs text-black/60">{m.from}</span>
                 <span className="font-mono text-sm" style={{ color: TEAL }}>→</span>
-                <span className="flex-1 border px-3 py-2 font-mono text-xs font-semibold" style={{ borderColor: `${TEAL}66`, backgroundColor: `${TEAL}0d`, color: '#0f766e' }}>{m.to}</span>
+                <span className="flex-1 border px-3 py-2 font-mono text-xs font-semibold" style={{ borderColor: `${TEAL}66`, backgroundColor: `${TEAL}0d`, color: '#0f766e' }}>{m.to[lang]}</span>
               </motion.div>
             ))}
             <div className="grid grid-cols-3 gap-3 pt-3">
@@ -280,12 +365,7 @@ function DemoPanel({ tab, lang }: { tab: number; lang: 'es' | 'en' }) {
             <p className="font-mono text-[11px] uppercase tracking-widest text-black/40">
               {es ? 'Revisión de confianza' : 'Confidence review'}
             </p>
-            {[
-              { d: 'AMAZON BUSINESS PRIME', c: es ? 'Oficina · Línea 18' : 'Office · Line 18', conf: 'HIGH', clr: '#059669' },
-              { d: 'DELTA AIR 0062341', c: es ? 'Viajes · Línea 24a' : 'Travel · Line 24a', conf: 'HIGH', clr: '#059669' },
-              { d: 'RESTAURANT LUNA 44', c: es ? 'Comidas 50% · 24b' : 'Meals 50% · 24b', conf: 'MED', clr: '#d97706' },
-              { d: 'MISC TRANSFER 9821', c: es ? 'Revisar manualmente' : 'Needs review', conf: 'LOW', clr: '#dc2626' },
-            ].map((r, i) => (
+            {demo.review(es).map((r, i) => (
               <motion.div
                 key={r.d}
                 initial={{ opacity: 0, x: -14 }}
@@ -327,13 +407,7 @@ function DemoPanel({ tab, lang }: { tab: number; lang: 'es' | 'en' }) {
               </div>
             </div>
             <div className="px-5 py-3">
-              {[
-                { cat: es ? 'Publicidad' : 'Advertising', line: 'Line 8', val: '$4,200' },
-                { cat: es ? 'Vehículo' : 'Car & truck', line: 'Line 9', val: '$3,120' },
-                { cat: es ? 'Legal y profesional' : 'Legal & professional', line: 'Line 17', val: '$3,600' },
-                { cat: es ? 'Oficina' : 'Office expense', line: 'Line 18', val: '$2,100' },
-                { cat: es ? 'Comidas (50%)' : 'Meals (50%)', line: 'Line 24b', val: '$1,890' },
-              ].map((r, i) => (
+              {demo.pnl(es).map((r, i) => (
                 <motion.div
                   key={r.cat}
                   initial={{ opacity: 0 }}
@@ -350,7 +424,7 @@ function DemoPanel({ tab, lang }: { tab: number; lang: 'es' | 'en' }) {
                 <span className="font-mono text-[11px] font-bold uppercase tracking-wider" style={{ color: NAVY }}>
                   {es ? 'Total deducible' : 'Total deductible'}
                 </span>
-                <span className="font-mono text-sm font-bold" style={{ color: NAVY }}>$14,910</span>
+                <span className="font-mono text-sm font-bold" style={{ color: NAVY }}>{demo.pnlTotal}</span>
               </div>
             </div>
           </div>
@@ -580,13 +654,122 @@ const copy = {
   },
 }
 
+// Colombia overrides, applied on top of the base (US) copy. Only the strings
+// that name a tax framework, a bank or a price change — everything else is
+// identical, so this stays a small patch instead of a second full copy tree.
+//
+// Prices stay in USD because that's what the Square checkout actually charges
+// (see app/api/square/checkout/route.ts); the peso figure is shown as a
+// reference so a Colombian visitor knows what it costs them, without the
+// landing promising a COP charge the billing can't honor.
+const COP_PER_USD = 4000
+const copInfo = (usd: string) => `≈ $${(parseInt(usd.replace(/\D/g, ''), 10) * COP_PER_USD).toLocaleString('es-CO')} COP`
+
+const coOverrides = {
+  es: {
+    hero: {
+      kicker: 'P&L y declaración de renta para negocios en Colombia',
+      sub: 'Importa el extracto de tu banco, deja que la IA clasifique cada movimiento según el PUC, y entrega a tu contador un P&L limpio con IVA y retención listos. Eso es todo.',
+      note: `Desde $20 USD/mes (${copInfo('20')}) · Sin permanencia`,
+    },
+    ticker: ['BANCOLOMBIA', 'DAVIVIENDA', 'BBVA', 'BANCO DE BOGOTÁ', 'NEQUI', 'DAVIPLATA', 'CSV', 'XLSX', 'PDF', 'PUC', 'FORMULARIO 110', 'IVA'],
+    steps: {
+      items: [
+        { n: '01', title: 'Importa tu banco', desc: 'Descarga el extracto en CSV, Excel o PDF de cualquier banco colombiano y arrástralo. Detectamos fecha, descripción y valor automáticamente, y filtramos duplicados.' },
+        { n: '02', title: 'Clasifica con IA', desc: 'Cada movimiento recibe su cuenta del PUC con su tarifa de IVA y de retención, más un nivel de confianza. Tú revisas las dudosas y confirmas el resto con un clic.' },
+        { n: '03', title: 'Entrega el reporte', desc: 'Genera el P&L en PDF o Excel con desglose por cuenta PUC, reporte de IVA, retención en la fuente y certificados por proveedor. Tu contador solo revisa y presenta.' },
+      ],
+    },
+    statsLabel: 'categorías PUC',
+    faq: {
+      items: [
+        { q: '¿Funciona con mi banco?', a: 'Sí. Funciona con cualquier banco colombiano que permita exportar movimientos en CSV, Excel o PDF: Bancolombia, Davivienda, BBVA, Banco de Bogotá, Nequi, Daviplata y más.' },
+        { q: '¿Necesito saber de contabilidad?', a: 'No. La plataforma está diseñada para dueños de negocio. Las categorías siguen el PUC (Decreto 2650 de 1993) y citan la casilla del Formulario 110 a la que corresponden; la IA hace el trabajo pesado y tú revisas.' },
+        { q: '¿Maneja IVA y retención en la fuente?', a: 'Sí. Cada categoría trae su tarifa típica de IVA y de retención, y el sistema genera el reporte de gastos por tarifa de IVA, el estimado de retención y el certificado de retención por proveedor con su NIT.' },
+      ],
+    },
+    footer: {
+      blurb: 'Software de P&L y contabilidad fiscal para negocios en Colombia.',
+      made: 'Hecho para negocios en Colombia',
+    },
+  },
+  en: {
+    hero: {
+      kicker: 'P&L and tax filing for businesses in Colombia',
+      sub: 'Import your bank statement, let AI classify every movement against the PUC chart of accounts, and hand your accountant a clean P&L with VAT and withholding ready. That is all.',
+      note: `From $20 USD/mo (${copInfo('20')}) · Cancel anytime`,
+    },
+    ticker: ['BANCOLOMBIA', 'DAVIVIENDA', 'BBVA', 'BANCO DE BOGOTÁ', 'NEQUI', 'DAVIPLATA', 'CSV', 'XLSX', 'PDF', 'PUC', 'FORMULARIO 110', 'IVA'],
+    steps: {
+      items: [
+        { n: '01', title: 'Import your bank', desc: 'Download the statement as CSV, Excel or PDF from any Colombian bank and drop it in. We detect date, description and amount automatically, and filter duplicates.' },
+        { n: '02', title: 'Classify with AI', desc: 'Every movement gets its PUC account with its VAT and withholding rate, plus a confidence level. You review the uncertain ones and confirm the rest in one click.' },
+        { n: '03', title: 'Hand over the report', desc: 'Generate the P&L as PDF or Excel broken down by PUC account, with VAT report, withholding estimate and per-vendor certificates. Your accountant just reviews and files.' },
+      ],
+    },
+    statsLabel: 'PUC categories',
+    faq: {
+      items: [
+        { q: 'Does it work with my bank?', a: 'Yes. It works with any Colombian bank that exports movements as CSV, Excel or PDF: Bancolombia, Davivienda, BBVA, Banco de Bogotá, Nequi, Daviplata and more.' },
+        { q: 'Do I need accounting knowledge?', a: 'No. The platform is built for business owners. Categories follow the PUC (Decreto 2650 de 1993) and cite the Formulario 110 box they roll up to; the AI does the heavy lifting and you review.' },
+        { q: 'Does it handle VAT and withholding?', a: 'Yes. Every category carries its typical IVA and retención rate, and the system produces the expenses-by-VAT-rate report, the withholding estimate and a per-vendor withholding certificate with their NIT.' },
+      ],
+    },
+    footer: {
+      blurb: 'P&L and tax accounting software for businesses in Colombia.',
+      made: 'Made for businesses in Colombia',
+    },
+  },
+}
+
+// Merges the Colombia patch into the base copy for the chosen language, and
+// appends the peso reference to each plan's USD price.
+function buildCopy(lang: 'es' | 'en', region: Region) {
+  const base = copy[lang]
+  if (region === 'US') return base
+  const o = coOverrides[lang]
+  return {
+    ...base,
+    hero: { ...base.hero, ...o.hero },
+    ticker: o.ticker,
+    steps: { ...base.steps, items: o.steps.items },
+    stats: base.stats.map(s => (s.l.includes('Schedule C') ? { ...s, v: 29, l: o.statsLabel } : s)),
+    pricing: {
+      ...base.pricing,
+      plans: base.pricing.plans.map(p => (p.price ? { ...p, priceNote: copInfo(p.price) } : p)),
+    },
+    faq: { ...base.faq, items: [...o.faq.items, ...base.faq.items.slice(3)] },
+    footer: { ...base.footer, ...o.footer },
+  }
+}
+
+// A Colombian visitor should land on the Colombian version without hunting for
+// a toggle; everyone else keeps the US default. Timezone is the most reliable
+// signal available client-side, with the locale as a fallback.
+function detectRegion(): Region {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+    if (tz === 'America/Bogota') return 'CO'
+    const locales = [navigator.language, ...(navigator.languages || [])]
+    if (locales.some(l => l?.toLowerCase().endsWith('-co'))) return 'CO'
+  } catch {
+    // Intl/navigator unavailable — fall through to the US default.
+  }
+  return 'US'
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LandingClient() {
   const [lang, setLang] = useState<'es' | 'en'>('es')
+  // Starts on US so the server render and first client render agree; the
+  // detected region lands right after mount.
+  const [region, setRegion] = useState<Region>('US')
   const [tab, setTab] = useState(0)
   const [scrolled, setScrolled] = useState(false)
-  const t = copy[lang]
+  const t = buildCopy(lang, region)
+
+  useEffect(() => { setRegion(detectRegion()) }, [])
 
   const onScroll = useCallback(() => setScrolled(window.scrollY > 24), [])
   useEffect(() => {
@@ -622,6 +805,23 @@ export default function LandingClient() {
           </nav>
 
           <div className="flex items-center gap-2">
+            {/* Country picker, separate from the language one: a Spanish-
+                speaking owner in the US still needs the Schedule C version. */}
+            <div className="flex border border-black/15">
+              {([['US', '🇺🇸'], ['CO', '🇨🇴']] as [Region, string][]).map(([r, flag]) => (
+                <button
+                  key={r}
+                  onClick={() => setRegion(r)}
+                  aria-pressed={region === r}
+                  title={r === 'CO' ? 'Colombia' : 'Estados Unidos'}
+                  className={`px-2 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                    region === r ? 'bg-black/[0.06] text-black' : 'text-black/45 hover:text-black'
+                  }`}
+                >
+                  {flag} {r}
+                </button>
+              ))}
+            </div>
             <button
               onClick={() => setLang(l => (l === 'es' ? 'en' : 'es'))}
               className="border border-black/15 px-2.5 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-black/60 transition-colors hover:border-black/40"
@@ -721,7 +921,7 @@ export default function LandingClient() {
             transition={{ duration: 0.8, delay: 0.35, ease }}
             className="self-center"
           >
-            <LiveLedger lang={lang} />
+            <LiveLedger lang={lang} region={region} />
           </motion.div>
         </div>
       </section>
@@ -786,7 +986,7 @@ export default function LandingClient() {
                   </button>
                 ))}
               </div>
-              <DemoPanel tab={tab} lang={lang} />
+              <DemoPanel tab={tab} lang={lang} region={region} />
             </div>
           </Reveal>
         </div>
@@ -854,6 +1054,11 @@ export default function LandingClient() {
                       </span>
                     )}
                   </div>
+                  {(p as any).priceNote && (
+                    <p className={`mt-1 font-mono text-[11px] ${p.highlight ? 'text-white/45' : 'text-black/35'}`}>
+                      {(p as any).priceNote}
+                    </p>
+                  )}
                   <p className={`mt-2 text-xs ${p.highlight ? 'text-white/50' : 'text-black/40'}`}>{p.desc}</p>
 
                   <ul className="mt-7 flex-1 space-y-2.5 border-t pt-6" style={{ borderColor: p.highlight ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }}>

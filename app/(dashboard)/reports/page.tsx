@@ -53,6 +53,79 @@ export default function ReportsPage() {
       .finally(() => setLoading(false))
   }, [activeBiz, from, to])
 
+  // Certificado de retención for one vendor — the document the agente
+  // retenedor hands to the tercero. Names both parties by NIT (the business's
+  // own comes from Business.taxId) and breaks the period down by category so
+  // the vendor can see which rate was applied to what.
+  async function downloadCertificado(vendor: { vendor: string; nit: string | null; total: number; retained: number; count: number }) {
+    setExporting(true)
+    try {
+      const { jsPDF } = await import('jspdf')
+      const autoTable = (await import('jspdf-autotable')).default
+      const doc = new jsPDF()
+      const biz = businesses.find((b: any) => b.id === activeBiz)
+      const W = 210
+      const BLUE: [number, number, number] = [27, 73, 101]
+      const TEAL: [number, number, number] = [46, 196, 182]
+      const WHITE: [number, number, number] = [255, 255, 255]
+
+      doc.setFillColor(...BLUE)
+      doc.rect(0, 0, W, 26, 'F')
+      doc.setFillColor(...TEAL)
+      doc.rect(0, 0, 8, 26, 'F')
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...WHITE)
+      doc.text('Certificado de retención en la fuente', 14, 14)
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(180, 210, 225)
+      doc.text(`${t('reports.period')}: ${from} — ${to}`, 14, 21)
+
+      autoTable(doc, {
+        startY: 34,
+        head: [['Agente retenedor', 'Tercero (beneficiario del pago)']],
+        body: [[
+          `${biz?.name || ''}\nNIT: ${biz?.taxId || '—'}`,
+          `${vendor.vendor}\nNIT: ${vendor.nit || '—'}`,
+        ]],
+        headStyles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 9, cellPadding: 4 },
+      })
+
+      const yTotals = (doc as any).lastAutoTable.finalY + 10
+      autoTable(doc, {
+        startY: yTotals,
+        head: [['Concepto', 'Valor']],
+        body: [
+          ['Base sujeta a retención (pagos o abonos en cuenta)', fmt(vendor.total)],
+          ['Retención en la fuente estimada', fmt(vendor.retained)],
+          ['Número de operaciones', String(vendor.count)],
+        ],
+        headStyles: { fillColor: BLUE, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 9 },
+        alternateRowStyles: { fillColor: [240, 246, 250] },
+        columnStyles: { 1: { halign: 'right' } },
+      })
+
+      const yNote = (doc as any).lastAutoTable.finalY + 12
+      doc.setFontSize(8)
+      doc.setTextColor(120, 130, 140)
+      const note = doc.splitTextToSize(
+        'Documento generado automáticamente a partir de los movimientos registrados en el periodo. La retención ' +
+        'mostrada es un estimado calculado con la tarifa típica de cada categoría; la tarifa definitiva depende de ' +
+        'la calidad del beneficiario (declarante o no declarante, persona natural o jurídica) y de las bases mínimas ' +
+        'en UVT vigentes. Verifique con su contador antes de expedirlo formalmente.',
+        W - 28
+      )
+      doc.text(note, 14, yNote)
+
+      doc.save(`certificado-retencion_${vendor.vendor.replace(/\s+/g, '-')}_${from}_${to}.pdf`)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   function exportCSV() {
     if (!report) return
     const biz = businesses.find((b: any) => b.id === activeBiz)
@@ -199,12 +272,12 @@ export default function ReportsPage() {
       doc.text('Gasto por proveedor', 14, yV)
       autoTable(doc, {
         startY: yV + 4,
-        head: [['Proveedor', t('reports.total'), t('reports.count'), 'Promedio']],
-        body: report.vendors.map((v: any) => [v.vendor, fmt(v.total), v.count, fmt(v.avg)]),
+        head: [['Proveedor', 'NIT', t('reports.total'), 'Retención', t('reports.count')]],
+        body: report.vendors.map((v: any) => [v.vendor, v.nit || '—', fmt(v.total), v.retained > 0 ? fmt(v.retained) : '—', v.count]),
         headStyles: tableHeadStyles,
         bodyStyles: tableBodyStyles,
         alternateRowStyles: tableAltStyles,
-        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'center' }, 3: { halign: 'right' } },
+        columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'center' } },
       })
     }
 
@@ -323,8 +396,8 @@ export default function ReportsPage() {
 
     if (report.vendors.length > 0) {
       const wsV = wb.addWorksheet('Proveedores')
-      wsV.addRow(['Proveedor', t('reports.total'), t('reports.count'), 'Promedio', 'Última compra'])
-      report.vendors.forEach((v: any) => wsV.addRow([v.vendor, v.total, v.count, v.avg, new Date(v.lastDate).toLocaleDateString()]))
+      wsV.addRow(['Proveedor', 'NIT', t('reports.total'), 'Retención estimada', t('reports.count'), 'Promedio', 'Última compra'])
+      report.vendors.forEach((v: any) => wsV.addRow([v.vendor, v.nit || '', v.total, v.retained, v.count, v.avg, new Date(v.lastDate).toLocaleDateString()]))
     }
 
     const buf = await wb.xlsx.writeBuffer()
@@ -1148,14 +1221,14 @@ export default function ReportsPage() {
                 <h2 className="text-base font-semibold text-gray-800">Gasto por proveedor</h2>
                 <div className="flex gap-2 flex-shrink-0">
                   <button
-                    onClick={() => downloadSectionPDF('proveedores', 'Gasto por proveedor', ['Proveedor', t('reports.total'), t('reports.count'), 'Promedio', 'Última compra'], report.vendors.map((v: any) => [v.vendor, fmt(v.total), v.count, fmt(v.avg), new Date(v.lastDate).toLocaleDateString()]))}
+                    onClick={() => downloadSectionPDF('proveedores', 'Gasto por proveedor', ['Proveedor', 'NIT', t('reports.total'), 'Retención', t('reports.count')], report.vendors.map((v: any) => [v.vendor, v.nit || '—', fmt(v.total), v.retained > 0 ? fmt(v.retained) : '—', v.count]))}
                     disabled={exporting}
                     className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
                   >
                     Descargar PDF
                   </button>
                   <button
-                    onClick={() => downloadSectionExcel('proveedores', 'Proveedores', ['Proveedor', t('reports.total'), t('reports.count'), 'Promedio', 'Última compra'], report.vendors.map((v: any) => [v.vendor, v.total, v.count, v.avg, new Date(v.lastDate).toLocaleDateString()]))}
+                    onClick={() => downloadSectionExcel('proveedores', 'Proveedores', ['Proveedor', 'NIT', t('reports.total'), 'Retención estimada', t('reports.count'), 'Promedio', 'Última compra'], report.vendors.map((v: any) => [v.vendor, v.nit || '', v.total, v.retained, v.count, v.avg, new Date(v.lastDate).toLocaleDateString()]))}
                     disabled={exporting}
                     className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
                   >
@@ -1163,26 +1236,41 @@ export default function ReportsPage() {
                   </button>
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mb-4">Total gastado, frecuencia de compra y promedio por transacción.</p>
+              <p className="text-xs text-gray-400 mb-4">
+                Total gastado, retención estimada y NIT de cada tercero. El certificado descarga el detalle de
+                un proveedor para entregárselo — el NIT se edita en Transacciones → Detalles.
+              </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="pb-2 text-left text-xs font-semibold text-gray-500 uppercase">Proveedor</th>
+                      <th className="pb-2 text-left text-xs font-semibold text-gray-500 uppercase">NIT</th>
                       <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Total</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Retención</th>
                       <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Compras</th>
-                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Promedio</th>
                       <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Última compra</th>
+                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Certificado</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {report.vendors.map((v: any) => (
                       <tr key={v.vendor}>
                         <td className="py-2 text-gray-700">{v.vendor}</td>
+                        <td className="py-2 text-gray-500 font-mono text-xs">{v.nit || <span className="text-amber-600">Sin NIT</span>}</td>
                         <td className="py-2 text-right text-gray-800 font-medium">{fmt(v.total)}</td>
+                        <td className="py-2 text-right text-gray-500">{v.retained > 0 ? fmt(v.retained) : '—'}</td>
                         <td className="py-2 text-right text-gray-500">{v.count}</td>
-                        <td className="py-2 text-right text-gray-500">{fmt(v.avg)}</td>
                         <td className="py-2 text-right text-gray-500">{new Date(v.lastDate).toLocaleDateString()}</td>
+                        <td className="py-2 text-right">
+                          <button
+                            onClick={() => downloadCertificado(v)}
+                            disabled={exporting}
+                            className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
+                          >
+                            PDF
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

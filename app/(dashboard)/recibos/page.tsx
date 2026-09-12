@@ -36,6 +36,7 @@ interface ScanJob {
     notes: string
     vendor: string
     costCenter: string
+    nit: string
   }
 }
 
@@ -105,7 +106,7 @@ export default function RecibosPage() {
         file,
         preview,
         status: 'scanning' as const,
-        form: { merchant: '', date: '', amount: '', categoryId: '', deductibility: '', notes: '', vendor: '', costCenter: '' },
+        form: { merchant: '', date: '', amount: '', categoryId: '', deductibility: '', notes: '', vendor: '', costCenter: '', nit: '' },
       }
     }))
 
@@ -144,6 +145,7 @@ export default function RecibosPage() {
           notes: '',
           vendor: ex?.merchant || '',
           costCenter: '',
+          nit: '',
         },
       } : j))
     } catch (e: any) {
@@ -171,6 +173,17 @@ export default function RecibosPage() {
       const d = await res.json()
       toast(d.error || t('common.error'), 'error')
       return
+    }
+    // The NIT is a vendor attribute, saved to the vendor catalog rather than
+    // onto the transaction, so it reaches the certificado de retención.
+    const vendor = job.form.vendor.trim()
+    const nit = job.form.nit.trim()
+    if (vendor && nit) {
+      await fetch('/api/vendors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessId: activeBiz, name: vendor, nit }),
+      }).catch(err => console.error('Save NIT failed:', err))
     }
     setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'confirmed', preview: '' } : j))
     toast(t('receipts.confirmed'), 'success')
@@ -408,6 +421,10 @@ function ScanCard({
                 <input className="input text-sm" value={job.form.vendor} onChange={e => onFormChange(job.id, 'vendor', e.target.value)} />
               </div>
               <div>
+                <label className="label">NIT del proveedor</label>
+                <input className="input text-sm" value={job.form.nit} onChange={e => onFormChange(job.id, 'nit', e.target.value)} placeholder="900.123.456-7" />
+              </div>
+              <div className="col-span-2">
                 <label className="label">Centro de costos</label>
                 <input className="input text-sm" value={job.form.costCenter} onChange={e => onFormChange(job.id, 'costCenter', e.target.value)} placeholder="Ej: Ventas, Operaciones" />
               </div>

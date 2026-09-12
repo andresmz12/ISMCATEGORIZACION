@@ -139,17 +139,28 @@ export async function GET(req: Request) {
   const retefuente = Object.values(retefuenteMap).sort((a, b) => b.total - a.total)
 
   // Spend + purchase frequency by vendor (only transactions with a vendor set).
-  const vendorMap: Record<string, { vendor: string; total: number; count: number; lastDate: string }> = {}
+  // `retained` is the estimate that feeds the certificado de retención: each
+  // transaction's own category rate applied to its own amount, so a vendor
+  // billing both honorarios (11%) and servicios (4%) lands on the real mix
+  // rather than one blended rate.
+  const vendorMap: Record<string, { vendor: string; total: number; retained: number; count: number; lastDate: string }> = {}
   for (const t of debits) {
     if (!t.vendor) continue
-    if (!vendorMap[t.vendor]) vendorMap[t.vendor] = { vendor: t.vendor, total: 0, count: 0, lastDate: t.date.toISOString() }
+    if (!vendorMap[t.vendor]) vendorMap[t.vendor] = { vendor: t.vendor, total: 0, retained: 0, count: 0, lastDate: t.date.toISOString() }
     const v = vendorMap[t.vendor]
     v.total = round(v.total + t.amount)
     v.count += 1
+    const rate = t.category?.retefuente ?? ''
+    const pct = parseFloat(rate)
+    if (!isNaN(pct) && rate.trim().endsWith('%')) v.retained = round(v.retained + t.amount * (pct / 100))
     if (t.date.toISOString() > v.lastDate) v.lastDate = t.date.toISOString()
   }
+  // NITs live in the vendor catalog, keyed by the same name the transactions
+  // carry — a vendor with no catalog row simply has no NIT yet.
+  const vendorCatalog = await prisma.vendor.findMany({ where: { businessId }, select: { name: true, nit: true } })
+  const nitByVendor = new Map(vendorCatalog.map(v => [v.name, v.nit]))
   const vendors = Object.values(vendorMap)
-    .map(v => ({ ...v, avg: round(v.total / v.count) }))
+    .map(v => ({ ...v, avg: round(v.total / v.count), nit: nitByVendor.get(v.vendor) ?? null }))
     .sort((a, b) => b.total - a.total)
 
   return NextResponse.json({

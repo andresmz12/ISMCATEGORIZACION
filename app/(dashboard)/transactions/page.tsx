@@ -91,18 +91,25 @@ function TransactionsContent() {
   const [bulkLoading, setBulkLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [addForm, setAddForm] = useState({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', costCenter: '', vendor: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
+  const [addForm, setAddForm] = useState({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', costCenter: '', vendor: '', nit: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
   const [addError, setAddError] = useState('')
   const [addLoading, setAddLoading] = useState(false)
   const [metaVendors, setMetaVendors] = useState<string[]>([])
   const [metaCostCenters, setMetaCostCenters] = useState<string[]>([])
+  const [metaVendorNits, setMetaVendorNits] = useState<Record<string, string>>({})
   const [detailsTx, setDetailsTx] = useState<any>(null)
-  const [detailsForm, setDetailsForm] = useState({ vendor: '', costCenter: '', deductibility: '', notes: '' })
+  const [detailsForm, setDetailsForm] = useState({ vendor: '', costCenter: '', deductibility: '', notes: '', nit: '' })
   const [detailsSaving, setDetailsSaving] = useState(false)
 
   function openDetails(tx: any) {
     setDetailsTx(tx)
-    setDetailsForm({ vendor: tx.vendor || '', costCenter: tx.costCenter || '', deductibility: tx.deductibility || '', notes: tx.notes || '' })
+    setDetailsForm({
+      vendor: tx.vendor || '',
+      costCenter: tx.costCenter || '',
+      deductibility: tx.deductibility || '',
+      notes: tx.notes || '',
+      nit: (tx.vendor && metaVendorNits[tx.vendor]) || '',
+    })
   }
 
   // A vendor/cost-center typed for the first time should show up as a pick-
@@ -111,6 +118,25 @@ function TransactionsContent() {
   function rememberVendorAndCostCenter(vendor: string, costCenter: string) {
     if (vendor) setMetaVendors(v => v.includes(vendor) ? v : [...v, vendor].sort())
     if (costCenter) setMetaCostCenters(v => v.includes(costCenter) ? v : [...v, costCenter].sort())
+  }
+
+  // The NIT belongs to the vendor, not the transaction — it goes to the vendor
+  // catalog so every transaction from that vendor (and the certificado de
+  // retención) picks it up.
+  async function saveVendorNit(vendor: string, nit: string) {
+    if (!vendor || !activeBiz) return
+    const known = metaVendorNits[vendor] || ''
+    if (known === nit) return
+    setMetaVendorNits(m => ({ ...m, [vendor]: nit }))
+    try {
+      await fetch('/api/vendors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessId: activeBiz, name: vendor, nit: nit || null }),
+      })
+    } catch (err) {
+      console.error('Save NIT failed:', err)
+    }
   }
 
   async function saveDetails() {
@@ -126,6 +152,7 @@ function TransactionsContent() {
         notes: detailsForm.notes.trim() || null,
       })
       rememberVendorAndCostCenter(vendor, costCenter)
+      await saveVendorNit(vendor, detailsForm.nit.trim())
       setDetailsTx(null)
     } finally {
       setDetailsSaving(false)
@@ -140,7 +167,7 @@ function TransactionsContent() {
     fetch(`/api/categories?businessId=${activeBiz}`).then(r => r.ok ? r.json() : []).then(setCategories)
     fetch(`/api/rules?businessId=${activeBiz}`).then(r => r.ok ? r.json() : []).then(d => setRules(Array.isArray(d) ? d : []))
     fetch(`/api/transactions/meta?businessId=${activeBiz}`).then(r => r.ok ? r.json() : null).then(d => {
-      if (d) { setMetaVendors(d.vendors || []); setMetaCostCenters(d.costCenters || []) }
+      if (d) { setMetaVendors(d.vendors || []); setMetaCostCenters(d.costCenters || []); setMetaVendorNits(d.vendorNits || {}) }
     })
   }, [activeBiz])
 
@@ -307,8 +334,9 @@ function TransactionsContent() {
       const data = await res.json()
       if (!res.ok) { setAddError(data.error || t('tx.addFailed')); return }
       rememberVendorAndCostCenter(addForm.vendor.trim(), addForm.costCenter.trim())
+      await saveVendorNit(addForm.vendor.trim(), addForm.nit.trim())
       setShowAddModal(false)
-      setAddForm({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', costCenter: '', vendor: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
+      setAddForm({ date: '', description: '', amount: '', type: 'DEBIT', categoryId: '', deductibility: '', notes: '', costCenter: '', vendor: '', nit: '', recurring: false, repeatFrequency: 'MONTHLY', repeatCount: '12' })
       setPage(1)
       loadTransactions(1, false)
       toast(data.count > 1 ? t('tx.transactionsAdded').replace('{n}', String(data.count)) : t('tx.transactionAdded'), 'success')
@@ -899,7 +927,16 @@ function TransactionsContent() {
                   <ComboBox
                     options={metaVendors}
                     value={addForm.vendor}
-                    onChange={v => setAddForm(f => ({ ...f, vendor: v }))}
+                    onChange={v => setAddForm(f => ({ ...f, vendor: v, nit: metaVendorNits[v] ?? f.nit }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">NIT del proveedor</label>
+                  <input
+                    className="input w-full text-sm"
+                    value={addForm.nit}
+                    onChange={e => setAddForm(f => ({ ...f, nit: e.target.value }))}
+                    placeholder="900.123.456-7"
                   />
                 </div>
                 <div>
@@ -975,14 +1012,28 @@ function TransactionsContent() {
             <h3 className="text-lg font-bold text-gray-800 mb-1">Detalles de la transacción</h3>
             <p className="text-sm text-gray-400 mb-4 truncate">{detailsTx.description}</p>
             <div className="space-y-3">
-              {isColombia && <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Proveedor</label>
-                  <ComboBox
-                    options={metaVendors}
-                    value={detailsForm.vendor}
-                    onChange={v => setDetailsForm(f => ({ ...f, vendor: v }))}
-                  />
+              {isColombia && <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Proveedor</label>
+                    <ComboBox
+                      options={metaVendors}
+                      value={detailsForm.vendor}
+                      // Picking a vendor that already has a NIT on file fills it
+                      // in, so the accountant types it once per vendor, not once
+                      // per transaction.
+                      onChange={v => setDetailsForm(f => ({ ...f, vendor: v, nit: metaVendorNits[v] ?? f.nit }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">NIT del proveedor</label>
+                    <input
+                      className="input w-full text-sm"
+                      value={detailsForm.nit}
+                      onChange={e => setDetailsForm(f => ({ ...f, nit: e.target.value }))}
+                      placeholder="900.123.456-7"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Centro de costos</label>
@@ -993,7 +1044,7 @@ function TransactionsContent() {
                     placeholder="Ej: Ventas, Operaciones"
                   />
                 </div>
-              </div>}
+              </>}
               <div>
                 <select className="input w-full text-sm" value={detailsForm.deductibility} onChange={e => setDetailsForm(f => ({ ...f, deductibility: e.target.value }))}>
                   <option value="">{t('tx.deductible')}</option>
