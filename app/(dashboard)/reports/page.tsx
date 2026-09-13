@@ -139,8 +139,18 @@ export default function ReportsPage() {
       [t('reports.netProfit'), String(report.summary.netProfit)],
       [],
       [t('reports.expensesByCategory')],
-      [t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')],
-      ...report.expensesByCategory.map((c: any) => [c.name, String(c.total), String(c.deductible), String(c.count)]),
+      // Deductibility (100% / 50% meals / non-deductible) is a US Schedule C
+      // concept — Colombia has no partial-deduction rule, so this column
+      // doesn't carry the meaning it does for a US business.
+      ...(activeBizCountry === 'CO'
+        ? [
+            [t('tx.category'), t('reports.total'), t('reports.count')],
+            ...report.expensesByCategory.map((c: any) => [c.name, String(c.total), String(c.count)]),
+          ]
+        : [
+            [t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')],
+            ...report.expensesByCategory.map((c: any) => [c.name, String(c.total), String(c.deductible), String(c.count)]),
+          ]),
       [],
       [t('reports.monthly')],
       [t('reports.month'), t('dashboard.income'), t('dashboard.expenses'), t('reports.net')],
@@ -206,17 +216,32 @@ export default function ReportsPage() {
     const y1 = (doc as any).lastAutoTable.finalY + 10
     doc.setTextColor(...BLUE)
     doc.text(t('reports.expensesByCategory'), 14, y1)
-    autoTable(doc, {
-      startY: y1 + 4,
-      head: [[t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')]],
-      body: report.expensesByCategory.map((c: any) => [
-        c.name, fmt(c.total), fmt(c.deductible), c.count,
-      ]),
-      headStyles: tableHeadStyles,
-      bodyStyles: tableBodyStyles,
-      alternateRowStyles: tableAltStyles,
-      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'center' } },
-    })
+    // Deductibility (100% / 50% meals / non-deductible) is a US Schedule C
+    // concept — Colombia has no partial-deduction rule, so this column
+    // doesn't carry the meaning it does for a US business.
+    if (activeBizCountry === 'CO') {
+      autoTable(doc, {
+        startY: y1 + 4,
+        head: [[t('tx.category'), t('reports.total'), t('reports.count')]],
+        body: report.expensesByCategory.map((c: any) => [c.name, fmt(c.total), c.count]),
+        headStyles: tableHeadStyles,
+        bodyStyles: tableBodyStyles,
+        alternateRowStyles: tableAltStyles,
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'center' } },
+      })
+    } else {
+      autoTable(doc, {
+        startY: y1 + 4,
+        head: [[t('tx.category'), t('reports.total'), t('reports.deductible'), t('reports.count')]],
+        body: report.expensesByCategory.map((c: any) => [
+          c.name, fmt(c.total), fmt(c.deductible), c.count,
+        ]),
+        headStyles: tableHeadStyles,
+        bodyStyles: tableBodyStyles,
+        alternateRowStyles: tableAltStyles,
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'center' } },
+      })
+    }
 
     // Colombia-only sections (IVA, cost centers, vendors) — only rendered
     // when the report actually has data for them, same condition the
@@ -227,12 +252,12 @@ export default function ReportsPage() {
       doc.text('Gastos por tipo de IVA', 14, yVat)
       autoTable(doc, {
         startY: yVat + 4,
-        head: [['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')]],
-        body: report.vat.map((v: any) => [v.vatRate, fmt(v.total), fmt(v.deductible), v.count]),
+        head: [['Tarifa IVA', t('reports.total'), t('reports.count')]],
+        body: report.vat.map((v: any) => [v.vatRate, fmt(v.total), v.count]),
         headStyles: tableHeadStyles,
         bodyStyles: tableBodyStyles,
         alternateRowStyles: tableAltStyles,
-        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'center' } },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'center' } },
       })
     }
 
@@ -378,8 +403,8 @@ export default function ReportsPage() {
     // cards below use.
     if (report.vat.length > 0) {
       const wsVat = wb.addWorksheet('IVA')
-      wsVat.addRow(['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')])
-      report.vat.forEach((v: any) => wsVat.addRow([v.vatRate, v.total, v.deductible, v.count]))
+      wsVat.addRow(['Tarifa IVA', t('reports.total'), t('reports.count')])
+      report.vat.forEach((v: any) => wsVat.addRow([v.vatRate, v.total, v.count]))
     }
 
     if (report.retefuente.length > 0) {
@@ -1121,14 +1146,14 @@ export default function ReportsPage() {
                 <h2 className="text-base font-semibold text-gray-800">Gastos por tipo de IVA</h2>
                 <div className="flex gap-2 flex-shrink-0">
                   <button
-                    onClick={() => downloadSectionPDF('iva', 'Gastos por tipo de IVA', ['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')], report.vat.map((v: any) => [v.vatRate, fmt(v.total), fmt(v.deductible), v.count]))}
+                    onClick={() => downloadSectionPDF('iva', 'Gastos por tipo de IVA', ['Tarifa IVA', t('reports.total'), t('reports.count')], report.vat.map((v: any) => [v.vatRate, fmt(v.total), v.count]))}
                     disabled={exporting}
                     className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
                   >
                     Descargar PDF
                   </button>
                   <button
-                    onClick={() => downloadSectionExcel('iva', 'IVA', ['Tarifa IVA', t('reports.total'), t('reports.deductible'), t('reports.count')], report.vat.map((v: any) => [v.vatRate, v.total, v.deductible, v.count]))}
+                    onClick={() => downloadSectionExcel('iva', 'IVA', ['Tarifa IVA', t('reports.total'), t('reports.count')], report.vat.map((v: any) => [v.vatRate, v.total, v.count]))}
                     disabled={exporting}
                     className="btn-secondary text-xs py-1 px-2 disabled:opacity-50"
                   >
@@ -1143,7 +1168,6 @@ export default function ReportsPage() {
                     <tr className="border-b border-gray-200">
                       <th className="pb-2 text-left text-xs font-semibold text-gray-500 uppercase">Tarifa IVA</th>
                       <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Total gasto</th>
-                      <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Deducible</th>
                       <th className="pb-2 text-right text-xs font-semibold text-gray-500 uppercase">Transacciones</th>
                     </tr>
                   </thead>
@@ -1152,7 +1176,6 @@ export default function ReportsPage() {
                       <tr key={v.vatRate}>
                         <td className="py-2 text-gray-700">{v.vatRate}</td>
                         <td className="py-2 text-right text-gray-800 font-medium">{fmt(v.total)}</td>
-                        <td className="py-2 text-right text-gray-500">{fmt(v.deductible)}</td>
                         <td className="py-2 text-right text-gray-500">{v.count}</td>
                       </tr>
                     ))}

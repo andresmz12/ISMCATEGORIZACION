@@ -85,7 +85,7 @@ export async function POST(req: Request) {
   "items": [{"description": "item", "amount": 0.00}],
   "payment_method": "cash/credit/debit/other or null",
   "category_suggestion": "one of: ${categoryNames.join(', ')}",
-  "deductibility": "YES/NO/FIFTY",
+  "deductibility": ${isColombia ? '"YES/NO"' : '"YES/NO/FIFTY"'},
   "confidence": "HIGH/MEDIUM/LOW"
 }
 Use null for any field you cannot read. Receipt may be in English or Spanish.

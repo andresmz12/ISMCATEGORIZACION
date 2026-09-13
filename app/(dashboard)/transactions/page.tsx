@@ -918,7 +918,10 @@ function TransactionsContent() {
                   <option value="">—</option>
                   <option value="YES">{t('common.yes100')}</option>
                   <option value="NO">{t('common.no')}</option>
-                  <option value="FIFTY">{t('common.fifty')}</option>
+                  {/* 50% deductibility is the US meals rule (IRC §274(n)). Colombia
+                      has no partial-deduction concept — under Estatuto Tributario
+                      Art. 107 an expense either meets the test or it doesn't. */}
+                  {!isColombia && <option value="FIFTY">{t('common.fifty')}</option>}
                 </select>
               </div>
               {isColombia && <div className="grid grid-cols-2 gap-3">
@@ -1050,7 +1053,7 @@ function TransactionsContent() {
                   <option value="">{t('tx.deductible')}</option>
                   <option value="YES">{t('common.yes100')}</option>
                   <option value="NO">{t('common.no')}</option>
-                  <option value="FIFTY">{t('common.fifty')}</option>
+                  {!isColombia && <option value="FIFTY">{t('common.fifty')}</option>}
                 </select>
               </div>
               <div>
@@ -1086,7 +1089,7 @@ function TransactionsContent() {
                     <option value="">{t('tx.deductible')}</option>
                     <option value="YES">{t('common.yes100')}</option>
                     <option value="NO">{t('common.no')}</option>
-                    <option value="FIFTY">{t('common.fifty')}</option>
+                    {!isColombia && <option value="FIFTY">{t('common.fifty')}</option>}
                   </select>
                 </div>
               ))}

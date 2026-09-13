@@ -76,6 +76,13 @@ export async function POST(req: Request) {
       })
     }
 
+    // 50% deductibility is the US meals rule (IRC §274(n)); Colombia has no
+    // partial deduction, so the model must not be offered FIFTY there.
+    const business = await prisma.business.findUnique({ where: { id: businessId }, select: { country: true } })
+    const deductibilityRule = business?.country === 'CO'
+      ? '- deductibility: "YES" (deductible under Estatuto Tributario Art. 107 — necessary, with causal relation and proportional) or "NO" (not deductible). Never use "FIFTY": Colombia has no partial-deduction rule.'
+      : '- deductibility: "YES" (100% deductible), "NO" (not deductible), or "FIFTY" (50% deductible, for meals)'
+
     const prompt = `You are an expert accountant specializing in expense categorization for small businesses.
 
 Given a list of bank transactions, classify each one into the most appropriate category from this exact list:
@@ -83,7 +90,7 @@ ${categoryNames.map(n => `- ${n}`).join('\n')}
 
 For each transaction, return:
 - category: must be EXACTLY one of the category names listed above (copy it verbatim)
-- deductibility: "YES" (100% deductible), "NO" (not deductible), or "FIFTY" (50% deductible, for meals)
+${deductibilityRule}
 - confidence: "HIGH" (very clear), "MEDIUM" (likely), or "LOW" (uncertain)
 - reason: brief explanation (one sentence)
 

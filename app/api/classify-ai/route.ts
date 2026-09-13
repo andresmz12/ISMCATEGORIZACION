@@ -73,6 +73,12 @@ export async function POST(req: Request) {
     const categoryMap = new Map(categories.map((c: { name: string; id: string }) => [c.name.toLowerCase().trim(), c.id]))
     const categoryNames = categories.map((c: { name: string }) => c.name)
     const uncategorizedId = categories.find((c: { name: string }) => c.name.toLowerCase().includes('uncategor') || c.name.toLowerCase().includes('sin categor'))?.id
+    // 50% deductibility is the US meals rule (IRC §274(n)); Colombia has no
+    // partial deduction, so the model must not be offered FIFTY there.
+    const business = await prisma.business.findUnique({ where: { id: businessId }, select: { country: true } })
+    const deductibilityRule = business?.country === 'CO'
+      ? '- deductibility: "YES" (deductible under Estatuto Tributario Art. 107 — necessary, with causal relation and proportional) or "NO" (not deductible). Never use "FIFTY": Colombia has no partial-deduction rule.'
+      : '- deductibility: "YES" (100% deductible), "NO" (not deductible), or "FIFTY" (50% deductible, for meals)'
 
     // Build dynamic prompt with the actual category names from DB
     const dynamicPrompt = `You are an expert accountant specializing in expense categorization for small businesses.
@@ -82,7 +88,7 @@ ${categoryNames.map((n: string) => `- ${n}`).join('\n')}
 
 For each transaction, return:
 - category: must be EXACTLY one of the category names listed above (copy it verbatim)
-- deductibility: "YES" (100% deductible), "NO" (not deductible), or "FIFTY" (50% deductible, for meals)
+${deductibilityRule}
 - confidence: "HIGH" (very clear), "MEDIUM" (likely), or "LOW" (uncertain)
 - reason: brief explanation (one sentence)
 

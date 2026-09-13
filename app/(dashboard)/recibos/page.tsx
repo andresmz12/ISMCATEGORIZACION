@@ -410,7 +410,8 @@ function ScanCard({
             <select className="input text-sm" value={job.form.deductibility} onChange={e => onFormChange(job.id, 'deductibility', e.target.value)}>
               <option value="YES">{t('common.yes100')}</option>
               <option value="NO">{t('common.no')}</option>
-              <option value="FIFTY">{t('common.fifty')}</option>
+              {/* No partial deduction in Colombia — see the transactions page. */}
+              {!isColombia && <option value="FIFTY">{t('common.fifty')}</option>}
             </select>
           </div>
 

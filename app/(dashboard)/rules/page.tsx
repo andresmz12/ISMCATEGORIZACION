@@ -13,9 +13,10 @@ interface LearnedPattern {
   lastSeen: string
 }
 
-function ManualRules({ activeBiz, categories, t, toast }: {
+function ManualRules({ activeBiz, categories, isColombia, t, toast }: {
   activeBiz: string
   categories: any[]
+  isColombia: boolean
   t: (k: any, v?: any) => string
   toast: (m: string, type?: any) => void
 }) {
@@ -102,7 +103,8 @@ function ManualRules({ activeBiz, categories, t, toast }: {
               <option value="">{t('common.notSet')}</option>
               <option value="YES">{t('common.yes100')}</option>
               <option value="NO">{t('common.no')}</option>
-              <option value="FIFTY">{t('common.fifty')}</option>
+              {/* No partial deduction in Colombia — see the transactions page. */}
+              {!isColombia && <option value="FIFTY">{t('common.fifty')}</option>}
             </select>
           </div>
           <div>
@@ -361,7 +363,8 @@ export default function RulesPage() {
   const { data: session } = useSession()
   const { t } = useTranslation()
   const toast = useToast()
-  const { activeBizId: activeBiz } = useActiveBiz()
+  const { businesses, activeBizId: activeBiz } = useActiveBiz()
+  const isColombia = businesses.find((b: any) => b.id === activeBiz)?.country === 'CO'
   const [categories, setCategories] = useState<any[]>([])
 
   const plan = (session?.user as any)?.plan || 'BASIC'
@@ -395,7 +398,7 @@ export default function RulesPage() {
       {activeBiz && (
         isAIPlan
           ? <AILearnedRules activeBiz={activeBiz} categories={categories} t={t} toast={toast} />
-          : <ManualRules activeBiz={activeBiz} categories={categories} t={t} toast={toast} />
+          : <ManualRules activeBiz={activeBiz} categories={categories} isColombia={isColombia} t={t} toast={toast} />
       )}
     </div>
   )
